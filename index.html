@@ -27,6 +27,17 @@
     <div class="month-bar" id="monthBar"></div>
   </header>
 
+  <!-- TELA DE BLOQUEIO (PIN) -->
+  <div id="lockScreen" class="lock hidden">
+    <div class="lock-box">
+      <div class="lock-emoji">🔒</div>
+      <h2 id="lockTitle">Digite seu PIN</h2>
+      <input id="lockPin" type="password" inputmode="numeric" maxlength="16" class="lock-input" autocomplete="off" placeholder="••••" />
+      <div id="lockMsg" class="lock-msg"></div>
+      <button id="lockBtn" class="btn primary" style="width:100%">Entrar</button>
+    </div>
+  </div>
+
   <!-- PULL TO REFRESH -->
   <div id="ptr" class="ptr"><span id="ptrText">↓ puxe para atualizar</span></div>
 

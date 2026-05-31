@@ -1,7 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
-let DATA = loadData();
-const APP_VERSION = "2.2.1";
-const VERSION_NOTES = "espaçamento das barras Previsto×Realizado e Orçamento mais confortável";
+let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
+window.CRYPTO_KEY = null;
+const APP_VERSION = "2.5.0";
+const VERSION_NOTES = "⚡ sincronização instantânea celular ↔ web (atualiza ao abrir e a cada poucos segundos) · 🔒 PIN + criptografia · 📡 push";
 let history = [];
 let lastSnap = JSON.stringify(DATA);
 const HISTORY_MAX = 50;
@@ -447,7 +448,7 @@ function openDiariaModal(idx) {
 /* ---------- Infra ---------- */
 function showModal(s) { $(s).classList.remove("hidden"); }
 function closeModal() { $("#modal").classList.add("hidden"); }
-function persist() { history.push(lastSnap); if (history.length > HISTORY_MAX) history.shift(); lastSnap = JSON.stringify(DATA); saveData(DATA); render(); }
+function persist() { DATA.updatedAt = Date.now(); history.push(lastSnap); if (history.length > HISTORY_MAX) history.shift(); lastSnap = JSON.stringify(DATA); saveData(DATA); render(); pushSync(); }
 function undo() { if (!history.length) { toast("Nada para desfazer"); return; } lastSnap = history.pop(); DATA = JSON.parse(lastSnap); saveData(DATA); render(); toast("Desfeito ↩︎"); }
 function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 let toastT; function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 1800); }
@@ -501,10 +502,21 @@ function renderNotifBtn() {
       ? `<div class="hint">🔔 Avisos ao abrir o app ativados.</div><button class="btn ghost" id="btnTest">📲 Enviar notificação de teste</button>`
       : `<button class="btn ghost" id="btnNotif">🔔 Ativar avisos no app</button>`)
     + `<button class="btn ghost" id="btnPush" style="margin-top:10px">📡 ${pushOn ? "Push ativo — reativar" : "Ativar push no celular (app fechado)"}</button>`
+    + `<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">`
+    + (window.CRYPTO_KEY
+        ? `<button class="btn ghost" id="btnPin">🔓 Remover PIN</button><p class="hint" style="margin-top:6px">🔒 Protegido: seus dados estão criptografados neste aparelho.</p>`
+        : `<button class="btn primary" id="btnPin">🔒 Proteger o app com PIN</button><p class="hint" style="margin-top:6px">Exige um PIN pra abrir e criptografa seus valores no aparelho.</p>`)
+    + `<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">`
+    + (syncCfg()
+        ? `<button class="btn ghost" id="btnSync">🔄 Sincronizar agora</button><button class="btn ghost" id="btnSyncCfg" style="margin-top:8px">⚙️ Reconfigurar sincronização</button><p class="hint" style="margin-top:6px">⚡ Sincronização instantânea ligada — sobe a cada mudança e baixa ao abrir o app e a cada poucos segundos (celular ↔ web).</p>`
+        : `<button class="btn primary" id="btnSyncCfg">🔄 Ativar sincronização (celular ↔ web)</button>`)
     + `<p class="hint" style="margin-top:8px">Push exige abrir pelo app instalado na tela de início. Versão: <b>v${APP_VERSION}</b></p>`;
   const b = $("#btnNotif"); if (b) b.onclick = pedirNotificacao;
   const tb = $("#btnTest"); if (tb) tb.onclick = enviarTeste;
   const pb = $("#btnPush"); if (pb) pb.onclick = ativarPush;
+  const pin = $("#btnPin"); if (pin) pin.onclick = window.CRYPTO_KEY ? removerPin : definirPin;
+  const sc = $("#btnSyncCfg"); if (sc) sc.onclick = configurarSync;
+  const sn = $("#btnSync"); if (sn) sn.onclick = () => pullSync(true);
 }
 function enviarTeste() {
   if (!("Notification" in window) || Notification.permission !== "granted") { pedirNotificacao(); return; }
@@ -527,7 +539,151 @@ function checkVersion() {
   if (b) { b.innerHTML = `🎉 Atualizado para <b>v${APP_VERSION}</b> — ${VERSION_NOTES} <span class="ver-x">✕</span>`; b.classList.remove("hidden"); b.onclick = () => b.classList.add("hidden"); }
 }
 
-window.addEventListener("load", () => { if (curTab === "resumo" && !annual) renderCharts(); checkAndNotify(); checkVersion(); });
+/* ---------- Segurança: PIN + criptografia (AES-256-GCM) ---------- */
+const b64 = (u8) => btoa(String.fromCharCode(...new Uint8Array(u8)));
+const ub64 = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+window.deriveKey = async function (pin, saltB64) {
+  const salt = saltB64 ? ub64(saltB64) : crypto.getRandomValues(new Uint8Array(16));
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pin), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  return { key, salt: b64(salt) };
+};
+window.encryptEnvelope = async function (k, obj) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, k.key, new TextEncoder().encode(JSON.stringify(obj)));
+  return { enc: true, v: 1, salt: k.salt, iv: b64(iv), ct: b64(ct) };
+};
+window.decryptEnvelope = async function (k, env) {
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: ub64(env.iv) }, k.key, ub64(env.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+};
+
+async function definirPin() {
+  const p1 = prompt("Crie um PIN (mínimo 4 dígitos).\n\n⚠️ IMPORTANTE: se esquecer o PIN, os dados deste app NÃO poderão ser recuperados. Guarde um backup (⚙️ → Exportar).");
+  if (!p1) return;
+  if (p1.length < 4) { toast("PIN muito curto (mín. 4)"); return; }
+  if (prompt("Repita o PIN para confirmar") !== p1) { toast("Os PINs não conferem"); return; }
+  window.CRYPTO_KEY = await deriveKey(p1);
+  saveData(DATA);
+  toast("App protegido com PIN 🔒"); renderNotifBtn();
+}
+function removerPin() {
+  if (!window.CRYPTO_KEY) { toast("Não há PIN definido"); return; }
+  if (!confirm("Remover o PIN? Os dados ficarão sem criptografia neste aparelho.")) return;
+  window.CRYPTO_KEY = null;
+  localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+  toast("PIN removido"); renderNotifBtn();
+}
+function showLock(env) {
+  const ls = $("#lockScreen"); ls.classList.remove("hidden");
+  const pin = $("#lockPin"), msg = $("#lockMsg");
+  pin.value = ""; msg.textContent = ""; setTimeout(() => pin.focus(), 100);
+  const submit = async () => {
+    if (!pin.value) return;
+    msg.textContent = "verificando…";
+    try {
+      const k = await deriveKey(pin.value, env.salt);
+      const obj = await decryptEnvelope(k, env);
+      window.CRYPTO_KEY = k; DATA = migrate(obj);
+      ls.classList.add("hidden"); startApp();
+    } catch (e) { msg.textContent = "PIN incorreto"; pin.value = ""; pin.focus(); }
+  };
+  $("#lockBtn").onclick = submit;
+  pin.onkeydown = (e) => { if (e.key === "Enter") submit(); };
+}
+
+/* ---------- Sincronização (Google Sheet via Apps Script) ---------- */
+const SYNC_CFG_KEY = "financas2026.sync";
+const syncCfg = () => { try { return JSON.parse(localStorage.getItem(SYNC_CFG_KEY) || "null"); } catch (e) { return null; } };
+function configurarSync() {
+  const cur = syncCfg() || {};
+  const url = prompt("Cole o link do Web App de sincronização (termina em /exec):", cur.url || "");
+  if (!url) return;
+  const token = prompt("Cole o token de sincronização:", cur.token || "");
+  if (!token) return;
+  localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({ url: url.trim(), token: token.trim() }));
+  toast("Sincronização configurada"); renderNotifBtn(); pullSync(true); startLiveSync();
+}
+function jsonp(url) {
+  return new Promise((res, rej) => {
+    const cb = "__sync_cb_" + Math.random().toString(36).slice(2);
+    const s = document.createElement("script");
+    window[cb] = (d) => { delete window[cb]; s.remove(); res(d); };
+    s.onerror = () => { delete window[cb]; s.remove(); rej(new Error("falha")); };
+    s.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cb;
+    document.body.appendChild(s);
+    setTimeout(() => { if (window[cb]) { delete window[cb]; s.remove(); rej(new Error("timeout")); } }, 12000);
+  });
+}
+let pulling = false;
+async function pullSync(aviso) {
+  const c = syncCfg(); if (!c || pulling) return;
+  pulling = true;
+  try {
+    // &t= quebra cache de GET (proxies/Apps Script podem servir resposta velha)
+    const r = await jsonp(c.url + "?token=" + encodeURIComponent(c.token) + "&t=" + Date.now());
+    if (r && r.ok) {
+      const remote = r.data;
+      const localTs = (DATA && DATA.updatedAt) || 0;
+      const remoteTs = (remote && remote.updatedAt) || 0;
+      if (remote && remoteTs > localTs) {
+        // nuvem tem algo mais novo → adota e mantém histórico de desfazer
+        history.push(lastSnap); if (history.length > HISTORY_MAX) history.shift();
+        DATA = migrate(remote); saveData(DATA); lastSnap = JSON.stringify(DATA); render();
+        if (aviso) toast("Atualizado da nuvem ⤓");
+      } else if (!remote || localTs > remoteTs) {
+        // nuvem vazia ou mais velha → meu aparelho manda o estado mais novo
+        pushSync(); if (aviso) toast(remote ? "Já estava em dia ✓" : "Enviado pra nuvem ⤴");
+      } else if (aviso) { toast("Já estava em dia ✓"); }
+    } else if (r && r.error) { if (aviso) toast("Sync: " + r.error); }
+  } catch (e) { if (aviso) toast("Sync (baixar) falhou"); }
+  finally { pulling = false; }
+}
+let pushT;
+function pushSync() {
+  const c = syncCfg(); if (!c) return;
+  if (!DATA.updatedAt) DATA.updatedAt = Date.now();
+  clearTimeout(pushT);
+  pushT = setTimeout(() => {
+    fetch(c.url, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ token: c.token, data: DATA }) }).catch(() => {});
+  }, 600);
+}
+
+/* ---------- Sync ao vivo: polling + ao abrir/focar/reconectar ---------- */
+let liveT = null;
+const LIVE_MS = 7000;
+function startLiveSync() {
+  if (!syncCfg()) { stopLiveSync(); return; }
+  stopLiveSync();
+  liveT = setInterval(() => { if (document.visibilityState === "visible" && navigator.onLine !== false) pullSync(false); }, LIVE_MS);
+}
+function stopLiveSync() { if (liveT) { clearInterval(liveT); liveT = null; } }
+// Voltou pro app (destrava tela, troca de aba, abre do início) → puxa na hora
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && syncCfg()) pullSync(false); });
+window.addEventListener("focus", () => { if (syncCfg()) pullSync(false); });
+window.addEventListener("online", () => { if (syncCfg()) pullSync(false); });
+
+/* ---------- Boot ---------- */
+function startApp() {
+  window.__started = true;
+  lastSnap = JSON.stringify(DATA);
+  render();
+  if (curTab === "resumo" && !annual) renderCharts();
+  checkAndNotify(); checkVersion();
+  if (syncCfg()) { pullSync(false); startLiveSync(); }
+}
+async function boot() {
+  let raw = localStorage.getItem(STORE_KEY) || localStorage.getItem("financas2026.v1");
+  let parsed = null; try { parsed = raw ? JSON.parse(raw) : null; } catch (e) {}
+  if (parsed && parsed.enc) { showLock(parsed); return; }   // bloqueado: exige PIN
+  DATA = parsed ? migrate(parsed) : buildSeed();
+  if (!parsed) saveData(DATA);
+  startApp();
+}
+
+window.addEventListener("load", () => { if (window.__started && curTab === "resumo" && !annual) renderCharts(); });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 /* ---------- Puxar para atualizar (pull-to-refresh) ---------- */
@@ -556,4 +712,4 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   });
 })();
 
-render();
+boot();

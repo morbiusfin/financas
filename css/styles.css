@@ -55,6 +55,19 @@ main { padding: 18px 18px 16px; max-width: 640px; margin: 0 auto; }
 .ver-banner b { font-weight: 800; }
 .ver-x { float: right; opacity: .6; padding-left: 8px; }
 
+/* Tela de bloqueio (PIN) */
+.lock { position: fixed; inset: 0; z-index: 1000;
+  background: linear-gradient(160deg, var(--green) 0%, var(--green-2) 100%);
+  display: flex; align-items: center; justify-content: center; padding: 24px; }
+.lock-box { background: #fff; border-radius: 20px; padding: 28px 22px; width: 100%; max-width: 340px;
+  text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.3); }
+.lock-emoji { font-size: 44px; }
+.lock-box h2 { margin: 8px 0 18px; font-size: 19px; }
+.lock-input { width: 100%; padding: 14px; font-size: 22px; text-align: center; letter-spacing: 6px;
+  border: 1px solid var(--line); border-radius: 12px; background: #fafbfb; margin-bottom: 12px; }
+.lock-input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.lock-msg { color: var(--red); font-size: 13px; min-height: 18px; margin-bottom: 12px; font-weight: 600; }
+
 /* Pull to refresh */
 .ptr { height: 0; opacity: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;
   background: #eef3f1; color: var(--green); font-size: 13px; font-weight: 700;

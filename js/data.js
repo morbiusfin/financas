@@ -101,5 +101,12 @@ function loadData() {
   saveData(seed);
   return seed;
 }
-function saveData(d) { localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
+function saveData(d) {
+  if (window.CRYPTO_KEY && window.encryptEnvelope) {
+    // grava criptografado (AES-GCM). Sem o PIN, ilegível.
+    window.encryptEnvelope(window.CRYPTO_KEY, d).then(env => localStorage.setItem(STORE_KEY, JSON.stringify(env))).catch(() => {});
+  } else {
+    localStorage.setItem(STORE_KEY, JSON.stringify(d));
+  }
+}
 function resetData() { const s = buildSeed(); saveData(s); return s; }
