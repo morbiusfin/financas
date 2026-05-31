@@ -483,8 +483,9 @@ async function ativarPush() {
     let sub = await reg.pushManager.getSubscription();
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToU8(VAPID_PUBLIC) });
     localStorage.setItem("financas2026.pushsub", JSON.stringify(sub));
+    const bills = DATA.fixas.filter(l => l.dia).map(l => ({ desc: l.desc, dia: l.dia, aviso: l.aviso || 0 }));
     if (PUSH_API) {
-      await fetch(PUSH_API + "/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sub) });
+      await fetch(PUSH_API + "/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subscription: sub, bills }) });
       toast("Push ativado no celular ✅");
     } else { toast("Inscrição criada ✅ (servidor em configuração)"); }
   } catch (e) { toast("Falha ao ativar push: " + e.message); }
