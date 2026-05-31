@@ -128,4 +128,41 @@ main { padding: 16px; }
   background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 22px; font-size: 14px; z-index: 200;
   box-shadow: var(--shadow); }
 .toast.hidden { display: none; }
+/* ===== v2 components ===== */
+.alert-banner { background: #fff4e0; border: 1px solid #f5c87f; color: #8a5a00; border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 14px; font-size: 14px; font-weight: 600; }
+
+.flow-card { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 6px 16px; margin-bottom: 16px; }
+.flow-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px dashed var(--line); font-size: 15px; }
+.flow-row:last-child { border-bottom: 0; }
+.flow-row span i { font-style: normal; color: var(--muted); font-size: 11px; display: block; }
+.flow-row b { font-weight: 700; }
+.flow-row.eq { background: #f7faf9; margin: 0 -16px; padding: 11px 16px; }
+.flow-row.total { background: var(--green); color: #fff; margin: 0 -16px; padding: 14px 16px; border-radius: 0 0 16px 16px; }
+.flow-row.total b { font-size: 20px; }
+.flow-row.total .pos { color: #6dffa8; } .flow-row.total .neg { color: #ff9a9d; }
+
+.pr-block { margin: 12px 0; }
+.pr-head { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+.pr-head i { font-style: normal; color: var(--muted); font-weight: 400; }
+.pr-bar { height: 10px; background: #eef1f0; border-radius: 6px; overflow: hidden; }
+.pr-fill { height: 100%; background: var(--accent); border-radius: 6px; transition: width .3s; }
+.pr-fill.over { background: var(--red); }
+.pr-legend { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+.venc-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 9px; margin-left: 6px; background: #eef1f0; color: var(--muted); }
+.venc-badge.hoje { background: rgba(245,166,35,.2); color: #b9760a; }
+.venc-badge.perto { background: rgba(245,166,35,.2); color: #b9760a; }
+.venc-badge.atras { background: rgba(229,72,77,.15); color: var(--red); }
+.mini-btn { background: var(--green); color: #fff; border: 0; border-radius: 9px; padding: 7px 12px; font-size: 12px; font-weight: 700; }
+
+.group-head { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .4px; margin: 16px 4px 6px; }
+.group-head span { color: var(--ink); }
+.badge[data-toggle] { cursor: pointer; }
+.month-chip.ano { background: rgba(255,255,255,.22); }
+.row-check { display: flex; align-items: center; gap: 10px; flex-direction: row; }
+.row-check input { width: auto; }
+.row-check span { margin: 0; }
+
 .hidden { display: none !important; }

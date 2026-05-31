@@ -1,5 +1,5 @@
 /* Service Worker — cache offline */
-const CACHE = "financas-v1";
+const CACHE = "financas-v3";
 const ASSETS = [
   "./", "./index.html",
   "./css/styles.css",

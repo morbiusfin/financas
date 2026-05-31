@@ -1,10 +1,14 @@
-/* ===== Finanças 2026 — Dados e Armazenamento =====
+/* ===== Finanças 2026 — Dados e Armazenamento (v2) =====
    Modelo espelha a planilha "Finanças 2026 | Oficial":
-   - receitas (Ativa/Extra)        -> status: recebido | programado | vazio
-   - fixas (Despesas Fixas)        -> status: pago | programado | vazio
-   - cartao (Mercado Pago crédito) -> status: pago | programado | vazio
-   - diaria (Débitos Dia a Dia)    -> lançamentos por dia
-   Cada linha mensal guarda 12 valores (Jan..Dez) e 12 status.
+   - receitas: tipo Ativa/Extra, dia, status recebido|programado|vazio
+   - fixas:    vencimento (dia) + aviso (dias antes), meta (orçamento), status pago|programado|vazio
+   - cartao:   parcela (atual/total), cartão (final), status pago|programado|vazio
+   - diaria:   débitos dia a dia, com categoria
+   - metas:    orçamento mensal por categoria
+   Regras (fluxo de caixa):
+   - Saldo inicial do mês = Sobra do mês anterior
+   - Disponível = Saldo inicial + Receitas do mês
+   - Sobra = Disponível − Despesa Total ; Despesa Total = Fixas + Cartão + Débito
 */
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -14,61 +18,84 @@ const MESES_CURTO = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out"
 let _uid = 1;
 const uid = () => "id" + (Date.now().toString(36)) + (_uid++);
 
-// helpers de seed
 function v12(val, only) {
-  // only = índice (ou array de índices) onde aplica; senão todos os meses
   const a = Array(12).fill(0);
   if (only === undefined) return a.fill(val);
-  (Array.isArray(only) ? only : [only]).forEach(i => a[i] = val);
+  (Array.isArray(only) ? only : [only]).forEach(i => { if (i >= 0 && i < 12) a[i] = val; });
   return a;
 }
-// status padrão: pago/recebido até maio (idx 4) onde há valor; futuro = programado
-function st12(valArr, paidLabel) {
-  return valArr.map((v, i) => v > 0 ? (i <= 4 ? paidLabel : "programado") : "vazio");
+function st12(valArr, paidLabel, paidUntil = 4) {
+  return valArr.map((v, i) => v > 0 ? (i <= paidUntil ? paidLabel : "programado") : "vazio");
 }
-const R = (vals) => ({ vals, sts: st12(vals, "recebido") });
-const P = (vals) => ({ vals, sts: st12(vals, "pago") });
+const R = (vals, paidUntil) => ({ vals, sts: st12(vals, "recebido", paidUntil) });
+const P = (vals, paidUntil) => ({ vals, sts: st12(vals, "pago", paidUntil) });
 
-// Dados de EXEMPLO (genéricos). Nenhuma informação pessoal aqui.
-// Use ⚙️ → Importar para carregar seu backup, ou edite/exclua à vontade.
+/* ===== Seed de EXEMPLO (genérico, sem dados pessoais) =====
+   Demonstra os recursos: vencimentos, parcelas, metas, Ativa/Extra. */
 function buildSeed() {
-  const cur = new Date().getMonth(); // mês atual como exemplo
+  const cur = new Date().getFullYear() === 2026 ? new Date().getMonth() : 4;
+  const hoje = new Date().getDate();
+  const dProx = Math.min(31, hoje + 2), dHoje = Math.min(31, Math.max(1, hoje));
+  // status "programado" (a vencer) no mês atual — para demonstrar o aviso de vencimento
+  const PROG = (val) => { const v = v12(val, cur); return { vals: v, sts: v.map(x => x > 0 ? "programado" : "vazio") }; };
   const receitas = [
-    mkLine("Salário", "Ativa", 5, R(v12(5000))),
-    mkLine("Renda extra", "Extra", null, R(v12(500, cur))),
+    rec("Salário", "Ativa", 5, R(v12(5000), cur)),
+    rec("Vale benefícios", "Ativa", 20, R(v12(800), cur)),
+    rec("Freela", "Extra", 25, R(v12(1200, cur), cur)),
   ];
 
   const fixas = [
-    mkLine("Aluguel", "", 5, P(v12(1500))),
-    mkLine("Energia", "", 10, P(v12(200))),
-    mkLine("Internet", "", 15, P(v12(100))),
+    fix("Aluguel", 7, 3, 1500, P(v12(1500), cur)),
+    fix("Energia", 10, 3, 250, P(v12(220), cur)),
+    fix("Água", 12, 3, 120, P(v12(95), cur)),
+    fix("Internet", 15, 2, 100, P(v12(100), cur)),
+    fix("Celular", 20, 2, 60, P(v12(60), cur)),
+    fix("Academia", 5, 2, 90, P(v12(90), cur)),
+    fix("Fatura cartão (exemplo)", dHoje, 2, null, PROG(350)),
+    fix("Seguro (exemplo)", dProx, 3, null, PROG(140)),
   ];
 
   const cartao = [
-    mkLine("Streaming", "", null, P(v12(50))),
-    mkLine("Compra parcelada (3x)", "", null, P(v12(150, [cur, cur + 1, cur + 2].filter(m => m < 12)))),
+    crt("Streaming", "7034", null, null, P(v12(55), cur)),
+    crt("Mercado (cartão)", "7034", null, null, P(v12(420), cur)),
+    crt("Notebook", "1950", 3, 10, P(v12(250, [cur, cur + 1, cur + 2, cur + 3]), cur)),
+    crt("Farmácia", "1950", null, null, P(v12(85, cur), cur)),
   ];
 
   const diaria = [
-    dl("Mercado", cur, 180.00),
-    dl("Transporte", cur, 35.00),
+    dl("Mercado", cur, 8, 180.0, "Alimentação"),
+    dl("Uber", cur, 9, 35.0, "Transporte"),
+    dl("Padaria", cur, 10, 22.5, "Alimentação"),
+    dl("Cafeteria", cur, 11, 18.0, "Lazer"),
   ];
 
-  return { year: 2026, saldoInicial: 0, receitas, fixas, cartao, diaria };
+  const metas = { fixas: 2200, cartao: 900, diaria: 500 };
+
+  return { year: 2026, saldoInicial: 0, receitas, fixas, cartao, diaria, metas };
 }
 
-function mkLine(desc, tipo, dia, rec) {
-  return { id: uid(), desc, tipo: tipo || "", dia: dia ?? null, vals: rec.vals, sts: rec.sts };
-}
-function dl(desc, mes, valor) { return { id: uid(), desc, mes, dia: null, valor }; }
+function rec(desc, tipo, dia, r)            { return { id: uid(), desc, tipo, dia: dia ?? null, vals: r.vals, sts: r.sts }; }
+function fix(desc, dia, aviso, meta, r)     { return { id: uid(), desc, dia: dia ?? null, aviso: aviso ?? null, meta: meta ?? null, vals: r.vals, sts: r.sts }; }
+function crt(desc, cartao, pa, pt, r)       { return { id: uid(), desc, cartao: cartao || "", parcAtual: pa ?? null, parcTotal: pt ?? null, vals: r.vals, sts: r.sts }; }
+function dl(desc, mes, dia, valor, cat)     { return { id: uid(), desc, mes, dia: dia ?? null, valor, categoria: cat || "Geral" }; }
 
-/* ===== Persistência (localStorage) ===== */
-const STORE_KEY = "financas2026.v1";
+/* ===== Persistência ===== */
+const STORE_KEY = "financas2026.v2";
+
+function migrate(d) {
+  // garante campos novos em dados antigos
+  d.metas = d.metas || { fixas: 0, cartao: 0, diaria: 0 };
+  (d.fixas || []).forEach(l => { if (l.aviso === undefined) l.aviso = null; if (l.meta === undefined) l.meta = null; });
+  (d.cartao || []).forEach(l => { if (l.cartao === undefined) l.cartao = ""; if (l.parcAtual === undefined) l.parcAtual = null; if (l.parcTotal === undefined) l.parcTotal = null; });
+  (d.diaria || []).forEach(l => { if (l.categoria === undefined) l.categoria = "Geral"; });
+  (d.receitas || []).forEach(l => { if (l.tipo === undefined) l.tipo = "Ativa"; });
+  return d;
+}
 
 function loadData() {
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) return JSON.parse(raw);
+    const raw = localStorage.getItem(STORE_KEY) || localStorage.getItem("financas2026.v1");
+    if (raw) return migrate(JSON.parse(raw));
   } catch (e) { console.warn("Falha ao ler dados, usando seed.", e); }
   const seed = buildSeed();
   saveData(seed);
