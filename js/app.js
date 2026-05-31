@@ -1,9 +1,10 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "2.7.0";
-const VERSION_NOTES = "🔄 botão Atualizar com barra de progresso e resumo · 🔗 sync por 1 link · ⚡ sync instantânea celular ↔ web · 🔒 PIN";
+const APP_VERSION = "2.8.0";
+const VERSION_NOTES = "↪︎ Refazer (Ctrl+Y) + Desfazer (Ctrl+Z) · 🔔 avisos de contas dentro do app (sem instalar) · 🔄 atualizar com progresso · ⚡ sync instantânea";
 let history = [];
+let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
 const HISTORY_MAX = 50;
 let curMonth = (new Date().getFullYear() === DATA.year) ? new Date().getMonth() : 4;
@@ -70,16 +71,28 @@ function checkAndNotify() {
   if (!isMesAtual()) return;
   const alertas = vencimentos(curMonth).filter(v => v.naJanela);
   if (!alertas.length) return;
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
-  const linhas = alertas.map(v => `• ${v.desc} — ${brl(v.val)} (${v.daysLeft === 0 ? "vence hoje" : "vence em " + v.daysLeft + "d"})`).join("\n");
-  try {
-    new Notification("💸 Contas a pagar", { body: linhas, icon: "icons/icon-192.png", tag: "vencimentos" });
-  } catch (e) {}
+  // 1) AVISO DENTRO DO APP — funciona sem instalar e sem permissão (qualquer aparelho)
+  const n = alertas.length;
+  const prox = alertas[0];
+  const quando = prox.daysLeft === 0 ? "vence hoje" : "vence em " + prox.daysLeft + "d";
+  setTimeout(() => toast(`🔔 ${n} conta(s) a vencer · ${prox.desc} ${quando}`), 600);
+  // 2) NOTIFICAÇÃO DO SISTEMA — só onde o navegador deixa (PC/Android, ou PWA instalado no iPhone)
+  if (("Notification" in window) && Notification.permission === "granted") {
+    const linhas = alertas.map(v => `• ${v.desc} — ${brl(v.val)} (${v.daysLeft === 0 ? "vence hoje" : "vence em " + v.daysLeft + "d"})`).join("\n");
+    try {
+      new Notification("💸 Contas a pagar", { body: linhas, icon: "icons/icon-192.png", tag: "vencimentos" });
+    } catch (e) {}
+  }
 }
 function pedirNotificacao() {
-  if (!("Notification" in window)) { toast("Este dispositivo não suporta notificações"); return; }
+  if (!("Notification" in window)) {
+    // iPhone no Safari sem instalar cai aqui — Apple bloqueia notificação de site não instalado.
+    toast("Seu navegador não permite notificação do sistema aqui. O aviso DENTRO do app continua funcionando ao abrir.");
+    checkAndNotify();
+    return;
+  }
   Notification.requestPermission().then(p => {
-    toast(p === "granted" ? "Notificações ativadas ✅" : "Permissão negada");
+    toast(p === "granted" ? "Notificações ativadas ✅" : "Sem permissão — mas o aviso no app continua ao abrir");
     if (p === "granted") checkAndNotify();
     render();
   });
@@ -104,6 +117,7 @@ function renderMonthBar() {
 function render() {
   renderMonthBar();
   const ub = $("#btnUndo"); if (ub) { ub.disabled = !history.length; ub.style.opacity = history.length ? "1" : ".35"; }
+  const rb = $("#btnRedo"); if (rb) { rb.disabled = !redoStack.length; rb.style.opacity = redoStack.length ? "1" : ".35"; }
   $("#screenTitle").textContent = annual && curTab === "resumo" ? "Resumo do ano" : ({
     resumo: "Resumo", receitas: "Receitas", fixas: "Despesas Fixas",
     cartao: "Cartão Mercado Pago", diaria: "Débitos Dia a Dia"
@@ -448,8 +462,27 @@ function openDiariaModal(idx) {
 /* ---------- Infra ---------- */
 function showModal(s) { $(s).classList.remove("hidden"); }
 function closeModal() { $("#modal").classList.add("hidden"); }
-function persist() { DATA.updatedAt = Date.now(); history.push(lastSnap); if (history.length > HISTORY_MAX) history.shift(); lastSnap = JSON.stringify(DATA); saveData(DATA); render(); pushSync(); }
-function undo() { if (!history.length) { toast("Nada para desfazer"); return; } lastSnap = history.pop(); DATA = JSON.parse(lastSnap); saveData(DATA); render(); toast("Desfeito ↩︎"); }
+function persist() {
+  DATA.updatedAt = Date.now();
+  history.push(lastSnap); if (history.length > HISTORY_MAX) history.shift();
+  redoStack = []; // ação nova invalida o "refazer"
+  lastSnap = JSON.stringify(DATA);
+  saveData(DATA); render(); pushSync();
+}
+function undo() {
+  if (!history.length) { toast("Nada para desfazer"); return; }
+  redoStack.push(lastSnap); if (redoStack.length > HISTORY_MAX) redoStack.shift();
+  DATA = JSON.parse(history.pop()); DATA.updatedAt = Date.now();
+  lastSnap = JSON.stringify(DATA);
+  saveData(DATA); render(); pushSync(); toast("Desfeito ↩︎");
+}
+function redo() {
+  if (!redoStack.length) { toast("Nada para refazer"); return; }
+  history.push(lastSnap); if (history.length > HISTORY_MAX) history.shift();
+  DATA = JSON.parse(redoStack.pop()); DATA.updatedAt = Date.now();
+  lastSnap = JSON.stringify(DATA);
+  saveData(DATA); render(); pushSync(); toast("Refeito ↪︎");
+}
 function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 let toastT; function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 1800); }
 
@@ -458,9 +491,15 @@ $$(".tab").forEach(t => t.onclick = () => { $$(".tab").forEach(x => x.classList.
 $("#fab").onclick = () => curTab === "diaria" ? openDiariaModal(null) : openEntryModal(curTab, null);
 $("#btnUndo").onclick = undo;
 { const br = $("#btnRefresh"); if (br) br.onclick = syncNow; }
+{ const rd = $("#btnRedo"); if (rd) rd.onclick = redo; }
 document.addEventListener("keydown", (e) => {
   const t = (e.target.tagName || "");
-  if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && t !== "INPUT" && t !== "SELECT" && t !== "TEXTAREA") { e.preventDefault(); undo(); }
+  if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return;
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const k = (e.key || "").toLowerCase();
+  if (k === "z" && e.shiftKey) { e.preventDefault(); redo(); }       // Ctrl+Shift+Z = refazer
+  else if (k === "z") { e.preventDefault(); undo(); }                 // Ctrl+Z = desfazer
+  else if (k === "y") { e.preventDefault(); redo(); }                 // Ctrl+Y = refazer
 });
 $("#btnCancel").onclick = closeModal;
 $("#modal").onclick = (e) => { if (e.target.id === "modal") closeModal(); };
@@ -500,8 +539,8 @@ function renderNotifBtn() {
   const pushOn = !!localStorage.getItem("financas2026.pushsub");
   wrap.innerHTML =
     (perm === "granted"
-      ? `<div class="hint">🔔 Avisos ao abrir o app ativados.</div><button class="btn ghost" id="btnTest">📲 Enviar notificação de teste</button>`
-      : `<button class="btn ghost" id="btnNotif">🔔 Ativar avisos no app</button>`)
+      ? `<div class="hint">🔔 Notificações do sistema ativadas.</div><button class="btn ghost" id="btnTest">📲 Enviar notificação de teste</button>`
+      : `<button class="btn primary" id="btnNotif">🔔 Ativar notificações</button><p class="hint" style="margin-top:6px">O <b>aviso dentro do app</b> (ao abrir) já funciona sem instalar. A notificação do <b>sistema</b> funciona no PC/Android; no iPhone, só com o app na tela de início.</p>`)
     + `<button class="btn ghost" id="btnPush" style="margin-top:10px">📡 ${pushOn ? "Push ativo — reativar" : "Ativar push no celular (app fechado)"}</button>`
     + `<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">`
     + (window.CRYPTO_KEY
