@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b3d2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Finanças" />
+  <title>Finanças 2026</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-row">
+      <h1 id="screenTitle">Resumo</h1>
+      <button id="btnSettings" class="icon-btn" aria-label="Configurações">⚙️</button>
+    </div>
+    <div class="month-bar" id="monthBar"></div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main id="view"></main>
+
+  <!-- FLOATING ADD BUTTON -->
+  <button id="fab" class="fab" aria-label="Adicionar">+</button>
+
+  <!-- BOTTOM NAV -->
+  <nav class="tabbar">
+    <button class="tab active" data-tab="resumo"><span>📊</span>Resumo</button>
+    <button class="tab" data-tab="receitas"><span>💰</span>Receitas</button>
+    <button class="tab" data-tab="fixas"><span>📌</span>Fixas</button>
+    <button class="tab" data-tab="cartao"><span>💳</span>Cartão</button>
+    <button class="tab" data-tab="diaria"><span>🛒</span>Débito</button>
+  </nav>
+
+  <!-- MODAL: editar/adicionar -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <h2 id="modalTitle">Novo lançamento</h2>
+      <form id="entryForm"></form>
+      <div class="modal-actions">
+        <button type="button" id="btnDelete" class="btn danger hidden">Excluir</button>
+        <button type="button" id="btnCancel" class="btn ghost">Cancelar</button>
+        <button type="submit" form="entryForm" class="btn primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: configurações -->
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Configurações</h2>
+      <label class="field">
+        <span>Saldo inicial do ano (R$)</span>
+        <input type="number" id="saldoInicial" step="0.01" />
+      </label>
+      <div class="settings-buttons">
+        <button class="btn ghost" id="btnExport">⬇️ Exportar backup (.json)</button>
+        <button class="btn ghost" id="btnImport">⬆️ Importar backup</button>
+        <input type="file" id="importFile" accept="application/json" hidden />
+        <button class="btn danger" id="btnReset">♻️ Restaurar dados de exemplo</button>
+      </div>
+      <p class="hint">Seus dados ficam salvos neste aparelho. Faça backup de vez em quando.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn primary" id="btnCloseSettings">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/data.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>
