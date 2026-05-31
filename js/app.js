@@ -1,5 +1,10 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = loadData();
+const APP_VERSION = "2.1.0";
+const VERSION_NOTES = "↩︎ Desfazer (Ctrl+Z) · 🔔 notificações + teste · puxe p/ atualizar · margens melhores";
+let history = [];
+let lastSnap = JSON.stringify(DATA);
+const HISTORY_MAX = 50;
 let curMonth = (new Date().getFullYear() === DATA.year) ? new Date().getMonth() : 4;
 let annual = false;
 let curTab = "resumo";
@@ -97,6 +102,7 @@ function renderMonthBar() {
 /* ---------- Render principal ---------- */
 function render() {
   renderMonthBar();
+  const ub = $("#btnUndo"); if (ub) { ub.disabled = !history.length; ub.style.opacity = history.length ? "1" : ".35"; }
   $("#screenTitle").textContent = annual && curTab === "resumo" ? "Resumo do ano" : ({
     resumo: "Resumo", receitas: "Receitas", fixas: "Despesas Fixas",
     cartao: "Cartão Mercado Pago", diaria: "Débitos Dia a Dia"
@@ -441,13 +447,19 @@ function openDiariaModal(idx) {
 /* ---------- Infra ---------- */
 function showModal(s) { $(s).classList.remove("hidden"); }
 function closeModal() { $("#modal").classList.add("hidden"); }
-function persist() { saveData(DATA); render(); }
+function persist() { history.push(lastSnap); if (history.length > HISTORY_MAX) history.shift(); lastSnap = JSON.stringify(DATA); saveData(DATA); render(); }
+function undo() { if (!history.length) { toast("Nada para desfazer"); return; } lastSnap = history.pop(); DATA = JSON.parse(lastSnap); saveData(DATA); render(); toast("Desfeito ↩︎"); }
 function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 let toastT; function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 1800); }
 
 /* ---------- Eventos ---------- */
 $$(".tab").forEach(t => t.onclick = () => { $$(".tab").forEach(x => x.classList.remove("active")); t.classList.add("active"); curTab = t.dataset.tab; if (curTab !== "resumo") annual = false; render(); });
 $("#fab").onclick = () => curTab === "diaria" ? openDiariaModal(null) : openEntryModal(curTab, null);
+$("#btnUndo").onclick = undo;
+document.addEventListener("keydown", (e) => {
+  const t = (e.target.tagName || "");
+  if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && t !== "INPUT" && t !== "SELECT" && t !== "TEXTAREA") { e.preventDefault(); undo(); }
+});
 $("#btnCancel").onclick = closeModal;
 $("#modal").onclick = (e) => { if (e.target.id === "modal") closeModal(); };
 $("#btnSettings").onclick = () => { $("#saldoInicial").value = DATA.saldoInicial || 0; renderNotifBtn(); showModal("#settingsModal"); };
@@ -461,12 +473,62 @@ $("#btnReset").onclick = () => { if (confirm("Apagar tudo e voltar aos dados de 
 function renderNotifBtn() {
   const wrap = $("#notifWrap"); if (!wrap) return;
   const perm = ("Notification" in window) ? Notification.permission : "unsupported";
-  wrap.innerHTML = perm === "granted"
-    ? `<div class="hint">🔔 Notificações ativadas. O app avisa quando há contas a vencer.</div>`
-    : `<button class="btn ghost" id="btnNotif">🔔 Ativar notificações de contas</button>`;
+  wrap.innerHTML = (perm === "granted"
+    ? `<div class="hint">🔔 Notificações ativadas. O app avisa ao abrir quando há contas a vencer.</div>
+       <button class="btn ghost" id="btnTest">📲 Enviar notificação de teste</button>`
+    : `<button class="btn ghost" id="btnNotif">🔔 Ativar notificações de contas</button>`)
+    + `<p class="hint" style="margin-top:8px">Versão do app: <b>v${APP_VERSION}</b></p>`;
   const b = $("#btnNotif"); if (b) b.onclick = pedirNotificacao;
+  const tb = $("#btnTest"); if (tb) tb.onclick = enviarTeste;
+}
+function enviarTeste() {
+  if (!("Notification" in window) || Notification.permission !== "granted") { pedirNotificacao(); return; }
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+      navigator.serviceWorker.ready.then(reg => reg.showNotification("💸 Finanças — teste", {
+        body: "Funcionou! É assim que você será avisado das contas a pagar/receber.", icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "teste"
+      }));
+    } else { new Notification("💸 Finanças — teste", { body: "Funcionou!", icon: "icons/icon-192.png" }); }
+    toast("Notificação enviada 📲");
+  } catch (e) { toast("Não foi possível enviar"); }
 }
 
-window.addEventListener("load", () => { if (curTab === "resumo" && !annual) renderCharts(); checkAndNotify(); });
+// Aviso de nova versão (mesmo link)
+function checkVersion() {
+  const seen = localStorage.getItem("financas2026.ver");
+  if (seen === APP_VERSION) return;
+  localStorage.setItem("financas2026.ver", APP_VERSION);
+  const b = $("#verBanner");
+  if (b) { b.innerHTML = `🎉 Atualizado para <b>v${APP_VERSION}</b> — ${VERSION_NOTES} <span class="ver-x">✕</span>`; b.classList.remove("hidden"); b.onclick = () => b.classList.add("hidden"); }
+}
+
+window.addEventListener("load", () => { if (curTab === "resumo" && !annual) renderCharts(); checkAndNotify(); checkVersion(); });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
+/* ---------- Puxar para atualizar (pull-to-refresh) ---------- */
+(function pullToRefresh() {
+  const ptr = $("#ptr"), txt = $("#ptrText"), TH = 70;
+  let startY = 0, pulling = false, armed = false;
+  const atTop = () => (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
+  const modalAberto = () => !$("#modal").classList.contains("hidden") || !$("#settingsModal").classList.contains("hidden");
+  window.addEventListener("touchstart", (e) => {
+    if (atTop() && !modalAberto()) { startY = e.touches[0].clientY; pulling = true; armed = false; }
+  }, { passive: true });
+  window.addEventListener("touchmove", (e) => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0 && atTop()) {
+      if (e.cancelable) e.preventDefault();
+      const d = Math.min(dy * 0.6, 110);
+      ptr.style.height = d + "px"; ptr.style.opacity = Math.min(1, d / TH);
+      armed = d >= TH; txt.textContent = armed ? "solte para atualizar ↻" : "↓ puxe para atualizar";
+    }
+  }, { passive: false });
+  window.addEventListener("touchend", () => {
+    if (!pulling) return; pulling = false;
+    if (armed) { txt.textContent = "atualizando…"; setTimeout(() => location.reload(), 150); }
+    else { ptr.style.height = "0"; ptr.style.opacity = "0"; }
+  });
+})();
+
 render();

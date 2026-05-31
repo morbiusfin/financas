@@ -19,10 +19,19 @@
   <header class="app-header">
     <div class="header-row">
       <h1 id="screenTitle">Resumo</h1>
-      <button id="btnSettings" class="icon-btn" aria-label="Configurações">⚙️</button>
+      <div class="header-actions">
+        <button id="btnUndo" class="icon-btn" aria-label="Desfazer" title="Desfazer (Ctrl+Z)">↩︎</button>
+        <button id="btnSettings" class="icon-btn" aria-label="Configurações">⚙️</button>
+      </div>
     </div>
     <div class="month-bar" id="monthBar"></div>
   </header>
+
+  <!-- PULL TO REFRESH -->
+  <div id="ptr" class="ptr"><span id="ptrText">↓ puxe para atualizar</span></div>
+
+  <!-- BANNER DE VERSÃO -->
+  <div id="verBanner" class="ver-banner hidden"></div>
 
   <!-- MAIN CONTENT -->
   <main id="view"></main>

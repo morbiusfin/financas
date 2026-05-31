@@ -1,5 +1,5 @@
-/* Service Worker — cache offline */
-const CACHE = "financas-v3";
+/* Service Worker — network-first (sempre busca a versão nova; cache só offline) */
+const CACHE = "financas-v4";
 const ASSETS = [
   "./", "./index.html",
   "./css/styles.css",
@@ -18,11 +18,25 @@ self.addEventListener("activate", (e) => {
 });
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
-  e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+  const url = new URL(e.request.url);
+  const sameOrigin = url.origin === self.location.origin;
+
+  if (sameOrigin) {
+    // network-first: pega a versão mais nova; se offline, usa cache
+    e.respondWith(
+      fetch(e.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(e.request).then(hit => hit || caches.match("./index.html")))
+    );
+  } else {
+    // CDN (Chart.js versionado): cache-first
+    e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
       return res;
-    }).catch(() => caches.match("./index.html")))
-  );
+    })));
+  }
 });
+self.addEventListener("message", (e) => { if (e.data === "skipWaiting") self.skipWaiting(); });

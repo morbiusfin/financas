@@ -43,8 +43,22 @@ body {
   padding: 7px 14px; border-radius: 18px; font-size: 14px; font-weight: 600; }
 .month-chip.active { background: #fff; color: var(--green); }
 
-/* MAIN */
-main { padding: 16px; }
+/* MAIN — largura máxima centralizada (margens boas no desktop e no celular) */
+main { padding: 18px 18px 16px; max-width: 640px; margin: 0 auto; }
+.header-row, .month-bar { max-width: 640px; margin-left: auto; margin-right: auto; }
+.header-actions { display: flex; align-items: center; gap: 8px; }
+.icon-btn:disabled { cursor: default; }
+
+/* Banner de versão */
+.ver-banner { max-width: 640px; margin: 12px auto -4px; background: #e7f7ee; border: 1px solid #9fe0bd;
+  color: #0f6d3c; border-radius: 14px; padding: 12px 14px; font-size: 13px; font-weight: 600; }
+.ver-banner b { font-weight: 800; }
+.ver-x { float: right; opacity: .6; padding-left: 8px; }
+
+/* Pull to refresh */
+.ptr { height: 0; opacity: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;
+  background: #eef3f1; color: var(--green); font-size: 13px; font-weight: 700;
+  transition: height .15s ease, opacity .15s ease; }
 
 /* KPI CARDS */
 .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
