@@ -682,7 +682,13 @@ function applyConfigLink() {
     }
   } catch (e) {}
   // remove o hash (token) da URL para não ficar visível nem no histórico
-  if (location.hash) { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
+  if (location.hash) {
+    const clean = location.pathname + location.search;
+    try {
+      if (window.history && typeof window.history.replaceState === "function") window.history.replaceState(null, document.title, clean);
+      else location.replace(clean);
+    } catch (e) { try { location.hash = ""; } catch (_) {} }
+  }
 }
 async function boot() {
   applyConfigLink();
