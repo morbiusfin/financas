@@ -21,9 +21,30 @@
   <!-- FUNDO ANIMADO: chuva de números/cifras (estilo Matrix), sutil -->
   <canvas id="rain" aria-hidden="true"></canvas>
 
-  <!-- SPLASH DE ABERTURA — fita de Möbius 3D (canvas) -->
+  <!-- SPLASH DE ABERTURA — infinito que se desenha, números sutis ao fundo -->
   <div id="splash">
-    <div class="mob-box"><canvas id="mobCanvas" width="600" height="380" aria-hidden="true"></canvas></div>
+    <div class="mob-box">
+      <svg class="mob" viewBox="0 0 260 150" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="mobg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#2af5a0"/><stop offset="1" stop-color="#12c7ff"/>
+          </linearGradient>
+          <filter id="mglow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="2.6" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <path id="mobPath" d="M40,75 C40,28 96,28 130,75 C164,122 220,122 220,75 C220,28 164,28 130,75 C96,122 40,122 40,75 Z"/>
+        </defs>
+        <text class="mob-nums" font-size="10" letter-spacing="2.5">
+          <textPath href="#mobPath" xlink:href="#mobPath" startOffset="0%">$ 1 2 R$ 9 7 $ 4 5 R$ 3 6 $ 8 0 R$ 5 2 $ 7 4 R$ 1 9 $ 6 6 $ 2 8 R$ 5 1
+            <animate attributeName="startOffset" from="0%" to="100%" dur="5.5s" repeatCount="indefinite"/>
+          </textPath>
+        </text>
+        <use href="#mobPath" xlink:href="#mobPath" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="9"/>
+        <path class="mob-draw" d="M40,75 C40,28 96,28 130,75 C164,122 220,122 220,75 C220,28 164,28 130,75 C96,122 40,122 40,75 Z"
+          fill="none" stroke="url(#mobg)" stroke-width="6" stroke-linecap="round" filter="url(#mglow)"/>
+      </svg>
+    </div>
     <div class="splash-name">MorbiusFin</div>
     <div class="splash-tag">suas finanças em movimento</div>
   </div>

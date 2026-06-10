@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.5.0";
-const VERSION_NOTES = "🌧️ Fundo com chuva de números e cifras (estilo Matrix, bem sutil) · ♾️ abertura com fita de Möbius em 3D girando";
+const APP_VERSION = "3.6.0";
+const VERSION_NOTES = "🧠 Simulador mais inteligente: diz QUANDO comprar e sugere parcelas + gráfico de barras mês a mês · abertura voltou ao infinito · app centralizado · Sobra do mês rente à borda";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
@@ -269,7 +269,8 @@ function renderResumo(view) {
           <label class="field" style="margin:0;flex:1"><span>Parcelas</span>
             <input id="simN" type="number" min="1" max="48" inputmode="numeric" value="1" /></label>
         </div>
-        <div id="simVerdict" class="sim-verdict hint">Digite um valor (e nº de parcelas) — eu simulo no gráfico e digo se vale a pena, antes de lançar.</div>
+        <div id="simVerdict" class="sim-verdict hint">Digite um valor (e nº de parcelas) — eu simulo mês a mês e digo se/quando vale a pena, antes de lançar.</div>
+        <div id="simChartWrap" class="sim-chart hidden"><canvas id="simChart" height="150"></canvas></div>
       </div>
     </div>
 
@@ -312,45 +313,79 @@ function focarVencimentos() {
 let simBuy = 0, simN = 1;
 function bindSimulador(m) {
   const inp = $("#simInput"), inpN = $("#simN"); if (!inp) return;
+  if (charts.sim) { try { charts.sim.destroy(); } catch (e) {} charts.sim = null; }   // canvas foi recriado no render
   inp.value = simBuy ? simBuy : "";
   if (inpN) inpN.value = simN || 1;
-  const upd = () => { simBuy = parseFloat(inp.value) || 0; simN = Math.max(1, parseInt(inpN && inpN.value) || 1); updateSimVerdict(m); updateSimOverlay(); };
+  const upd = () => { simBuy = parseFloat(inp.value) || 0; simN = Math.max(1, parseInt(inpN && inpN.value) || 1); updateSim(m); };
   inp.oninput = upd; if (inpN) inpN.oninput = upd;
   const clr = $("#simClear");
-  if (clr) clr.onclick = () => { simBuy = 0; simN = 1; inp.value = ""; if (inpN) inpN.value = "1"; updateSimVerdict(m); updateSimOverlay(); inp.focus(); };
-  updateSimVerdict(m);
+  if (clr) clr.onclick = () => { simBuy = 0; simN = 1; inp.value = ""; if (inpN) inpN.value = "1"; updateSim(m); inp.focus(); };
+  updateSim(m);
 }
-// saldo simulado mês a mês (subtrai as parcelas já pagas até cada mês)
-function simBalArray() {
-  const m = curMonth, parcela = simBuy / Math.max(1, simN);
-  return MESES.map((_, k) => { const pagas = Math.max(0, Math.min(simN, k - m + 1)); return sobraMes(k) - parcela * pagas; });
+function updateSim(m) { updateSimVerdict(m); updateSimOverlay(); updateSimChart(m); }
+
+// saldo simulado mês a mês: subtrai as parcelas já pagas até cada mês (começando em `start`)
+function simBalForStart(total, n, start) {
+  const parcela = total / Math.max(1, n);
+  return MESES.map((_, k) => { const pagas = Math.max(0, Math.min(n, k - start + 1)); return sobraMes(k) - parcela * pagas; });
 }
+const simBalArray = () => simBalForStart(simBuy, simN, curMonth);
+function minFrom(arr, from) { let mn = Infinity, idx = from; for (let k = from; k < 12; k++) if (arr[k] < mn) { mn = arr[k]; idx = k; } return { mn, idx }; }
+// menor mês a partir do qual a compra (no mesmo parcelamento) cabe sem ficar negativo
+function earliestFeasibleMonth(total, n) { for (let s = curMonth; s < 12; s++) if (minFrom(simBalForStart(total, n, s), s).mn >= 0) return s; return null; }
+// menor nº de parcelas que cabe JÁ neste mês com folga (>=10% da receita)
+function suggestParcelas(total) { const rec = receitaMes(curMonth) || 1; for (let n = 1; n <= 24; n++) if (minFrom(simBalForStart(total, n, curMonth), curMonth).mn >= rec * 0.1) return n; return null; }
+
 function updateSimVerdict(m) {
   const el = $("#simVerdict"); if (!el) return;
-  if (!simBuy || simBuy <= 0) { el.className = "sim-verdict hint"; el.innerHTML = "Digite um valor (e nº de parcelas) — eu simulo no gráfico e digo se vale a pena, antes de lançar."; return; }
-  const parcela = simBuy / simN;
-  const bal = simBalArray();
-  let minBal = Infinity, worst = m;
-  for (let k = m; k < 12; k++) { if (bal[k] < minBal) { minBal = bal[k]; worst = k; } }
-  const rec = receitaMes(m) || 1;
-  const ondePior = (worst !== m || simN > 1) ? ` (mês mais apertado: ${MESES[worst]})` : "";
-  const comoPaga = simN > 1 ? `${simN}× de <b>${brl(parcela)}</b>` : `à vista`;
-  let cls, icon, txt;
-  if (minBal < 0) { cls = "bad"; icon = "⛔"; txt = `Não recomendo (${comoPaga}). No pior caso${ondePior} faltaria <b>${brl(minBal)}</b>.`; }
-  else if (minBal < rec * 0.1) { cls = "warn"; icon = "🟡"; txt = `Dá, mas aperta (${comoPaga}). No pior mês${ondePior} sobra só <b>${brl(minBal)}</b>.`; }
-  else { cls = "good"; icon = "✅"; txt = `Pode comprar! (${comoPaga}) No pior mês${ondePior} ainda sobra <b>${brl(minBal)}</b>.`; }
+  if (!simBuy || simBuy <= 0) { el.className = "sim-verdict hint"; el.innerHTML = "Digite um valor (e nº de parcelas) — eu simulo mês a mês e digo se/quando vale a pena, antes de lançar."; return; }
+  const total = simBuy, n = simN, parcela = total / n, rec = receitaMes(m) || 1, comfort = rec * 0.1;
+  const bal = simBalForStart(total, n, m), { mn, idx } = minFrom(bal, m);
+  const comoPaga = n > 1 ? `${n}× de <b>${brl(parcela)}</b>` : "à vista";
+  let cls, icon, head, extra = "";
+  if (mn < 0) {
+    cls = "bad"; icon = "⛔";
+    head = `Agora não cabe (${comoPaga}). No pior mês (<b>${MESES[idx]}</b>) faltaria <b>${brl(mn)}</b>.`;
+    const e = earliestFeasibleMonth(total, n), sug = suggestParcelas(total), parts = [];
+    if (e !== null && e > m) parts.push(`📅 Dá pra comprar a partir de <b>${MESES[e]}</b> (no mesmo parcelamento).`);
+    if (sug !== null) parts.push(`💳 Ou parcele em <b>${sug}×</b> de ${brl(total / sug)} pra caber já em ${MESES[m]} sem se afogar.`);
+    if (!parts.length) parts.push(`Essa compra não cabe neste ano sem apertar muito — considere reduzir o valor.`);
+    extra = parts.join("<br>");
+  } else if (mn < comfort) {
+    cls = "warn"; icon = "🟡";
+    head = `Dá pra comprar (${comoPaga}), mas aperta: no pior mês (<b>${MESES[idx]}</b>) sobra só <b>${brl(mn)}</b>.`;
+    const sug = suggestParcelas(total);
+    if (sug !== null && sug > n) extra = `💳 Pra ficar tranquilo, parcele em <b>${sug}×</b> de ${brl(total / sug)}.`;
+  } else {
+    cls = "good"; icon = "✅";
+    head = `Pode comprar! (${comoPaga}) No pior mês (<b>${MESES[idx]}</b>) ainda sobra <b>${brl(mn)}</b>.`;
+  }
   el.className = "sim-verdict " + cls;
-  el.innerHTML = `<span class="sim-ic">${icon}</span><span>${txt}</span>`;
+  el.innerHTML = `<span class="sim-ic">${icon}</span><span>${head}${extra ? `<span class="sim-extra">${extra}</span>` : ""}</span>`;
 }
+// linha tracejada na projeção (acompanha simultaneamente)
 function updateSimOverlay() {
   if (!charts.line) return;
-  const ds = charts.line.data.datasets;
-  const i = ds.findIndex(d => d._sim); if (i >= 0) ds.splice(i, 1);
-  if (simBuy > 0) {
-    ds.push({ _sim: true, label: simN > 1 ? `Se comprar (${simN}×)` : "Se eu comprar", data: simBalArray(),
-      borderColor: "#f5a623", borderWidth: 2, borderDash: [5, 4], backgroundColor: "transparent", fill: false, tension: .38, pointRadius: 0 });
-  }
+  const ds = charts.line.data.datasets, i = ds.findIndex(d => d._sim); if (i >= 0) ds.splice(i, 1);
+  if (simBuy > 0) ds.push({ _sim: true, label: simN > 1 ? `Se comprar (${simN}×)` : "Se eu comprar", data: simBalArray(),
+    borderColor: "#f5a623", borderWidth: 2, borderDash: [5, 4], backgroundColor: "transparent", fill: false, tension: .38, pointRadius: 0 });
   try { charts.line.update(); } catch (e) {}
+}
+// gráfico de barras: sobra de cada mês COM a compra (verde=bem, amarelo=aperta, vermelho=mal)
+function updateSimChart(m) {
+  const wrap = $("#simChartWrap"), cv = $("#simChart"); if (!wrap || !cv) return;
+  if (!simBuy || simBuy <= 0) { wrap.classList.add("hidden"); if (charts.sim) { try { charts.sim.destroy(); } catch (e) {} charts.sim = null; } return; }
+  wrap.classList.remove("hidden");
+  const rec = receitaMes(m) || 1, comfort = rec * 0.1;
+  const bal = simBalForStart(simBuy, simN, m), labels = [], data = [], colors = [];
+  for (let k = m; k < 12; k++) { labels.push(MESES_CURTO[k]); data.push(Math.round(bal[k])); colors.push(bal[k] < 0 ? "#e5484d" : bal[k] < comfort ? "#f5a623" : "#15c266"); }
+  if (charts.sim) { charts.sim.data.labels = labels; charts.sim.data.datasets[0].data = data; charts.sim.data.datasets[0].backgroundColor = colors; charts.sim.update(); return; }
+  applyChartTheme();
+  charts.sim = new Chart(cv, { type: "bar",
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 5 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => "Sobra: " + brl(c.raw) } } },
+      scales: { y: { ticks: { callback: v => "R$" + (v / 1000).toFixed(0) + "k", font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } } } });
 }
 
 /* ---------- Animações de entrada (count-up + medidor) ---------- */
@@ -1215,7 +1250,6 @@ window.addEventListener("online", () => { if (syncCfg()) pullSync(false); });
 /* ---------- Boot ---------- */
 function startApp() {
   window.__started = true;
-  startMobius3D();
   lastSnap = JSON.stringify(DATA);
   render();
   if (curTab === "resumo" && !annual) renderCharts();
@@ -1238,7 +1272,7 @@ function startApp() {
 function setSplashMsg(t) { const el = document.querySelector("#splash .splash-tag"); if (el) el.textContent = t; }
 function hideSplash() {
   const sp = document.getElementById("splash");
-  if (sp && !sp.classList.contains("gone")) { sp.classList.add("gone"); setTimeout(() => { try { sp.remove(); } catch (e) {} stopMobius3D(); }, 560); }
+  if (sp && !sp.classList.contains("gone")) { sp.classList.add("gone"); setTimeout(() => { try { sp.remove(); } catch (e) {} }, 560); }
 }
 // rede de segurança: nunca deixar o splash preso
 window.addEventListener("load", () => setTimeout(hideSplash, 5000));
@@ -1279,48 +1313,6 @@ window.addEventListener("load", () => setTimeout(hideSplash, 5000));
   requestAnimationFrame(frame);
 })();
 
-/* ---------- Splash: fita de Möbius 3D (canvas, parametrização real) ---------- */
-let _mobRAF = null;
-function startMobius3D() {
-  const cv = document.getElementById("mobCanvas"); if (!cv) return;
-  const ctx = cv.getContext("2d"); const W = cv.width, H = cv.height;
-  const US = 110, VS = 7, R = 1.15, halfW = 0.42, tiltX = 0.6;
-  const grid = [];
-  for (let i = 0; i <= US; i++) {
-    const u = i / US * 2 * Math.PI, cu = Math.cos(u), su = Math.sin(u), c2 = Math.cos(u / 2), s2 = Math.sin(u / 2), row = [];
-    for (let j = 0; j <= VS; j++) { const v = (j / VS - 0.5) * 2 * halfW; row.push([(R + v * c2) * cu, (R + v * c2) * su, v * s2]); }
-    grid.push(row);
-  }
-  const rotY = (p, a) => { const x = p[0] * Math.cos(a) + p[2] * Math.sin(a), z = -p[0] * Math.sin(a) + p[2] * Math.cos(a); return [x, p[1], z]; };
-  const rotX = (p, a) => { const y = p[1] * Math.cos(a) - p[2] * Math.sin(a), z = p[1] * Math.sin(a) + p[2] * Math.cos(a); return [p[0], y, z]; };
-  const proj = (p) => { const d = 4.4, f = H * 0.66, s = f / (d - p[2]); return [W / 2 + p[0] * s, H / 2 + p[1] * s, p[2]]; };
-  const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-  function normal(a, b, c) { const u = [b[0]-a[0], b[1]-a[1], b[2]-a[2]], v = [c[0]-a[0], c[1]-a[1], c[2]-a[2]];
-    let n = [u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]]; const L = Math.hypot(n[0],n[1],n[2]) || 1; return [n[0]/L,n[1]/L,n[2]/L]; }
-  let ang = 0;
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
-    const quads = [];
-    for (let i = 0; i < US; i++) for (let j = 0; j < VS; j++) {
-      const a = rotX(rotY(grid[i][j], ang), tiltX), b = rotX(rotY(grid[i+1][j], ang), tiltX),
-            c = rotX(rotY(grid[i+1][j+1], ang), tiltX), e = rotX(rotY(grid[i][j+1], ang), tiltX);
-      quads.push({ p: [a, b, c, e], z: (a[2]+b[2]+c[2]+e[2]) / 4, u: i / US });
-    }
-    quads.sort((p, q) => p.z - q.z);
-    for (const q of quads) {
-      const P = q.p.map(proj), n = normal(q.p[0], q.p[1], q.p[2]);
-      const light = Math.max(0.18, Math.min(1, Math.abs(n[2]) * 0.7 + 0.45));
-      const col = mix([42, 245, 160], [18, 199, 255], q.u);
-      ctx.fillStyle = `rgba(${(col[0]*light)|0},${(col[1]*light)|0},${(col[2]*light)|0},0.96)`;
-      ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]); ctx.lineTo(P[1][0], P[1][1]); ctx.lineTo(P[2][0], P[2][1]); ctx.lineTo(P[3][0], P[3][1]); ctx.closePath(); ctx.fill();
-    }
-  }
-  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) { draw(); return; }
-  let last = 0;
-  function loop(t) { _mobRAF = requestAnimationFrame(loop); if (t - last < 33) return; last = t; ang += 0.022; draw(); }
-  _mobRAF = requestAnimationFrame(loop);
-}
-function stopMobius3D() { if (_mobRAF) { cancelAnimationFrame(_mobRAF); _mobRAF = null; } }
 /* Auto-configura a sincronização a partir de um link (#cfg=base64).
    Lê do fragmento (#) — que NÃO é enviado a servidores — salva e limpa
    o token da barra de endereço/histórico na hora. Uso: abrir 1x o link. */
