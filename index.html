@@ -104,6 +104,27 @@
     </div>
   </div>
 
+  <!-- MODAL: configurar sincronização (caixa de verdade, funciona no iPhone instalado) -->
+  <div id="syncModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Sincronizar com a web</h2>
+      <p class="hint" style="margin-bottom:10px">Cole aqui o <b>link mágico</b> que o assistente te mandou. Eu extraio o resto sozinho.</p>
+      <label class="field">
+        <span>Link mágico (ou link que termina em /exec)</span>
+        <input type="text" id="syncLinkInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url" placeholder="https://kaickjrx.github.io/financas/#cfg=…" />
+      </label>
+      <label class="field" id="syncTokenField" style="display:none">
+        <span>Token de sincronização</span>
+        <input type="text" id="syncTokenInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      </label>
+      <div id="syncModalMsg" class="lock-msg"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="syncCancel">Cancelar</button>
+        <button type="button" class="btn primary" id="syncSave">Salvar e sincronizar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
   <script src="js/data.js" defer></script>

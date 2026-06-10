@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "2.9.0";
-const VERSION_NOTES = "🔄 Atualizar agora baixa SEMPRE o que está na web (a web manda) · 🩺 status de sincronização visível em ⚙️";
+const APP_VERSION = "3.0.0";
+const VERSION_NOTES = "📲 Configurar sincronização agora é uma caixa dentro do app (funciona no iPhone instalado) — cole o link mágico inteiro de uma vez";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
@@ -650,14 +650,49 @@ function showLock(env) {
 /* ---------- Sincronização (Google Sheet via Apps Script) ---------- */
 const SYNC_CFG_KEY = "financas2026.sync";
 const syncCfg = () => { try { return JSON.parse(localStorage.getItem(SYNC_CFG_KEY) || "null"); } catch (e) { return null; } };
+// Extrai {url, token} de um texto: aceita o LINK MÁGICO inteiro (#cfg=...) ou só a URL /exec.
+function parseCfgFromText(s) {
+  if (!s) return null;
+  s = ("" + s).trim();
+  const m = s.match(/[#&?]cfg=([^&\s]+)/);
+  if (m) {
+    try {
+      const b64 = decodeURIComponent(m[1]).replace(/-/g, "+").replace(/_/g, "/");
+      const cfg = JSON.parse(decodeURIComponent(escape(atob(b64))));
+      if (cfg && cfg.u && cfg.t) return { url: String(cfg.u).trim(), token: String(cfg.t).trim() };
+    } catch (e) {}
+  }
+  if (/^https?:\/\//.test(s) && /\/exec/.test(s)) return { url: s, token: null };
+  return null;
+}
+// Abre um modal DENTRO do app (não usa prompt(), que o iPhone instalado bloqueia).
 function configurarSync() {
   const cur = syncCfg() || {};
-  const url = prompt("Cole o link do Web App de sincronização (termina em /exec):", cur.url || "");
-  if (!url) return;
-  const token = prompt("Cole o token de sincronização:", cur.token || "");
-  if (!token) return;
-  localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({ url: url.trim(), token: token.trim() }));
-  toast("Sincronização configurada"); renderNotifBtn(); pullSync(true); startLiveSync();
+  const modal = $("#syncModal"), inp = $("#syncLinkInput"),
+    tokField = $("#syncTokenField"), tokInp = $("#syncTokenInput"), msg = $("#syncModalMsg");
+  if (!modal) { // fallback bem improvável
+    const url = prompt("Cole o link /exec:", cur.url || ""); if (!url) return;
+    const token = prompt("Cole o token:", cur.token || ""); if (!token) return;
+    localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({ url: url.trim(), token: token.trim() }));
+    toast("Sincronização configurada ✓"); renderNotifBtn(); pullSync(true, null, true); startLiveSync(); return;
+  }
+  inp.value = ""; tokInp.value = cur.token || ""; tokField.style.display = "none"; msg.textContent = "";
+  modal.classList.remove("hidden");
+  setTimeout(() => { try { inp.focus(); } catch (e) {} }, 60);
+  $("#syncCancel").onclick = () => modal.classList.add("hidden");
+  $("#syncSave").onclick = () => {
+    let cfg = parseCfgFromText(inp.value);
+    if (cfg && !cfg.token) {                 // colou só a URL → precisa do token
+      tokField.style.display = "";
+      if (!tokInp.value.trim()) { msg.textContent = "Cole também o token."; try { tokInp.focus(); } catch (e) {} return; }
+      cfg.token = tokInp.value.trim();
+    }
+    if (!cfg || !cfg.url || !cfg.token) { msg.textContent = "Não reconheci. Cole o LINK MÁGICO inteiro."; return; }
+    localStorage.setItem(SYNC_CFG_KEY, JSON.stringify({ url: cfg.url.trim(), token: cfg.token.trim() }));
+    modal.classList.add("hidden");
+    toast("Sincronização configurada ✓"); renderNotifBtn();
+    pullSync(true, null, true); startLiveSync();   // puxa a web na hora
+  };
 }
 let pulling = false;
 // status da última sincronização (mostrado em ⚙️ para diagnóstico)
