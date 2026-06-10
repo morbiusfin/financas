@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.2.0";
-const VERSION_NOTES = "💳 Cadastro de cartões (fechamento/vencimento) + parcelas que caem no mês certo · 🔁 recorrente por nº de meses · 🧮 aviso \"posso gastar?\" · 📈 projeção de saldo · ✨ splash + sem barra de scroll";
+const APP_VERSION = "3.3.0";
+const VERSION_NOTES = "🌌 Fundo animado (aurora) · 🎬 animações no medidor, sobra e insights · 🧪 simulador \"vale a pena comprar?\" · 🎯 destaque das contas a vencer · ⚡ sincroniza sozinho ao abrir (sem barra)";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
@@ -158,9 +158,9 @@ function renderHealth(m) {
     <div class="health-body">
       <svg class="gauge" viewBox="0 0 180 110" width="170">
         <path d="M16 96 A 74 74 0 0 1 164 96" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
-        <path class="g-arc" d="M16 96 A 74 74 0 0 1 164 96" fill="none" stroke="${meta.c}" stroke-width="14" stroke-linecap="round"
-          stroke-dasharray="${len.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
-        <text x="90" y="84" text-anchor="middle" class="gauge-num">${s}</text>
+        <path id="gArc" class="g-arc" d="M16 96 A 74 74 0 0 1 164 96" fill="none" stroke="${meta.c}" stroke-width="14" stroke-linecap="round"
+          stroke-dasharray="${len.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" data-off="${off.toFixed(1)}"/>
+        <text id="gaugeNum" x="90" y="84" text-anchor="middle" class="gauge-num" data-amt="${s}">${s}</text>
         <text x="90" y="103" text-anchor="middle" class="gauge-of">de 100</text>
       </svg>
       <div class="health-meta">
@@ -256,10 +256,18 @@ function renderResumo(view) {
       <div class="flow-row plus"><span>+ Receitas</span><b class="pos">${brl(rec)}</b></div>
       <div class="flow-row eq"><span>= Disponível</span><b>${brl(disp)}</b></div>
       <div class="flow-row minus"><span>− Despesas</span><b class="neg">${brl(desp)}</b></div>
-      <div class="flow-row total"><span>= Sobra do mês</span><b class="${sobra >= 0 ? "pos" : "neg"}">${brl(sobra)}</b></div>
+      <div class="flow-row total"><span>= Sobra do mês</span><b id="sobraVal" class="countup ${sobra >= 0 ? "pos" : "neg"}" data-amt="${sobra}">${brl(sobra)}</b></div>
     </div>
 
     ${renderInsights(m)}
+
+    <div class="section-card sim-card"><h3>🧪 Vale a pena comprar?</h3>
+      <div class="sim-body">
+        <label class="field" style="margin:0"><span>Quero gastar agora (R$)</span>
+          <input id="simInput" type="number" step="0.01" inputmode="decimal" placeholder="0,00" /></label>
+        <div id="simVerdict" class="sim-verdict hint">Digite um valor para simular — eu te digo se vale a pena, antes de lançar.</div>
+      </div>
+    </div>
 
     <div class="section-card"><h3>Previsto × Realizado — ${MESES[m]}</h3>
       ${barPrevReal("Receitas", recebido(m), aReceber(m), "recebido", "a receber")}
@@ -280,8 +288,73 @@ function renderResumo(view) {
   `;
   if (alertas.length) renderVencList();
   renderCatList(m);
+  bindSimulador(m);
   renderCharts();
-  const gv = $("#goVenc"); if (gv) gv.onclick = () => scrollToEl("#vencCard");
+  animateResumo();
+  const gv = $("#goVenc"); if (gv) gv.onclick = () => focarVencimentos();
+}
+
+// Rola até os vencimentos E pisca um destaque em volta (mostra qual focar).
+function focarVencimentos() {
+  scrollToEl("#vencCard");
+  const card = $("#vencCard"); if (!card) return;
+  const rows = $$(".list-row", card);
+  card.classList.remove("focus-pulse"); void card.offsetWidth; card.classList.add("focus-pulse");
+  rows.forEach((r, i) => { r.classList.remove("focus-row"); void r.offsetWidth; r.style.animationDelay = (i * 0.14) + "s"; r.classList.add("focus-row"); });
+  setTimeout(() => { card.classList.remove("focus-pulse"); rows.forEach(r => { r.classList.remove("focus-row"); r.style.animationDelay = ""; }); }, 4800);
+}
+
+/* ---------- Simulador "vale a pena comprar?" ---------- */
+let simBuy = 0;
+function bindSimulador(m) {
+  const inp = $("#simInput"); if (!inp) return;
+  inp.value = simBuy ? simBuy : "";
+  inp.oninput = () => { simBuy = parseFloat(inp.value) || 0; updateSimVerdict(m); updateSimOverlay(); };
+  updateSimVerdict(m);
+}
+function updateSimVerdict(m) {
+  const el = $("#simVerdict"); if (!el) return;
+  if (!simBuy || simBuy <= 0) { el.className = "sim-verdict hint"; el.innerHTML = "Digite um valor para simular — eu te digo se vale a pena, antes de lançar."; return; }
+  const cur = disponivelMes(m) - despesaMes(m);
+  const apos = cur - simBuy, rec = receitaMes(m) || 1;
+  let cls, icon, txt;
+  if (apos < 0) { cls = "bad"; icon = "⛔"; txt = `Não recomendo. Sua sobra ficaria <b>${brl(apos)}</b> — no vermelho.`; }
+  else if (apos < rec * 0.1) { cls = "warn"; icon = "🟡"; txt = `Dá, mas aperta: sobraria só <b>${brl(apos)}</b> em ${MESES[m]}.`; }
+  else { cls = "good"; icon = "✅"; txt = `Pode comprar! Ainda sobraria <b>${brl(apos)}</b> em ${MESES[m]}.`; }
+  el.className = "sim-verdict " + cls;
+  el.innerHTML = `<span class="sim-ic">${icon}</span><span>${txt}</span>`;
+}
+function updateSimOverlay() {
+  if (!charts.line) return;
+  const ds = charts.line.data.datasets;
+  const i = ds.findIndex(d => d._sim); if (i >= 0) ds.splice(i, 1);
+  if (simBuy > 0) {
+    const m = curMonth, bal = MESES.map((_, k) => sobraMes(k) - (k >= m ? simBuy : 0));
+    ds.push({ _sim: true, label: "Se eu comprar", data: bal, borderColor: "#f5a623", borderWidth: 2, borderDash: [5, 4], backgroundColor: "transparent", fill: false, tension: .38, pointRadius: 0 });
+  }
+  try { charts.line.update(); } catch (e) {}
+}
+
+/* ---------- Animações de entrada (count-up + medidor) ---------- */
+function animateResumo() {
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const gn = $("#gaugeNum"); if (gn) animateNumber(gn, parseFloat(gn.dataset.amt) || 0, v => String(Math.round(v)), 750);
+  const sv = $("#sobraVal"); if (sv) animateNumber(sv, parseFloat(sv.dataset.amt) || 0, v => brl(v), 750);
+  const ga = $("#gArc");
+  if (ga && ga.dataset.off != null) {
+    const len = Math.PI * 74; ga.style.strokeDashoffset = len;
+    requestAnimationFrame(() => requestAnimationFrame(() => { ga.style.strokeDashoffset = ga.dataset.off; }));
+  }
+}
+function animateNumber(el, to, fmt, dur) {
+  if (el._raf) cancelAnimationFrame(el._raf);
+  const start = performance.now();
+  const step = (now) => {
+    const p = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(to * e);
+    if (p < 1) el._raf = requestAnimationFrame(step); else { el.textContent = fmt(to); el._raf = null; }
+  };
+  el._raf = requestAnimationFrame(step);
 }
 
 // Rola até um elemento descontando a altura do cabeçalho fixo (não joga "longe demais").
@@ -443,6 +516,7 @@ function renderCharts() {
             afterLabel: c => { const i = c.dataIndex; const arr = [`No mês: ${brl(receitaMes(i) - despesaMes(i))}`]; if (i > nowM) arr.push("⏳ provisão"); return arr; }
           } } } } });
   }
+  if (simBuy > 0) updateSimOverlay();
   startResumoAnim();
 }
 /* Animação contínua suave (gira o donut devagar) — pausa fora do Resumo / app oculto / reduced-motion. */
@@ -1079,34 +1153,20 @@ function countItems(d) {
   return { receitas: r, fixas: f, cartao: c, diaria: dd, total: r + f + c + dd };
 }
 
-// Atualização manual COM barra de progresso + resumo
+// Atualização manual SEM barra: gira o ícone 🔄 e dá um toast com o resumo.
 let syncing = false;
 async function syncNow() {
   if (!syncCfg()) { toast("Ative a sincronização em ⚙️ primeiro"); return; }
   if (syncing) return; syncing = true;
-  const wrap = $("#syncProg"), bar = $("#syncProgBar"), msg = $("#syncProgMsg");
-  const set = (p, m) => { if (bar) bar.style.width = p + "%"; if (m && msg) msg.textContent = m; };
-  if (bar) { bar.style.background = ""; bar.classList.remove("indet"); }
-  if (wrap) wrap.classList.remove("hidden");
-  set(10, "Iniciando atualização…");
+  const btn = $("#btnRefresh"); if (btn) btn.classList.add("spin");
   const before = countItems(DATA);
   let res;
-  try { res = await pullSync(false, set, true); } catch (e) { res = { ok: false, reason: "erro" }; }
-  set(100, null);
-  const hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  try { res = await pullSync(false, null, true); } catch (e) { res = { ok: false, reason: "erro" }; }
   const a = countItems(DATA);
-  const detalhe = `<small>${a.receitas} receitas · ${a.fixas} fixas · ${a.cartao} no cartão · ${a.diaria} no débito</small>`;
-  if (!res || !res.ok) {
-    if (bar) bar.style.background = "var(--red)";
-    if (msg) msg.innerHTML = `⚠️ Não consegui atualizar agora.<small>Verifique a internet e tente de novo.</small>`;
-  } else if (res.changed) {
-    const delta = a.total - before.total;
-    const dtxt = delta !== 0 ? ` — ${delta > 0 ? "+" : ""}${delta} lançamento(s)` : "";
-    if (msg) msg.innerHTML = `✅ Atualizado às ${hora}${dtxt}${detalhe}`;
-  } else {
-    if (msg) msg.innerHTML = `✅ Tudo em dia (${hora})${detalhe}`;
-  }
-  setTimeout(() => { if (wrap) wrap.classList.add("hidden"); if (bar) { bar.style.width = "0"; bar.style.background = ""; } syncing = false; }, 2600);
+  if (!res || !res.ok) toast("⚠️ Não consegui atualizar — veja a internet");
+  else if (res.changed) { const d = a.total - before.total; toast(`✅ Atualizado${d !== 0 ? " · " + (d > 0 ? "+" : "") + d + " lançamento(s)" : ""}`); }
+  else toast("✅ Tudo em dia");
+  setTimeout(() => { if (btn) btn.classList.remove("spin"); syncing = false; }, 700);
 }
 let pushT;
 function pushSync() {
@@ -1140,21 +1200,27 @@ function startApp() {
   render();
   if (curTab === "resumo" && !annual) renderCharts();
   checkAndNotify(); checkVersion();
+  const t0 = Date.now();
+  // Mantém o splash visível enquanto sincroniza ao ABRIR (sem barra). Mín. ~1,6s, máx. ~4s.
+  const fecharSplash = (min) => { const espera = Math.max(0, min - (Date.now() - t0)); setTimeout(hideSplash, espera); };
   if (syncCfg()) {
-    pullSync(window.__syncFromLink ? true : false).then(r => {
-      if (r && !r.ok && r.reason !== "sem-config") setTimeout(() => toast("Não consegui baixar da web ao abrir — toque 🔄"), 800);
-    });
+    setSplashMsg("Sincronizando suas finanças…");
     startLiveSync();
+    const p = pullSync(window.__syncFromLink ? true : false);
+    p.then(r => { if (r && !r.ok && r.reason !== "sem-config") setTimeout(() => toast("Não consegui baixar da web — toque 🔄"), 1700); });
+    Promise.race([p, new Promise(res => setTimeout(res, 4000))]).then(() => fecharSplash(1600));
+  } else {
+    fecharSplash(1300);
   }
   if (window.__syncFromLink) { toast("Sincronização ativada ⚡"); window.__syncFromLink = false; }
-  setTimeout(hideSplash, 850);
 }
+function setSplashMsg(t) { const el = document.querySelector("#splash .splash-name"); if (el) el.textContent = t; }
 function hideSplash() {
   const sp = document.getElementById("splash");
   if (sp && !sp.classList.contains("gone")) { sp.classList.add("gone"); setTimeout(() => { try { sp.remove(); } catch (e) {} }, 560); }
 }
 // rede de segurança: nunca deixar o splash preso
-window.addEventListener("load", () => setTimeout(hideSplash, 1800));
+window.addEventListener("load", () => setTimeout(hideSplash, 5000));
 /* Auto-configura a sincronização a partir de um link (#cfg=base64).
    Lê do fragmento (#) — que NÃO é enviado a servidores — salva e limpa
    o token da barra de endereço/histórico na hora. Uso: abrir 1x o link. */

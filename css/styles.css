@@ -319,6 +319,56 @@ html.theme-dark .tab.active { color: var(--accent); }
 @keyframes syncPulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
 .sync-fill.indet { animation: syncPulse 1s ease-in-out infinite; }
 
+/* ===== Fundo animado (aurora / fitas de gradiente em movimento) ===== */
+#aurora { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+#aurora span { position: absolute; display: block; border-radius: 50%; filter: blur(70px); opacity: .42; will-change: transform; }
+#aurora .a1 { width: 60vw; height: 60vw; left: -12vw; top: -14vh; background: radial-gradient(circle at 35% 35%, #16e08a, transparent 70%); animation: drift1 26s ease-in-out infinite; }
+#aurora .a2 { width: 52vw; height: 52vw; right: -14vw; top: 6vh; background: radial-gradient(circle at 60% 40%, #0e9e6e, transparent 70%); animation: drift2 32s ease-in-out infinite; }
+#aurora .a3 { width: 64vw; height: 64vw; left: 8vw; bottom: -22vh; background: radial-gradient(circle at 50% 50%, rgba(31,182,255,.5), rgba(124,92,255,.28), transparent 70%); animation: drift3 38s ease-in-out infinite; }
+html.theme-dark #aurora span { opacity: .5; }
+@keyframes drift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(12vw,8vh) scale(1.15); } }
+@keyframes drift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-10vw,12vh) scale(1.12); } }
+@keyframes drift3 { 0%,100% { transform: translate(0,0) scale(1) rotate(0deg); } 50% { transform: translate(8vw,-8vh) scale(1.22) rotate(18deg); } }
+
+/* ===== Botão atualizar girando ===== */
+@keyframes spin { to { transform: rotate(360deg); } }
+.icon-btn.spin { animation: spin .7s linear; }
+
+/* ===== Destaque dos vencimentos ao tocar "ver contas" ===== */
+@keyframes focusRing { 0% { box-shadow: 0 0 0 0 rgba(245,166,35,.55); } 70% { box-shadow: 0 0 0 14px rgba(245,166,35,0); } 100% { box-shadow: 0 0 0 0 rgba(245,166,35,0); } }
+.focus-pulse { animation: focusRing 1.5s ease-out 2; border-color: var(--amber) !important; }
+@keyframes focusRow { 0%,100% { background: transparent; } 35% { background: rgba(245,166,35,.18); } }
+.focus-row { animation: focusRow 1.2s ease-in-out 2; }
+
+/* ===== Simulador "vale a pena comprar?" ===== */
+.sim-body { padding: 0 16px 16px; }
+.sim-verdict { margin-top: 10px; font-size: 13.5px; font-weight: 700; line-height: 1.45; display: flex; gap: 9px; align-items: flex-start;
+  padding: 13px 14px; border-radius: 13px; background: var(--card-2); border: 1px solid var(--line); animation: popIn .22s ease both; }
+.sim-verdict.hint { font-weight: 600; color: var(--muted); background: transparent; border: 0; padding: 6px 0 0; }
+.sim-verdict .sim-ic { font-size: 19px; }
+.sim-verdict.good { background: rgba(21,194,102,.1); border-color: rgba(21,194,102,.4); }
+.sim-verdict.good b { color: var(--accent); }
+.sim-verdict.warn { background: rgba(245,166,35,.1); border-color: rgba(245,166,35,.45); }
+.sim-verdict.warn b { color: var(--amber); }
+.sim-verdict.bad { background: rgba(229,72,77,.1); border-color: rgba(229,72,77,.45); }
+.sim-verdict.bad b { color: var(--red); }
+
+/* ===== Animações dos blocos do Resumo ===== */
+@keyframes emojiBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.health-emoji { animation: emojiBob 2.8s ease-in-out infinite; }
+.health-meta { animation: fadeInUp .5s ease .15s both; }
+/* Sobra do mês: brilho que passa de tempos em tempos */
+.flow-row.total { position: relative; overflow: hidden; }
+.flow-row.total::after { content: ""; position: absolute; top: 0; left: -60%; width: 50%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.20), transparent); transform: skewX(-18deg); animation: shine 5.5s ease-in-out infinite; }
+@keyframes shine { 0% { left: -60%; } 18% { left: 130%; } 100% { left: 130%; } }
+/* Insights entram em sequência */
+.insights .insight { animation: fadeInUp .45s ease both; }
+.insights .insight:nth-child(1) { animation-delay: .05s; }
+.insights .insight:nth-child(2) { animation-delay: .14s; }
+.insights .insight:nth-child(3) { animation-delay: .23s; }
+.insights .insight:nth-child(4) { animation-delay: .32s; }
+
 /* ===== Sem barras de scroll (mantém o scroll funcionando) ===== */
 * { scrollbar-width: none; -ms-overflow-style: none; }
 *::-webkit-scrollbar { width: 0; height: 0; display: none; }
