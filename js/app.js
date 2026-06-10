@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.0.0";
-const VERSION_NOTES = "📲 Configurar sincronização agora é uma caixa dentro do app (funciona no iPhone instalado) — cole o link mágico inteiro de uma vez";
+const APP_VERSION = "3.1.0";
+const VERSION_NOTES = "✨ Visual profissional novo: fonte Manrope, modo escuro, animações · 🧠 Saúde financeira + Insights inteligentes (calculados no próprio aparelho)";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
@@ -129,6 +129,114 @@ function render() {
   renderLista(view);
 }
 
+/* ---------- Inteligência local (insights + saúde) — NADA sai do aparelho ---------- */
+const _pct = (a, b) => (b ? Math.round(a / b * 100) : 0);
+
+// Pontuação de saúde financeira (0–100), baseada na taxa de poupança + orçamento + sobra.
+function healthScore(m) {
+  const rec = receitaMes(m), desp = despesaMes(m), sobra = disponivelMes(m) - desp;
+  let score = 50;
+  if (rec > 0) score = 50 + Math.round((rec - desp) / rec * 130);   // poupar 38% ≈ 100; gastar tudo = 50; estourar ≈ baixo
+  if (sobra > 0) score += 6; else score -= 10;
+  const metas = DATA.metas || {};
+  [["fixas", fixasMes(m)], ["cartao", cartaoMes(m)], ["diaria", diariaMes(m)]]
+    .forEach(([k, v]) => { if ((metas[k] || 0) > 0 && v > metas[k]) score -= 8; });
+  return Math.max(0, Math.min(100, score));
+}
+function healthMeta(s) {
+  if (s >= 75) return { c: "#1db954", t: "Ótima", e: "💪" };
+  if (s >= 55) return { c: "#3fae6b", t: "Boa", e: "🙂" };
+  if (s >= 35) return { c: "#f5a623", t: "Atenção", e: "⚠️" };
+  return { c: "#e5484d", t: "Crítica", e: "🆘" };
+}
+function renderHealth(m) {
+  const rec = receitaMes(m), desp = despesaMes(m);
+  const s = healthScore(m), meta = healthMeta(s);
+  const taxa = rec > 0 ? Math.round((rec - desp) / rec * 100) : 0;
+  const len = Math.PI * 74, off = len * (1 - s / 100);
+  return `<div class="section-card health fade-in"><h3>Saúde financeira — ${MESES[m]}</h3>
+    <div class="health-body">
+      <svg class="gauge" viewBox="0 0 180 110" width="170">
+        <path d="M16 96 A 74 74 0 0 1 164 96" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
+        <path d="M16 96 A 74 74 0 0 1 164 96" fill="none" stroke="${meta.c}" stroke-width="14" stroke-linecap="round"
+          stroke-dasharray="${len.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+        <text x="90" y="84" text-anchor="middle" class="gauge-num">${s}</text>
+        <text x="90" y="103" text-anchor="middle" class="gauge-of">de 100</text>
+      </svg>
+      <div class="health-meta">
+        <div class="health-emoji">${meta.e}</div>
+        <div class="health-t" style="color:${meta.c}">${meta.t}</div>
+        <div class="health-sub">${taxa >= 0 ? "guardou <b>" + taxa + "%</b> do que recebeu" : "<b>" + Math.abs(taxa) + "%</b> no vermelho"}</div>
+      </div>
+    </div></div>`;
+}
+
+// Insights espertos (até 4), calculados localmente.
+function computeInsights(m) {
+  const out = [];
+  const rec = receitaMes(m), desp = despesaMes(m), disp = disponivelMes(m), sobra = disp - desp;
+  if (rec > 0) {
+    const taxa = Math.round((rec - desp) / rec * 100);
+    out.push(taxa >= 0
+      ? { ic: "🟢", tone: "good", text: `Você guardou <b>${taxa}%</b> do que recebeu em ${MESES[m]}.` }
+      : { ic: "🔴", tone: "bad", text: `Gastou <b>${Math.abs(taxa)}%</b> a mais do que recebeu em ${MESES[m]}.` });
+  }
+  if (isMesAtual()) {
+    const hoje = REAL_TODAY.getDate(), diasNoMes = new Date(DATA.year, m + 1, 0).getDate();
+    const gastoAteAgora = pago(m);
+    if (hoje >= 3 && gastoAteAgora > 0) {
+      const proj = gastoAteAgora / hoje * diasNoMes, projSobra = disp - proj;
+      out.push({ ic: "📈", tone: projSobra >= 0 ? "good" : "warn",
+        text: `No ritmo atual, fecha o mês gastando ~<b>${brl(proj)}</b> e sobrando ~<b>${brl(projSobra)}</b>.` });
+    }
+  }
+  if (m > 0) {
+    const ant = despesaMes(m - 1);
+    if (ant > 0 && desp > 0) {
+      const d = Math.round((desp - ant) / ant * 100);
+      if (Math.abs(d) >= 5) out.push({ ic: d > 0 ? "⬆️" : "⬇️", tone: d > 0 ? "warn" : "good",
+        text: `Despesas ${d > 0 ? "subiram" : "caíram"} <b>${Math.abs(d)}%</b> vs ${MESES[m - 1]} (${brl(ant)} → ${brl(desp)}).` });
+    }
+  }
+  const cats = [{ n: "Cartão", v: cartaoMes(m) }, { n: "Despesas Fixas", v: fixasMes(m) }, { n: "Dia a dia", v: diariaMes(m) }].sort((a, b) => b.v - a.v);
+  if (cats[0].v > 0 && desp > 0)
+    out.push({ ic: "🥇", tone: "info", text: `Maior gasto: <b>${cats[0].n}</b> — ${brl(cats[0].v)} (${_pct(cats[0].v, desp)}% do total).` });
+  const metas = DATA.metas || {}, estouro = [];
+  [["fixas", fixasMes(m), "Fixas"], ["cartao", cartaoMes(m), "Cartão"], ["diaria", diariaMes(m), "Dia a dia"]]
+    .forEach(([k, v, n]) => { if ((metas[k] || 0) > 0 && v > metas[k]) estouro.push(n); });
+  if (estouro.length) out.push({ ic: "⚠️", tone: "bad", text: `Orçamento estourado em <b>${estouro.join(", ")}</b>.` });
+  if (m >= 3) {
+    const med = (cartaoMes(m - 1) + cartaoMes(m - 2) + cartaoMes(m - 3)) / 3, atual = cartaoMes(m);
+    if (med > 0 && atual > med * 1.3)
+      out.push({ ic: "👀", tone: "warn", text: `Cartão <b>${_pct(atual - med, med)}%</b> acima da média dos últimos 3 meses.` });
+  }
+  return out.slice(0, 4);
+}
+function renderInsights(m) {
+  const ins = computeInsights(m);
+  if (!ins.length) return "";
+  return `<div class="section-card fade-in"><h3>💡 Insights</h3><div class="insights">${
+    ins.map(i => `<div class="insight ${i.tone}"><span class="ic">${i.ic}</span><span>${i.text}</span></div>`).join("")
+  }</div></div>`;
+}
+
+/* ---------- Tema (claro / escuro / automático) ---------- */
+const THEME_KEY = "financas2026.theme";
+const curTheme = () => localStorage.getItem(THEME_KEY) || "auto";
+function applyTheme() {
+  const t = curTheme(), h = document.documentElement;
+  h.classList.remove("theme-dark", "theme-light");
+  if (t === "dark") h.classList.add("theme-dark");
+  else if (t === "light") h.classList.add("theme-light");
+}
+const themeLabel = () => ({ auto: "Automático", dark: "Escuro", light: "Claro" })[curTheme()];
+function cycleTheme() {
+  const order = ["auto", "light", "dark"];
+  localStorage.setItem(THEME_KEY, order[(order.indexOf(curTheme()) + 1) % 3]);
+  applyTheme(); render(); renderNotifBtn();
+  toast("Tema: " + themeLabel());
+}
+
 /* ---------- RESUMO (mês) ---------- */
 function renderResumo(view) {
   const m = curMonth;
@@ -139,13 +247,17 @@ function renderResumo(view) {
   view.innerHTML = `
     ${alertas.length ? `<div class="alert-banner" id="goVenc">🔔 <b>${alertas.length}</b> conta(s) a vencer — toque para ver</div>` : ""}
 
-    <div class="flow-card">
+    ${renderHealth(m)}
+
+    <div class="flow-card fade-in">
       <div class="flow-row"><span>Saldo inicial <i>(sobrou do mês anterior)</i></span><b>${brl(sIni)}</b></div>
       <div class="flow-row plus"><span>+ Receitas</span><b class="pos">${brl(rec)}</b></div>
       <div class="flow-row eq"><span>= Disponível</span><b>${brl(disp)}</b></div>
       <div class="flow-row minus"><span>− Despesas</span><b class="neg">${brl(desp)}</b></div>
       <div class="flow-row total"><span>= Sobra do mês</span><b class="${sobra >= 0 ? "pos" : "neg"}">${brl(sobra)}</b></div>
     </div>
+
+    ${renderInsights(m)}
 
     <div class="section-card"><h3>Previsto × Realizado — ${MESES[m]}</h3>
       ${barPrevReal("Receitas", recebido(m), aReceber(m), "recebido", "a receber")}
@@ -266,8 +378,16 @@ function renderAnual(view) {
 }
 
 /* ---------- Charts ---------- */
+function applyChartTheme() {
+  if (typeof Chart === "undefined") return;
+  const css = getComputedStyle(document.documentElement);
+  Chart.defaults.color = (css.getPropertyValue("--muted") || "#74807b").trim();
+  Chart.defaults.borderColor = (css.getPropertyValue("--line") || "#e6e9e8").trim();
+  Chart.defaults.font.family = "Manrope, -apple-system, BlinkMacSystemFont, sans-serif";
+}
 function renderCharts() {
   if (typeof Chart === "undefined") return;
+  applyChartTheme();
   ["dough", "bar", "line"].forEach(k => { if (charts[k]) charts[k].destroy(); });
   const m = curMonth;
   const dough = $("#doughChart");
@@ -295,6 +415,7 @@ function renderCharts() {
 }
 function renderSobraChart() {
   if (typeof Chart === "undefined") return;
+  applyChartTheme();
   if (charts.sobra) charts.sobra.destroy();
   const data = MESES.map((_, i) => receitaMes(i) - despesaMes(i));
   charts.sobra = new Chart($("#sobraChart"), { type: "bar",
@@ -538,7 +659,9 @@ function renderNotifBtn() {
   const perm = ("Notification" in window) ? Notification.permission : "unsupported";
   const pushOn = !!localStorage.getItem("financas2026.pushsub");
   wrap.innerHTML =
-    (perm === "granted"
+    `<button class="btn ghost" id="btnTheme">🌗 Tema: ${themeLabel()}</button>`
+    + `<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">`
+    + (perm === "granted"
       ? `<div class="hint">🔔 Notificações do sistema ativadas.</div><button class="btn ghost" id="btnTest">📲 Enviar notificação de teste</button>`
       : `<button class="btn primary" id="btnNotif">🔔 Ativar notificações</button><p class="hint" style="margin-top:6px">O <b>aviso dentro do app</b> (ao abrir) já funciona sem instalar. A notificação do <b>sistema</b> funciona no PC/Android; no iPhone, só com o app na tela de início.</p>`)
     + `<button class="btn ghost" id="btnPush" style="margin-top:10px">📡 ${pushOn ? "Push ativo — reativar" : "Ativar push no celular (app fechado)"}</button>`
@@ -557,6 +680,7 @@ function renderNotifBtn() {
   const pin = $("#btnPin"); if (pin) pin.onclick = window.CRYPTO_KEY ? removerPin : definirPin;
   const sc = $("#btnSyncCfg"); if (sc) sc.onclick = configurarSync;
   const sn = $("#btnSync"); if (sn) sn.onclick = () => pullSync(true, null, true);
+  const th = $("#btnTheme"); if (th) th.onclick = cycleTheme;
 }
 // Linha de diagnóstico da sincronização (mostra se está realmente puxando)
 function syncStatusHTML() {
@@ -845,6 +969,7 @@ function applyConfigLink() {
   }
 }
 async function boot() {
+  applyTheme();
   applyConfigLink();
   let raw = localStorage.getItem(STORE_KEY) || localStorage.getItem("financas2026.v1");
   let parsed = null; try { parsed = raw ? JSON.parse(raw) : null; } catch (e) {}
