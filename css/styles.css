@@ -90,7 +90,7 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .app-header {
   background: linear-gradient(150deg, #0b3d2e 0%, #105a3f 55%, #12734d 100%);
   color: #fff;
-  padding: calc(14px + var(--safe-top)) 16px 14px;
+  padding: calc(14px + var(--safe-top)) 18px 14px;
   position: sticky; top: 0; z-index: 50;
   box-shadow: 0 6px 22px rgba(8,40,28,.28);
   border-bottom: 1px solid rgba(255,255,255,.06);
@@ -108,15 +108,19 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .icon-btn:active { transform: scale(.88); }
 .icon-btn:disabled { cursor: default; }
 
-.month-bar { display: flex; gap: 8px; overflow-x: auto; margin-top: 14px; padding-bottom: 2px; scrollbar-width: none; }
+.month-bar { display: flex; gap: 8px; overflow-x: auto; margin-top: 14px; padding: 2px 6px; scrollbar-width: none;
+  scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; overscroll-behavior-x: contain;
+  /* esfuma os chips nas duas pontas (em vez de cortar seco) */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%); }
 .month-bar::-webkit-scrollbar { display: none; }
 .month-chip {
   flex: 0 0 auto; background: rgba(255,255,255,.12); color: rgba(255,255,255,.92); border: 1px solid rgba(255,255,255,.08);
-  padding: 7px 15px; border-radius: 20px; font-size: 14px; font-weight: 700; letter-spacing: .2px;
-  transition: transform .12s ease, background .2s ease, color .2s ease;
+  padding: 7px 15px; border-radius: 20px; font-size: 14px; font-weight: 700; letter-spacing: .2px; scroll-snap-align: center;
+  transition: transform .18s cubic-bezier(.2,.8,.2,1), background .25s ease, color .25s ease, box-shadow .25s ease;
 }
-.month-chip:active { transform: scale(.94); }
-.month-chip.active { background: #fff; color: var(--green); box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.month-chip:active { transform: scale(.9); }
+.month-chip.active { background: #fff; color: var(--green); box-shadow: 0 6px 18px rgba(0,0,0,.25); transform: scale(1.06); }
 .month-chip.ano { background: rgba(255,255,255,.22); }
 
 /* ===== MAIN ===== */
