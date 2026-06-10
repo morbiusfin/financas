@@ -354,6 +354,28 @@ html.theme-dark #rain { opacity: .7; }
 .sim-verdict.warn b { color: var(--amber); }
 .sim-verdict.bad { background: rgba(229,72,77,.1); border-color: rgba(229,72,77,.45); }
 .sim-verdict.bad b { color: var(--red); }
+/* Borda VIVA do veredito: faixa brilhante circulando + transição suave verde↔vermelho */
+@property --simang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+.sim-verdict.good, .sim-verdict.warn, .sim-verdict.bad {
+  position: relative; isolation: isolate;
+  transition: background .55s ease, border-color .55s ease, box-shadow .55s ease, color .55s ease;
+}
+.sim-verdict.good { --glow: #15c266; }
+.sim-verdict.warn { --glow: #f5a623; }
+.sim-verdict.bad  { --glow: #e5484d; animation: simBadPulse 1.3s ease-in-out infinite; }
+@keyframes simBadPulse {
+  0%,100% { box-shadow: 0 0 0 1px rgba(229,72,77,.55), 0 0 12px rgba(229,72,77,.28); }
+  50%     { box-shadow: 0 0 0 2px rgba(229,72,77,.95), 0 0 24px rgba(229,72,77,.55); }
+}
+.sim-verdict.good::before, .sim-verdict.warn::before, .sim-verdict.bad::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.8px; pointer-events: none;
+  background: conic-gradient(from var(--simang), transparent 0deg, var(--glow) 55deg, #ffffff 85deg, var(--glow) 115deg, transparent 170deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: simSpin 2.4s linear infinite;
+}
+@keyframes simSpin { to { --simang: 360deg; } }
+
 .sim-extra { display: block; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line); font-weight: 600; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
 .sim-extra b { color: var(--ink); font-weight: 800; }
 .sim-chart { height: 168px; margin-top: 12px; }

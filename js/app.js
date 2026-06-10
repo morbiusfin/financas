@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.6.1";
-const VERSION_NOTES = "📅 Meses com borda esfumaçada (sem corte seco) e deslize suave · header alinhado com os cards";
+const APP_VERSION = "3.7.0";
+const VERSION_NOTES = "💫 Veredito do simulador com faixa de luz circulando a borda (sem parar) e transição suave verde↔vermelho";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
