@@ -60,6 +60,9 @@ html, body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; }
 html { background: var(--bg-grad-2); min-height: 100%; overscroll-behavior-y: none; }
 body {
   font-family: var(--font);
+  /* coluna que ocupa a tela inteira → o conteúdo preenche igual em TODAS as abas
+     (some o buraco preto do Receitas/Débito; a faixa fica consistente) */
+  display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh;
   background:
     radial-gradient(900px 520px at 100% -8%, rgba(21,194,102,.10), transparent 58%),
     radial-gradient(800px 500px at -10% 102%, rgba(18,115,77,.08), transparent 55%),
@@ -128,11 +131,23 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .month-chip.ano { background: rgba(255,255,255,.22); }
 
 /* ===== MAIN ===== */
-main { padding: 18px 18px 16px; max-width: 640px; margin: 0 auto; }
+main { padding: 18px 18px 16px; max-width: 640px; width: 100%; margin: 0 auto; flex: 1 0 auto; align-self: center; }
 /* quando o botão + está visível, reserva espaço embaixo pra ele NÃO cobrir o último item
    (rolando, o último valor sempre fica acima do +). No Resumo (sem +) não sobra espaço vazio. */
 body:has(#fab:not(.hidden)) main { padding-bottom: 104px; }
-.header-row, .month-bar { max-width: 640px; margin-left: auto; margin-right: auto; }
+.header-row, .month-wrap { max-width: 640px; margin-left: auto; margin-right: auto; }
+/* faixa de meses + seletor de ano lado a lado */
+.month-wrap { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.month-wrap .month-bar { margin-top: 0; flex: 1 1 auto; min-width: 0; }
+.year-select {
+  flex: 0 0 auto; appearance: none; -webkit-appearance: none;
+  background: rgba(255,255,255,.18) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 9px center;
+  color: #fff; border: 1px solid rgba(255,255,255,.16); border-radius: 20px;
+  font-family: var(--font); font-size: 14px; font-weight: 800; letter-spacing: .2px;
+  padding: 7px 26px 7px 14px; cursor: pointer; transition: transform .12s ease, background .2s ease;
+}
+.year-select:active { transform: scale(.94); }
+.year-select option { color: #11201a; }
 
 /* Banner de versão */
 .ver-banner { max-width: 640px; margin: 12px auto -4px; background: linear-gradient(135deg, rgba(21,194,102,.16), rgba(21,194,102,.06));

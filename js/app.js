@@ -1,14 +1,14 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.9.9";
-const VERSION_NOTES = "📌 a barra de baixo não treme/sobe mais ao trocar de aba no iPhone (reset de rolagem + camada de GPU estável)";
+const APP_VERSION = "3.10.0";
+const VERSION_NOTES = "🗓️ seletor de ANO no topo (escolhe 2026/2027/2028… e MUDA O APP INTEIRO) · 📐 todas as telas preenchem a altura igual ao Resumo (sem buraco preto no Receitas/Débito)";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
 const HISTORY_MAX = 50;
 let curMonth = (new Date().getFullYear() === DATA.year) ? new Date().getMonth() : 4;
-let annual = false, annualYear = 0;
+let annual = false;
 let curTab = "resumo";
 let charts = {};
 
@@ -31,6 +31,9 @@ function horizonLen() {
   return Math.ceil(n / 12) * 12;            // sempre anos completos: 12, 24, 36…
 }
 const yearOf  = (i) => DATA.year + Math.floor(i / 12);
+const curYear = () => Math.floor(curMonth / 12);                 // índice do ano em exibição (0=2026)
+// quantos anos o seletor oferece: os que têm dados + 1 à frente (mín. 3) — pra dar pra planejar
+function yearsCount() { return Math.max(Math.ceil(horizonLen() / 12) + 1, 3); }
 const mLong   = (i) => MESES[((i % 12) + 12) % 12] + (i >= 12 ? " " + yearOf(i) : "");
 const mLabel  = (i) => MESES_CURTO[((i % 12) + 12) % 12] + (i >= 12 ? "/" + String(yearOf(i)).slice(2) : "");
 const diasNoMesAbs = (i) => new Date(yearOf(i), (i % 12) + 1, 0).getDate();
@@ -201,11 +204,11 @@ function pedirNotificacao() {
 /* ---------- Barra de meses ---------- */
 function renderMonthBar() {
   const bar = $("#monthBar");
-  const H = horizonLen();
+  const base = curYear() * 12;                       // só os 12 meses do ANO selecionado
   let html = "";
-  for (let i = 0; i < H; i++) {
-    const yr = i > 0 && i % 12 === 0;     // 1º mês de um novo ano: ganha separador
-    html += `<button class="month-chip ${yr ? "yr" : ""} ${!annual && i === curMonth ? "active" : ""}" data-m="${i}">${mLabel(i)}</button>`;
+  for (let i = 0; i < 12; i++) {
+    const abs = base + i;
+    html += `<button class="month-chip ${!annual && abs === curMonth ? "active" : ""}" data-m="${abs}">${MESES_CURTO[i]}</button>`;
   }
   bar.innerHTML = html + `<button class="month-chip ano ${annual ? "active" : ""}" data-m="ano">Ano</button>`;
   $$(".month-chip", bar).forEach(b => b.onclick = () => {
@@ -215,18 +218,29 @@ function renderMonthBar() {
   });
   const active = $(".month-chip.active", bar);
   if (active) active.scrollIntoView({ inline: "center", block: "nearest" });
+  renderYearSelect();
+}
+// Seletor de ANO (validação de dados / dropdown). Ao trocar, muda o app inteiro pro ano escolhido.
+function renderYearSelect() {
+  const sel = $("#yearSelect"); if (!sel) return;
+  const n = yearsCount();
+  sel.innerHTML = Array.from({ length: n }, (_, y) => `<option value="${y}" ${y === curYear() ? "selected" : ""}>${DATA.year + y}</option>`).join("");
+  sel.onchange = () => {
+    const y = Math.max(0, Math.min(yearsCount() - 1, parseInt(sel.value) || 0));
+    curMonth = y * 12 + (((curMonth % 12) + 12) % 12);   // mantém o mês, troca o ano
+    suppressNextAnim = true; window.scrollTo(0, 0); render();
+  };
 }
 
 /* ---------- Render principal ---------- */
 let suppressNextAnim = false;       // pula as animações de ENTRADA no próximo render (ex.: ao pagar, pra não "piscar")
 function render() {
-  const H = horizonLen(); if (curMonth >= H) curMonth = H - 1; if (curMonth < 0) curMonth = 0;
-  const nYears = Math.ceil(H / 12); if (annualYear >= nYears) annualYear = nYears - 1; if (annualYear < 0) annualYear = 0;
+  const maxM = yearsCount() * 12 - 1; if (curMonth > maxM) curMonth = maxM; if (curMonth < 0) curMonth = 0;
   const noAnim = suppressNextAnim; suppressNextAnim = false;
   renderMonthBar();
   const ub = $("#btnUndo"); if (ub) { ub.disabled = !history.length; ub.style.opacity = history.length ? "1" : ".35"; }
   const rb = $("#btnRedo"); if (rb) { rb.disabled = !redoStack.length; rb.style.opacity = redoStack.length ? "1" : ".35"; }
-  $("#screenTitle").textContent = annual && curTab === "resumo" ? "Resumo " + yearOf(annualYear * 12) : ({
+  $("#screenTitle").textContent = annual && curTab === "resumo" ? "Resumo " + (DATA.year + curYear()) : ({
     resumo: "Resumo", receitas: "Receitas", fixas: "Despesas Fixas",
     cartao: "Cartão Mercado Pago", diaria: "Débitos Dia a Dia"
   })[curTab];
@@ -489,8 +503,9 @@ function updateSimOverlay() {
   if (!charts.line) return;
   const ds = charts.line.data.datasets, i = ds.findIndex(d => d._sim); if (i >= 0) ds.splice(i, 1);
   if (simBuy > 0) {
-    const len = charts.line.data.labels.length;        // casa com os meses do gráfico de projeção
-    ds.push({ _sim: true, label: simN > 1 ? `Se comprar (${simN}×)` : "Se eu comprar", data: simBalArray().slice(0, len),
+    const base = curYear() * 12, arr = simBalArray();   // arr é indexado por mês ABSOLUTO
+    const data = Array.from({ length: 12 }, (_, i) => { const a = base + i; return arr[a] != null ? arr[a] : sobraMes(a); });
+    ds.push({ _sim: true, label: simN > 1 ? `Se comprar (${simN}×)` : "Se eu comprar", data,
       borderColor: "#f5a623", borderWidth: 2, borderDash: [5, 4], backgroundColor: "transparent", fill: false, tension: .38, pointRadius: 0 });
   }
   try { charts.line.update(); } catch (e) {}
@@ -605,21 +620,15 @@ function renderMetas(m) {
 
 /* ---------- RESUMO ANUAL ---------- */
 function renderAnual(view) {
-  const H = horizonLen(), nYears = Math.ceil(H / 12);
-  const yi0 = annualYear * 12, yi1 = Math.min(H, yi0 + 12), ano = yearOf(yi0);
+  const yi0 = curYear() * 12, yi1 = yi0 + 12, ano = DATA.year + curYear();
   const range = (fn) => { let s = 0; for (let i = yi0; i < yi1; i++) s += fn(i); return s; };
   const totRec = range(receitaMes), totDesp = range(despesaMes), sobraAno = totRec - totDesp;
   const cat = { fixas: range(fixasMes), cartao: range(cartaoMes), diaria: range(diariaMes) };
   // maiores despesas fixas SÓ do ano selecionado
   const linhasAno = DATA.fixas.map(l => ({ desc: l.desc, tot: (l.vals || []).slice(yi0, yi1).reduce((s, v) => s + (Number(v) || 0), 0) }))
     .filter(x => x.tot > 0).sort((a, b) => b.tot - a.tot).slice(0, 8);
-  // seletor de ano (só aparece quando há mais de um ano com dados)
-  const yearPick = nYears > 1
-    ? `<div class="year-pick">${Array.from({ length: nYears }, (_, y) => `<button class="yr-chip ${y === annualYear ? "active" : ""}" data-yr="${y}">${DATA.year + y}</button>`).join("")}</div>`
-    : "";
 
   view.innerHTML = `
-    ${yearPick}
     <div class="kpi-grid">
       <div class="kpi"><div class="label">Receitas (${ano})</div><div class="value pos">${brl(totRec)}</div></div>
       <div class="kpi"><div class="label">Despesas (${ano})</div><div class="value neg">${brl(totDesp)}</div></div>
@@ -635,7 +644,6 @@ function renderAnual(view) {
     <div class="section-card"><h3>Maiores despesas fixas (${ano})</h3>
       ${linhasAno.map(x => `<div class="cat-line"><span class="cname">${esc(x.desc)}</span><span class="cval">${brl(x.tot)}</span></div>`).join("") || `<div class="empty">Sem dados.</div>`}
     </div>`;
-  $$(".yr-chip", view).forEach(b => b.onclick = () => { annualYear = +b.dataset.yr; render(); });
   renderSobraChart();
 }
 
@@ -664,18 +672,19 @@ function renderCharts() {
         plugins: { legend: { position: "bottom", labels: { boxWidth: 12, usePointStyle: true, pointStyle: "circle", font: { size: 11 }, padding: 14 } },
           tooltip: { callbacks: { label: c => `${c.label}: ${brl(c.raw)} (${tc ? (c.raw / tc * 100).toFixed(1) : 0}%)` } } } } });
   }
-  const H = horizonLen();
-  const labelsH = Array.from({ length: H }, (_, i) => mLabel(i));
+  const base = curYear() * 12;                       // gráficos do ANO selecionado (12 meses)
+  const labelsH = Array.from({ length: 12 }, (_, i) => MESES_CURTO[i]);
   const bc = $("#barChart");
   if (bc) charts.bar = new Chart(bc, { type: "bar",
     data: { labels: labelsH, datasets: [
-      { label: "Receitas", data: labelsH.map((_, i) => receitaMes(i)), backgroundColor: "#1db954", borderRadius: 4 },
-      { label: "Despesas", data: labelsH.map((_, i) => despesaMes(i)), backgroundColor: "#e5484d", borderRadius: 4 }] },
+      { label: "Receitas", data: labelsH.map((_, i) => receitaMes(base + i)), backgroundColor: "#1db954", borderRadius: 4 },
+      { label: "Despesas", data: labelsH.map((_, i) => despesaMes(base + i)), backgroundColor: "#e5484d", borderRadius: 4 }] },
     options: chartOpts(true) });
   const lc = $("#lineChart");
   if (lc) {
-    const bal = labelsH.map((_, i) => sobraMes(i));
-    const nowM = (DATA.year === REAL_TODAY.getFullYear()) ? REAL_TODAY.getMonth() : 11; // até aqui = realizado; depois = projeção
+    const bal = labelsH.map((_, i) => sobraMes(base + i));
+    const nowAbs = (DATA.year === REAL_TODAY.getFullYear()) ? REAL_TODAY.getMonth() : -1;
+    const nowM = nowAbs - base;                        // posição do "agora" dentro do ano exibido (fora = -1 ou 12)
     const ctx = lc.getContext("2d");
     const grad = ctx.createLinearGradient(0, 0, 0, 200);
     grad.addColorStop(0, "rgba(21,194,102,.30)");
@@ -695,9 +704,9 @@ function renderCharts() {
       options: { ...chartOpts(false),
         plugins: { legend: { display: false }, valueLabels: { on: true },
           tooltip: { callbacks: {
-            title: items => mLong(items[0].dataIndex) + (items[0].dataIndex > nowM ? " (projeção)" : ""),
+            title: items => mLong(base + items[0].dataIndex) + (items[0].dataIndex > nowM ? " (projeção)" : ""),
             label: c => `Saldo: ${brl(c.raw)}`,
-            afterLabel: c => { const i = c.dataIndex; const arr = [`No mês: ${brl(receitaMes(i) - despesaMes(i))}`]; if (i > nowM) arr.push("⏳ provisão"); return arr; }
+            afterLabel: c => { const i = base + c.dataIndex; const arr = [`No mês: ${brl(receitaMes(i) - despesaMes(i))}`]; if (c.dataIndex > nowM) arr.push("⏳ provisão"); return arr; }
           } } } } });
   }
   if (simBuy > 0) updateSimOverlay();
@@ -723,9 +732,9 @@ function renderSobraChart() {
   if (typeof Chart === "undefined") return;
   applyChartTheme();
   if (charts.sobra) charts.sobra.destroy();
-  const H = horizonLen(), yi0 = annualYear * 12, yi1 = Math.min(H, yi0 + 12);
+  const yi0 = curYear() * 12, yi1 = yi0 + 12;
   const labelsH = [], data = [];
-  for (let i = yi0; i < yi1; i++) { labelsH.push(mLabel(i)); data.push(receitaMes(i) - despesaMes(i)); }
+  for (let i = yi0; i < yi1; i++) { labelsH.push(MESES_CURTO[i % 12]); data.push(receitaMes(i) - despesaMes(i)); }
   charts.sobra = new Chart($("#sobraChart"), { type: "bar",
     data: { labels: labelsH, datasets: [{ data, backgroundColor: data.map(v => v >= 0 ? "#1d6fe5" : "#e5484d"), borderRadius: 4 }] },
     options: { ...chartOpts(false), plugins: { legend: { display: false }, valueLabels: { on: true }, tooltip: { callbacks: { label: c => brl(c.raw) } } } } });
