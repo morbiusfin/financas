@@ -227,8 +227,11 @@ body:has(#fab:not(.hidden)) main { padding-bottom: 104px; }
 .fab.hidden { display: none; }
 
 /* ===== TABBAR ===== */
-.tabbar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: color-mix(in srgb, var(--card) 88%, transparent);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); padding-bottom: var(--safe-bottom); z-index: 45; }
+/* Fundo SÓLIDO e contínuo até a base (área da home indicator no iPhone vira parte da barra,
+   não um bloco escuro destacado). Sem transparência = sem "salto" embaixo. */
+.tabbar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--card);
+  border-top: 1px solid var(--line); padding-bottom: var(--safe-bottom); z-index: 45;
+  box-shadow: 0 -6px 22px rgba(0,0,0,.22); }
 .tab { flex: 1; background: 0; border: 0; padding: 9px 0 7px; font-size: 11px; color: var(--muted);
   display: flex; flex-direction: column; align-items: center; gap: 3px; font-weight: 700; position: relative; transition: color .2s ease; }
 .tab span { font-size: 22px; display: inline-block; transform-origin: 50% 80%;

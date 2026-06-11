@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.9.7";
-const VERSION_NOTES = "♾️ ícone novo do MorbiusFin — a fita ∞ feita de números (igual à abertura), e a notificação usa o mesmo ícone";
+const APP_VERSION = "3.9.8";
+const VERSION_NOTES = "📱 some o bloco escuro embaixo no iPhone — a barra de baixo agora é sólida e contínua até a base";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
