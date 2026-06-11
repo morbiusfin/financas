@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.9.1";
-const VERSION_NOTES = "🗓️ escolha o ANO no Resumo (2026/2027/2028…) · 🧹 gráficos sem R$ e sem número no meio da rosca (menos poluído) · 🎛️ botões do topo menores · ✅ ao pagar, some suave sem piscar · 🔔 aviso centralizado";
+const APP_VERSION = "3.9.2";
+const VERSION_NOTES = "📱 conserta a faixa branca embaixo no iPhone (área segura pintada) · 🎯 ícone da barra cresce e dá um pulinho suave ao trocar de aba";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
