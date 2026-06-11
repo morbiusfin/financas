@@ -129,6 +129,9 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 
 /* ===== MAIN ===== */
 main { padding: 18px 18px 16px; max-width: 640px; margin: 0 auto; }
+/* quando o botão + está visível, reserva espaço embaixo pra ele NÃO cobrir o último item
+   (rolando, o último valor sempre fica acima do +). No Resumo (sem +) não sobra espaço vazio. */
+body:has(#fab:not(.hidden)) main { padding-bottom: 104px; }
 .header-row, .month-bar { max-width: 640px; margin-left: auto; margin-right: auto; }
 
 /* Banner de versão */

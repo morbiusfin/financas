@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.9.3";
-const VERSION_NOTES = "✓ contas marcadas como necessárias agora mostram um selinho verde ao lado do valor (Fixas e Cartão)";
+const APP_VERSION = "3.9.4";
+const VERSION_NOTES = "➕ o botão de adicionar não cobre mais o último item da lista — agora dá pra rolar e ver o valor de baixo";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
