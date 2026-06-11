@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.3";
+const APP_VERSION = "3.11.4";
 const VERSION_NOTES = "🔔 \"Próximas contas\" agora mostra só as que estão PERTO de vencer (na janela de aviso ou 5 dias) + atrasadas — não a lista do mês todo";
 let history = [];
 let redoStack = [];
@@ -1791,6 +1791,25 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     if (armed) { ptr.style.height = "0"; ptr.style.opacity = "0"; if (syncCfg()) syncNow(); else location.reload(); }
     else { ptr.style.height = "0"; ptr.style.opacity = "0"; }
   });
+})();
+
+/* ---------- Teclado aberto: esconde a tabbar (no iOS o position:fixed gruda
+   no topo do teclado e "sobe" pro meio da tela ao rolar). Some o FAB também. ---------- */
+(function keyboardAware() {
+  const setKbd = (on) => document.body.classList.toggle("kbd-open", !!on);
+  const isField = (el) => el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) &&
+    !/^(button|submit|checkbox|radio|range)$/i.test(el.type || "");
+  // visualViewport = detecção confiável do teclado no iOS (a viewport encolhe)
+  if (window.visualViewport) {
+    const vv = window.visualViewport, base = () => window.innerHeight;
+    const onVV = () => setKbd((base() - vv.height) > 140 && isField(document.activeElement));
+    vv.addEventListener("resize", onVV);
+    vv.addEventListener("scroll", onVV);
+  }
+  // fallback (e p/ navegadores sem visualViewport): foco em campo de texto
+  let blurT = null;
+  document.addEventListener("focusin", (e) => { if (isField(e.target)) { clearTimeout(blurT); setKbd(true); } });
+  document.addEventListener("focusout", (e) => { if (isField(e.target)) { clearTimeout(blurT); blurT = setTimeout(() => { if (!isField(document.activeElement)) setKbd(false); }, 120); } });
 })();
 
 boot();
