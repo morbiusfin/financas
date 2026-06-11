@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.10.1";
-const VERSION_NOTES = "♾️ ícone novo estilo Livelo — fundo preto e a fita ∞ centralizada e limpa (também na notificação)";
+const APP_VERSION = "3.10.2";
+const VERSION_NOTES = "🌊 ícone novo — onda de luz branca (5 linhas com brilho) em fundo preto, sem texto (também na notificação)";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
