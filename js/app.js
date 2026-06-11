@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.0";
-const VERSION_NOTES = "📊 nova aba GRÁFICOS no Resumo — saldo/despesas/receitas por mês, interativos (toque numa barra pra ver o detalhe), linha de tendência estatística, simulador em cima do gráfico de saldo e insights automáticos tipo IA";
+const APP_VERSION = "3.11.1";
+const VERSION_NOTES = "🔔 \"Próximas contas\" agora mostra só as que estão PERTO de vencer (na janela de aviso ou 5 dias) + atrasadas — não a lista do mês todo";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
@@ -142,6 +142,16 @@ function vencimentos(m) {
     .sort((a, b) => a.venc - b.venc);
 }
 const contasAlerta = (m) => vencimentos(m).filter(v => v.naJanela || (isMesAtual() && !v.pago && v.daysLeft >= 0));
+// SÓ as contas PERTO de vencer: dentro da janela de aviso da conta (ou 5 dias, se não tiver aviso) + atrasadas
+function contasPerto(m) {
+  if (!isMesAtual()) return [];
+  return vencimentos(m).filter(v => {
+    if (v.pago) return false;
+    if (v.vencida) return true;                                   // atrasada = urgente, sempre mostra
+    const win = (v.aviso && v.aviso > 0) ? v.aviso : 5;
+    return v.daysLeft >= 0 && v.daysLeft <= win;
+  });
+}
 
 /* ---------- Selo de vencimento: cor/efeito por proximidade ----------
    Quanto mais perto, mais "quente" (vermelho de atenção). 1 dia = "Amanhã" (amarelo). */
@@ -159,7 +169,7 @@ const vencBadgeHTML = (daysLeft) => { const b = vencBadge(daysLeft); return b.tx
 /* ---------- Notificação local (replica o aviso do Apps Script) ---------- */
 function checkAndNotify() {
   if (!isMesAtual()) return;
-  const alertas = vencimentos(curMonth).filter(v => v.naJanela);
+  const alertas = contasPerto(curMonth);
   if (!alertas.length) return;
   // 1) AVISO DENTRO DO APP — pop-up no MEIO da tela com botão OK (sem instalar/permissão)
   setTimeout(() => showBillAlert(alertas), 500);
@@ -383,7 +393,7 @@ function renderResumo(view) {
   }
   const rec = receitaMes(m), desp = despesaMes(m);
   const sIni = saldoInicialMes(m), disp = disponivelMes(m), sobra = disp - desp;
-  const alertas = isMesAtual() ? contasAlerta(m) : [];
+  const alertas = contasPerto(m);
 
   view.innerHTML = toggle + `
     ${alertas.length ? `<div class="alert-banner" id="goVenc">🔔 <b>${alertas.length}</b> conta(s) a vencer — toque para ver</div>` : ""}
@@ -584,7 +594,7 @@ function barPrevReal(label, real, prev, lblReal, lblPrev) {
 
 function renderVencList() {
   const el = $("#vencList"); if (!el) return;
-  const vs = contasAlerta(curMonth);
+  const vs = contasPerto(curMonth);
   el.innerHTML = vs.map(v =>
     `<div class="list-row">
       <div class="desc"><div class="name">${esc(v.desc)}</div><div class="sub">dia ${v.venc} ${vencBadgeHTML(v.daysLeft)}</div></div>
