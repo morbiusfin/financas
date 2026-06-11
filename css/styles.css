@@ -605,12 +605,21 @@ html.theme-dark #rain { opacity: .7; }
   font-family: var(--font); font-size: 14px; font-weight: 800; transition: transform .12s ease, background .25s ease, color .25s ease, box-shadow .25s ease; }
 .vt-btn.active { background: linear-gradient(135deg, var(--green-2), var(--green)); color: #fff; box-shadow: 0 5px 14px rgba(11,61,46,.32); }
 .vt-btn:active { transform: scale(.97); }
-.g-sim { margin-bottom: 6px; }
 
-.g-detail { margin-top: 4px; }
+/* respiro horizontal consistente (16px) p/ todo o conteúdo dos cards de gráfico */
+.g-card > .hint { padding: 0 16px; margin: 0 0 12px !important; text-align: left; }
+.g-card .chart-wrap { padding: 4px 14px 16px; }
+
+/* simulador num painel próprio, separado do gráfico */
+.g-sim { margin: 0 16px 14px; padding: 13px 13px 11px; background: var(--card-2); border: 1px solid var(--line); border-radius: 14px; }
+.g-sim .field-row { align-items: flex-end; }
+.g-sim .field { margin: 0; }
+.g-sim .sim-clear { margin-bottom: 0 !important; align-self: flex-end; }
+
+.g-detail { margin-top: 6px; padding: 0 16px; }
 .drill-in { animation: drillFade .35s ease; }
 @keyframes drillFade { from { opacity: .35; } to { opacity: 1; } }
-.det-head { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 14px; margin: 8px 2px 8px; }
+.det-head { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 14px; margin: 10px 0 10px; }
 .det-head b { color: var(--accent); letter-spacing: -.3px; }
 .det-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line); animation: detIn .42s cubic-bezier(.2,.8,.2,1) both; }
 .det-row:last-child { border-bottom: 0; }
@@ -632,7 +641,7 @@ html.theme-dark #rain { opacity: .7; }
 .dk.big { grid-column: 1 / -1; }
 .dk b.pos { color: var(--accent); } .dk b.neg { color: var(--red); }
 
-.g-insights { margin-top: 12px; }
+.g-insights { margin-top: 14px; padding: 0 16px 16px; }
 .ins-card { background: var(--card-2); border: 1px solid var(--line); border-radius: 14px; padding: 14px; animation: fadeInUp .4s ease both; }
 .ins-title { font-weight: 800; font-size: 13.5px; margin-bottom: 8px; }
 .ins-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
