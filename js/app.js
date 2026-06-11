@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.10";
+const APP_VERSION = "3.11.11";
 const VERSION_NOTES = "🔔 \"Próximas contas\" agora mostra só as que estão PERTO de vencer (na janela de aviso ou 5 dias) + atrasadas — não a lista do mês todo";
 let history = [];
 let redoStack = [];
@@ -167,28 +167,45 @@ function vencBadge(daysLeft) {
 const vencBadgeHTML = (daysLeft) => { const b = vencBadge(daysLeft); return b.txt ? `<span class="venc-badge ${b.cls}">${b.txt}</span>` : ""; };
 
 /* ---------- Notificação local (replica o aviso do Apps Script) ---------- */
+// frase curta de proximidade (sem valor)
+function proxTxt(daysLeft) {
+  if (daysLeft == null) return "";
+  if (daysLeft < 0) return "está atrasada";
+  if (daysLeft === 0) return "vence hoje";
+  if (daysLeft === 1) return "vence amanhã";
+  return "vence em " + daysLeft + " dias";
+}
+// a conta MAIS perto de vencer (atrasada primeiro, depois a de menos dias)
+function contaMaisUrgente() {
+  const arr = contasPerto(curMonth).slice().sort((a, b) => a.daysLeft - b.daysLeft);
+  return arr[0] || null;
+}
+// guarda o NOME da conta mais próxima num Cache que o Service Worker lê no push diário
+function cacheNextBill(nome) {
+  if (!("caches" in window)) return;
+  try { caches.open("fin-meta").then(c => c.put("/next-bill", new Response(JSON.stringify({ name: nome || "" })))); } catch (e) {}
+}
 function checkAndNotify() {
   if (!isMesAtual()) return;
-  const alertas = contasPerto(curMonth);
-  if (!alertas.length) return;
-  // 1) AVISO DENTRO DO APP — pop-up no MEIO da tela com botão OK (sem instalar/permissão)
-  setTimeout(() => showBillAlert(alertas), 500);
-  // 2) NOTIFICAÇÃO DO SISTEMA — só onde o navegador deixa (PC/Android, ou PWA instalado no iPhone)
+  const conta = contaMaisUrgente();
+  if (!conta) { cacheNextBill(""); return; }
+  cacheNextBill(conta.desc);                                     // p/ o push diário (app fechado)
+  // 1) AVISO DENTRO DO APP — pop-up no MEIO da tela (só a 1ª conta, só o nome)
+  setTimeout(() => showBillAlert(conta), 500);
+  // 2) NOTIFICAÇÃO DO SISTEMA — título = nome do app, corpo = só o nome da conta
   if (("Notification" in window) && Notification.permission === "granted") {
-    const linhas = alertas.map(v => `• ${v.desc} — ${brl(v.val)} (${v.daysLeft === 0 ? "vence hoje" : "vence em " + v.daysLeft + "d"})`).join("\n");
-    try {
-      new Notification("💸 Contas a pagar", { body: linhas, icon: "icons/icon-192.png", tag: "vencimentos" });
-    } catch (e) {}
+    try { new Notification("MorbiusFin", { body: `${conta.desc} ${proxTxt(conta.daysLeft)}`, icon: "icons/icon-192.png", tag: "vencimentos" }); } catch (e) {}
   }
 }
-// Pop-up CENTRALIZADO de contas a vencer (com botão OK)
-function showBillAlert(alertas) {
+// Pop-up CENTRALIZADO — só a conta mais perto de vencer (nome + proximidade, sem valor)
+function showBillAlert(conta) {
   const modal = $("#alertModal"); if (!modal) return;
-  const total = alertas.reduce((s, v) => s + (Number(v.val) || 0), 0);
-  $("#alertTitle").textContent = `${alertas.length} conta(s) a vencer`;
-  $("#alertBody").innerHTML = alertas.map(v =>
-    `<div class="alert-line"><div><div class="al-desc">${esc(v.desc)}</div><div class="al-sub">dia ${v.venc} ${vencBadgeHTML(v.daysLeft)}</div></div><span class="al-val">${brl(v.val)}</span></div>`
-  ).join("") + `<div class="alert-total"><span>Total a pagar</span><b>${brl(total)}</b></div>`;
+  $("#alertTitle").textContent = "MorbiusFin";
+  $("#alertBody").innerHTML = `<div class="alert-single">
+      <div class="al-1st">Conta mais perto de vencer</div>
+      <div class="al-desc">${esc(conta.desc)}</div>
+      <div class="al-sub">dia ${conta.venc} ${vencBadgeHTML(conta.daysLeft)}</div>
+    </div>`;
   modal.classList.remove("hidden", "closing");
   $("#alertOk").onclick = closeBillAlert;
   $("#alertVer").onclick = () => { closeBillAlert(); focarVencimentos(); };
@@ -587,14 +604,15 @@ function barPrevReal(label, real, prev, lblReal, lblPrev) {
 function renderVencList() {
   const el = $("#vencList"); if (!el) return;
   const vs = contasPerto(curMonth);
-  el.innerHTML = vs.map(v =>
-    `<div class="venc-row">
-      <span class="vr-bar ${vencBadge(v.daysLeft).cls}"></span>
+  el.innerHTML = vs.map(v => {
+    const cls = vencBadge(v.daysLeft).cls;
+    const u = (cls === "atras" || cls === "d0") ? "u-red" : (cls === "d1" || cls === "d3") ? "u-amber" : "u-green";
+    return `<div class="venc-row ${u}">
       <div class="vr-main"><div class="vr-name">${esc(v.desc)}</div><div class="vr-sub">dia ${v.venc} ${vencBadgeHTML(v.daysLeft)}</div></div>
       <span class="vr-amt">${brl(v.val)}</span>
       <button class="vr-pay" data-pay="${v.id}">Pagar</button>
-    </div>`
-  ).join("");
+    </div>`;
+  }).join("");
   // Pagar: a linha esvaece e a lista encolhe (≤ ~0,7s) antes de salvar
   $$("[data-pay]", el).forEach(b => b.onclick = () => {
     const id = b.dataset.pay, row = b.closest(".venc-row");

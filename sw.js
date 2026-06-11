@@ -1,5 +1,5 @@
 /* Service Worker — network-first (sempre busca a versão nova; cache só offline) */
-const CACHE = "financas-v50";
+const CACHE = "financas-v51";
 const ASSETS = [
   "./", "./index.html",
   "./css/styles.css",
@@ -14,7 +14,7 @@ self.addEventListener("install", (e) => {
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+    Promise.all(keys.filter(k => k !== CACHE && k !== "fin-meta").map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
@@ -43,12 +43,21 @@ self.addEventListener("message", (e) => { if (e.data === "skipWaiting") self.ski
 
 /* ---- Web Push ---- */
 self.addEventListener("push", (e) => {
-  let data = { title: "💸 Finanças", body: "Você tem contas a vencer — abra o app." };
-  try { if (e.data) data = Object.assign(data, e.data.json()); } catch (err) { if (e.data) data.body = e.data.text(); }
-  e.waitUntil(self.registration.showNotification(data.title, {
-    body: data.body, icon: "icons/icon-192.png", badge: "icons/icon-192.png",
-    tag: data.tag || "contas", data: { url: data.url || "./index.html" }
-  }));
+  e.waitUntil((async () => {
+    // título = nome do app; corpo = só o nome da conta mais perto de vencer
+    let title = "MorbiusFin", body = "Você tem uma conta perto de vencer.";
+    try { if (e.data) { const d = e.data.json(); if (d.title) title = d.title; if (d.body) body = d.body; } } catch (err) {}
+    // se o app salvou o nome da conta mais próxima, usa ele
+    try {
+      const c = await caches.open("fin-meta");
+      const r = await c.match("/next-bill");
+      if (r) { const nb = await r.json(); if (nb && nb.name) body = nb.name; }
+    } catch (err) {}
+    await self.registration.showNotification(title, {
+      body, icon: "icons/icon-192.png", badge: "icons/icon-192.png",
+      tag: "contas", renotify: true, data: { url: "./index.html" }
+    });
+  })());
 });
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
