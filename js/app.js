@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.27";
-const VERSION_NOTES = "👋 Boas-vindas na 1ª abertura: escolha começar do zero ou explorar com exemplos, com um tour rápido";
+const APP_VERSION = "3.11.28";
+const VERSION_NOTES = "☰ Novo menu no canto: começar do zero, importar/exportar, sincronizar, simular e conta — tudo num lugar só";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.28",
+    bullets: [
+      "Menu ☰ no canto superior esquerdo reúne as opções num só lugar",
+      "Atalhos: começar do zero, importar/exportar, sincronizar, simular gastos, conta",
+      "Cabeçalho e barras mais limpos",
+    ]
+  },
   {
     version: "3.11.27",
     bullets: [
@@ -1747,6 +1755,23 @@ $("#btnExport").onclick = () => { const b = new Blob([JSON.stringify(DATA, null,
 $("#btnImport").onclick = () => $("#importFile").click();
 $("#importFile").onchange = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { DATA = migrate(JSON.parse(r.result)); persist(); toast("Backup importado"); $("#settingsModal").classList.add("hidden"); } catch { toast("Arquivo inválido"); } }; r.readAsText(f); };
 $("#btnReset").onclick = () => { if (confirm("Apagar tudo e voltar aos dados de exemplo?")) { DATA = resetData(); persist(); toast("Restaurado"); $("#settingsModal").classList.add("hidden"); } };
+
+/* ---------- Menu lateral (☰) — hub de opções ---------- */
+function openMenu() { const m = $("#menuDrawer"); if (!m) return; const v = $("#menuVer"); if (v) v.textContent = APP_VERSION; m.classList.remove("hidden"); }
+function closeMenu() { const m = $("#menuDrawer"); if (m) m.classList.add("hidden"); }
+const _onbHide = () => { const o = $("#onboarding"); if (o) o.classList.add("hidden"); };
+$("#btnMenu").onclick = openMenu;
+$("#menuClose").onclick = closeMenu;
+$("#menuDrawer").onclick = (e) => { if (e.target.id === "menuDrawer") closeMenu(); };
+$("#miImport").onclick = () => { closeMenu(); $("#importFile").click(); };
+$("#miExport").onclick = () => { closeMenu(); $("#btnExport").click(); };
+$("#miSync").onclick = () => { closeMenu(); if (syncCfg()) pullSync(true, null, true); else configurarSync(); };
+$("#miSim").onclick = () => { closeMenu(); curTab = "resumo"; resumoView = "graficos"; $$(".tab").forEach(x => x.classList.toggle("active", /Resumo/.test(x.textContent))); suppressNextAnim = true; window.scrollTo(0, 0); render(); };
+$("#miConfig").onclick = () => { closeMenu(); $("#btnSettings").click(); };
+$("#miAcesso").onclick = () => { closeMenu(); $("#btnSettings").click(); };   // acesso real/teste (Face ID/PIN/0000): próxima etapa
+$("#miTema").onclick = () => { cycleTheme(); };
+$("#miZero").onclick = () => { closeMenu(); wipeToZero(_onbHide, _onbHide); };
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
 
 // ===== Web Push (servidor: Cloudflare Worker) =====
 const VAPID_PUBLIC = "BC1EnbsN2qolEkoNvMqsAuqjqrPUfNlslzCnoRIOgWvCthh0ytYXzbUrP9iSzNgNswcS9H121de7cCANXGhuSz4";

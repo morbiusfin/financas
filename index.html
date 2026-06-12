@@ -56,7 +56,10 @@
   <!-- HEADER -->
   <header class="app-header">
     <div class="header-row">
-      <h1 id="screenTitle">Resumo</h1>
+      <div class="header-left">
+        <button id="btnMenu" class="icon-btn menu-btn" aria-label="Abrir menu" title="Menu">☰</button>
+        <h1 id="screenTitle">Resumo</h1>
+      </div>
       <div class="header-actions">
         <button id="btnRefresh" class="icon-btn" aria-label="Atualizar" title="Atualizar agora">🔄</button>
         <button id="btnUndo" class="icon-btn" aria-label="Desfazer" title="Desfazer (Ctrl+Z)">↩︎</button>
@@ -115,6 +118,22 @@
   <!-- ONBOARDING (1ª abertura) -->
   <div id="onboarding" class="onb hidden" role="dialog" aria-modal="true" aria-labelledby="onbTitle">
     <div class="onb-card"><div id="onbBody"></div></div>
+  </div>
+
+  <!-- MENU LATERAL (☰) -->
+  <div id="menuDrawer" class="menu-drawer hidden" role="dialog" aria-modal="true" aria-label="Menu">
+    <nav class="menu-panel">
+      <div class="menu-head"><span>Menu</span><button id="menuClose" class="menu-x" aria-label="Fechar">✕</button></div>
+      <button class="menu-item" id="miAcesso"><span class="mi-ic">🔒</span><span><b>Conta e acesso</b><i>reais (Face ID / PIN) e teste</i></span></button>
+      <button class="menu-item" id="miSync"><span class="mi-ic">🔄</span><span><b>Sincronização</b><i>subir / baixar da nuvem</i></span></button>
+      <button class="menu-item" id="miImport"><span class="mi-ic">⬆️</span><span><b>Importar dados</b><i>de um backup .json</i></span></button>
+      <button class="menu-item" id="miExport"><span class="mi-ic">⬇️</span><span><b>Exportar backup</b><i>salva tudo num arquivo</i></span></button>
+      <button class="menu-item" id="miSim"><span class="mi-ic">🧪</span><span><b>Simular gastos</b><i>vale a pena comprar?</i></span></button>
+      <button class="menu-item" id="miConfig"><span class="mi-ic">⚙️</span><span><b>Configurações</b><i>saldo inicial, notificações</i></span></button>
+      <button class="menu-item" id="miTema"><span class="mi-ic">🌗</span><span><b>Tema</b><i>claro / escuro / automático</i></span></button>
+      <button class="menu-item danger" id="miZero"><span class="mi-ic">🏁</span><span><b>Começar do zero</b><i>apaga e começa vazio</i></span></button>
+      <div class="menu-foot">MorbiusFin · v<span id="menuVer"></span></div>
+    </nav>
   </div>
 
   <!-- MAIN CONTENT -->
