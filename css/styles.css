@@ -527,6 +527,24 @@ body.kbd-open #fab { transform: translateY(160%) scale(.8); opacity: 0; pointer-
   border: 1px solid var(--line); border-bottom: 0; animation: slideUp .26s cubic-bezier(.2,.8,.2,1); }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .modal-card h2 { margin: 0 0 16px; font-size: 19px; font-weight: 800; letter-spacing: -.3px; }
+
+/* ===== Bottom sheet: alça (puxar) + botão ✕ + saída deslizando ===== */
+.modal:not(.center) .modal-card { position: relative; padding-top: 26px; }
+.modal:not(.center) .modal-card::before { content: ""; position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+  width: 42px; height: 4px; border-radius: 99px; background: var(--line); }
+.modal-card .sheet-x { position: absolute; top: 14px; right: 14px; left: auto; width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--card-2); color: var(--ink); font-size: 15px; font-weight: 700; line-height: 1;
+  display: flex; align-items: center; justify-content: center; z-index: 3; cursor: pointer; }
+.modal-card .sheet-x:active { transform: scale(.9); }
+.modal:not(.center).closing { animation: fadeOut .3s ease both; }
+.modal:not(.center).closing .modal-card { animation: slideDown .3s cubic-bezier(.4,0,.6,1) both; }
+@keyframes slideDown { to { transform: translateY(100%); } }
+@keyframes fadeOut { to { opacity: 0; } }
+
+/* ===== Entrada escalonada dos lançamentos (o "dados se montando") ===== */
+@keyframes rowIn { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+#view:not(.no-anim) .list .list-row { animation: rowIn .42s cubic-bezier(.2,.7,.2,1) both; animation-delay: calc(var(--i, 0) * .032s); }
+@media (prefers-reduced-motion: reduce) { #view .list .list-row { animation: none !important; } }
 .field { display: block; margin-bottom: 14px; }
 .field span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 700; }
 .field input, .field select { width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 13px; font-size: 16px;

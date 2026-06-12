@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.30";
-const VERSION_NOTES = "🧪 Correção: o modo teste agora mostra SÓ dados fictícios — não baixa nem mexe nos seus dados reais";
+const APP_VERSION = "3.11.31";
+const VERSION_NOTES = "✨ Visual novo: os lançamentos entram com animação e as caixas viram 'folhas' que sobem de baixo com alça e X";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.31",
+    bullets: [
+      "Os lançamentos agora aparecem 'se montando' — entram em cascata, suave (estilo app de banco)",
+      "As caixas (lançamento, configurações, sincronizar) ganharam alça em cima e botão ✕ pra fechar",
+      "O aviso de contas a vencer virou um painel que sobe de baixo (meia tela), com ✕ e toque fora pra fechar",
+    ]
+  },
   {
     version: "3.11.30",
     bullets: [
@@ -289,9 +297,11 @@ function showBillAlert(conta) {
       <div class="al-desc">${esc(conta.desc)}</div>
       <div class="al-sub">dia ${conta.venc} ${vencBadgeHTML(conta.daysLeft)}</div>
     </div>`;
-  modal.classList.remove("hidden", "closing");
+  modal.classList.remove("hidden", "closing", "center");   // painel que sobe de baixo (meia-tela), não centralizado
   $("#alertOk").onclick = closeBillAlert;
   $("#alertVer").onclick = () => { closeBillAlert(); focarVencimentos(); };
+  const x = $("#alertClose"); if (x) x.onclick = closeBillAlert;
+  modal.onclick = (e) => { if (e.target === modal) closeBillAlert(); };   // toque fora fecha
 }
 // fecha o pop-up com animação de saída (esvaece + encolhe)
 function closeBillAlert() {
@@ -1328,7 +1338,7 @@ function renderLista(view) {
     ${curTab === "cartao" ? renderCardsSection() : ""}
     <div class="list-header"><span class="lbl">${rows.length} lançamento(s) em ${mLong(curMonth)}</span><span class="total">${brl(total)}</span></div>
     ${rows.length ? (selMode ? selBarHTML(curTab) : sortBarHTML(curTab)) : ""}
-    <div class="list">${rows.length ? rows.map(({ l, idx }) => lineRow(l, idx)).join("") : empty()}</div>`;
+    <div class="list">${rows.length ? rows.map(({ l, idx }, i) => lineRow(l, idx, i)).join("") : empty()}</div>`;
   bindRows(view);
   bindSortBar(view);
   bindSelBar(view);
@@ -1345,7 +1355,7 @@ function renderReceitas(view) {
     rows = sortRows(rows, listSort.receitas, { val: x => x.l.vals[m] || 0, dia: x => x.l.dia, desc: x => x.l.desc, nec: x => x.l.nec });
     if (!rows.length) return;
     const sub = DATA.receitas.filter(l => l.tipo === tipo).reduce((s, l) => s + (Number(l.vals[m]) || 0), 0);
-    html += `<div class="group-head">${titulo} <span>${brl(sub)}</span></div><div class="list">${rows.map(({ l, idx }) => lineRow(l, idx)).join("")}</div>`;
+    html += `<div class="group-head">${titulo} <span>${brl(sub)}</span></div><div class="list">${rows.map(({ l, idx }, i) => lineRow(l, idx, i)).join("")}</div>`;
   });
   view.innerHTML = html;
   bindRows(view);
@@ -1353,7 +1363,7 @@ function renderReceitas(view) {
   bindSelBar(view);
 }
 
-function lineRow(l, idx) {
+function lineRow(l, idx, pos) {
   const m = curMonth, val = l.vals[m], st = l.sts[m] || "vazio";
   const bits = [];
   if (l.dia) bits.push("dia " + l.dia);
@@ -1362,7 +1372,7 @@ function lineRow(l, idx) {
   const sub = bits.join(" · ");
   const on = selected.has(idx);
   const box = selMode ? `<span class="sel-box${on ? " on" : ""}" data-sel="${idx}"></span>` : "";
-  return `<div class="list-row${selMode ? " sel-mode" : ""}${on ? " sel-on" : ""}" data-idx="${idx}">
+  return `<div class="list-row${selMode ? " sel-mode" : ""}${on ? " sel-on" : ""}" data-idx="${idx}" style="--i:${Math.min(pos || 0, 16)}">
     ${box}<div class="desc"><div class="name">${esc(l.desc || "—")}</div>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
     <span class="badge ${st}" data-toggle="${idx}">${st}</span>
     <div class="amt-wrap"><span class="amount">${brl(val)}</span>${l.nec ? `<span class="nec-flag" title="Necessário — não posso deixar de pagar">✓</span>` : ""}</div></div>`;
