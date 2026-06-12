@@ -107,12 +107,17 @@ function loadData() {
   saveData(seed);
   return seed;
 }
+/* Perfil ativo: "real" (STORE_KEY, pode ser cifrado) ou "test" (store SEPARADO, fictício, nunca cifrado).
+   O teste NUNCA grava em STORE_KEY → impossível o teste apagar/sobrescrever os dados reais. */
+const TEST_STORE_KEY = "financas2026.demo";
+function profileKey() { return (localStorage.getItem("financas2026.profile") === "test") ? TEST_STORE_KEY : STORE_KEY; }
 function saveData(d) {
-  if (window.CRYPTO_KEY && window.encryptEnvelope) {
-    // grava criptografado (AES-GCM). Sem o PIN, ilegível.
-    window.encryptEnvelope(window.CRYPTO_KEY, d).then(env => localStorage.setItem(STORE_KEY, JSON.stringify(env))).catch(() => {});
+  const key = profileKey(), isReal = (key === STORE_KEY);
+  if (isReal && window.CRYPTO_KEY && window.encryptEnvelope) {
+    // grava criptografado (AES-GCM). Sem o PIN, ilegível. (só nos dados REAIS)
+    window.encryptEnvelope(window.CRYPTO_KEY, d).then(env => localStorage.setItem(key, JSON.stringify(env))).catch(() => {});
   } else {
-    localStorage.setItem(STORE_KEY, JSON.stringify(d));
+    localStorage.setItem(key, JSON.stringify(d));
   }
 }
 function resetData() { const s = buildSeed(); saveData(s); return s; }

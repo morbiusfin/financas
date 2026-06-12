@@ -1,5 +1,5 @@
 /* Service Worker — network-first (sempre busca a versão nova; cache só offline) */
-const CACHE = "financas-v68";
+const CACHE = "financas-v69";
 const ASSETS = [
   "./", "./index.html",
   "./css/styles.css",

@@ -1,11 +1,20 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.28";
-const VERSION_NOTES = "☰ Novo menu no canto: começar do zero, importar/exportar, sincronizar, simular e conta — tudo num lugar só";
+const APP_VERSION = "3.11.29";
+const VERSION_NOTES = "🔐 Conta e acesso: proteja os dados reais com PIN (backup automático antes) e use 0000 para o modo teste";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.29",
+    bullets: [
+      "Conta e acesso (no menu ☰): proteja seus dados reais com PIN de 4 dígitos",
+      "Backup automático baixado ANTES de ativar a senha",
+      "Código 0000 abre o modo TESTE (dados fictícios, separados — nunca apagam os reais)",
+      "Selo 'Modo teste' com botão pra voltar aos dados reais",
+    ]
+  },
   {
     version: "3.11.28",
     bullets: [
@@ -1768,9 +1777,10 @@ $("#miExport").onclick = () => { closeMenu(); $("#btnExport").click(); };
 $("#miSync").onclick = () => { closeMenu(); if (syncCfg()) pullSync(true, null, true); else configurarSync(); };
 $("#miSim").onclick = () => { closeMenu(); curTab = "resumo"; resumoView = "graficos"; $$(".tab").forEach(x => x.classList.toggle("active", /Resumo/.test(x.textContent))); suppressNextAnim = true; window.scrollTo(0, 0); render(); };
 $("#miConfig").onclick = () => { closeMenu(); $("#btnSettings").click(); };
-$("#miAcesso").onclick = () => { closeMenu(); $("#btnSettings").click(); };   // acesso real/teste (Face ID/PIN/0000): próxima etapa
+$("#miAcesso").onclick = () => { closeMenu(); openAccessModal(); };   // dados reais (PIN) e modo teste (0000)
 $("#miTema").onclick = () => { cycleTheme(); };
 $("#miZero").onclick = () => { closeMenu(); wipeToZero(_onbHide, _onbHide); };
+const _te = $("#testExit"); if (_te) _te.onclick = exitTestMode;
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
 
 // ===== Web Push (servidor: Cloudflare Worker) =====
@@ -1962,20 +1972,94 @@ function removerPin() {
 function showLock(env) {
   const ls = $("#lockScreen"); ls.classList.remove("hidden");
   const pin = $("#lockPin"), msg = $("#lockMsg");
+  const ttl = $("#lockTitle"); if (ttl) ttl.textContent = "Digite seu código";
+  const hint = $("#lockHint"); if (hint) hint.textContent = "Código 0000 abre o modo teste (dados fictícios).";
   pin.value = ""; msg.textContent = ""; setTimeout(() => pin.focus(), 100);
   const submit = async () => {
     if (!pin.value) return;
+    if (pin.value === "0000") { loadTestProfile(); return; }   // 0000 = modo teste (fictício)
     msg.textContent = "verificando…";
     try {
       const k = await deriveKey(pin.value, env.salt);
       const obj = await decryptEnvelope(k, env);
       window.CRYPTO_KEY = k; DATA = migrate(obj);
+      localStorage.setItem("financas2026.profile", "real");
+      document.body.classList.remove("test-mode");
       ls.classList.add("hidden"); startApp();
-    } catch (e) { msg.textContent = "PIN incorreto"; pin.value = ""; pin.focus(); }
+    } catch (e) { msg.textContent = "código incorreto"; pin.value = ""; pin.focus(); }
   };
   $("#lockBtn").onclick = submit;
   pin.onkeydown = (e) => { if (e.key === "Enter") submit(); };
 }
+
+/* ===== Conta e acesso: dados reais protegidos (PIN 4 díg) + modo teste (0000) ===== */
+function accessModalEl() {
+  let m = document.getElementById("accessModal");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "accessModal"; m.className = "modal center hidden";
+    m.innerHTML = '<div class="modal-card acc-card"><button type="button" id="accClose" class="wn-close" aria-label="Fechar">✕</button><h2 style="text-align:center">Conta e acesso</h2><div id="accBody"></div></div>';
+    document.body.appendChild(m);
+    m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); });
+    m.querySelector("#accClose").onclick = () => m.classList.add("hidden");
+  }
+  return m;
+}
+function openAccessModal() {
+  const m = accessModalEl(), body = m.querySelector("#accBody");
+  const testMode = localStorage.getItem("financas2026.profile") === "test";
+  const protegido = !!window.CRYPTO_KEY;
+  let html;
+  if (testMode) {
+    html = '<p class="acc-status test">🧪 Você está no <b>MODO TESTE</b> (dados fictícios). Seus dados reais estão guardados e intactos.</p>'
+      + '<button class="btn primary" id="accExitTest">Voltar aos dados reais</button>';
+  } else {
+    html = protegido
+      ? '<p class="acc-status ok">🔒 Seus dados reais estão <b>protegidos por PIN</b>.</p><button class="btn ghost" id="accRemove">Remover proteção (PIN)</button>'
+      : '<p class="acc-status">Seus dados reais ainda estão <b>sem senha</b>. Proteja com um PIN de 4 dígitos — faço um <b>backup automático</b> antes de ativar.</p>'
+        + '<div class="field-row"><label class="field"><span>PIN (4 dígitos)</span><input id="accPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" /></label>'
+        + '<label class="field"><span>Repita</span><input id="accPin2" type="password" inputmode="numeric" maxlength="4" placeholder="••••" /></label></div>'
+        + '<button class="btn primary" id="accProtect">Proteger (com backup antes)</button>';
+    html += '<hr style="border:0;border-top:1px solid var(--line);margin:16px 0" />'
+      + '<p class="acc-status">Só quer testar sem mexer no real? Entre no <b>modo teste</b> (dados fictícios, separados).</p>'
+      + '<button class="btn ghost" id="accEnterTest">Entrar no modo teste</button>'
+      + '<p class="hint" style="margin-top:12px">📱 <b>Face ID</b> chega em seguida (precisa ser testado no seu iPhone). Por enquanto o acesso é por PIN.</p>';
+  }
+  body.innerHTML = html;
+  m.classList.remove("hidden");
+  const ex = body.querySelector("#accExitTest"); if (ex) ex.onclick = exitTestMode;
+  const et = body.querySelector("#accEnterTest"); if (et) et.onclick = () => { m.classList.add("hidden"); loadTestProfile(); };
+  const pr = body.querySelector("#accProtect"); if (pr) pr.onclick = protectWithPin;
+  const rm = body.querySelector("#accRemove");
+  if (rm) rm.onclick = () => { if (confirm("Remover o PIN? Os dados reais ficarão sem criptografia neste aparelho.")) { window.CRYPTO_KEY = null; localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); toast("Proteção removida"); openAccessModal(); } };
+}
+function autoBackup() {
+  try {
+    const b = new Blob([JSON.stringify(DATA, null, 2)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b);
+    a.download = `morbiusfin-backup-${Date.now()}.json`; a.click();
+    toast("Backup baixado ⬇️"); return true;
+  } catch (e) { return false; }
+}
+async function protectWithPin() {
+  const p1 = ($("#accPin") || {}).value || "", p2 = ($("#accPin2") || {}).value || "";
+  if (!/^\d{4}$/.test(p1)) { toast("Use exatamente 4 dígitos numéricos"); return; }
+  if (p1 === "0000") { toast("0000 é reservado pro modo teste — escolha outro"); return; }
+  if (p1 !== p2) { toast("Os PINs não conferem"); return; }
+  autoBackup();                                   // backup ANTES de criptografar
+  window.CRYPTO_KEY = await deriveKey(p1);
+  localStorage.setItem("financas2026.profile", "real");
+  saveData(DATA);                                 // criptografa os dados reais (financas2026.v2)
+  toast("Dados reais protegidos 🔒");
+  openAccessModal();                              // atualiza o status na tela
+}
+function exitTestMode() {
+  localStorage.setItem("financas2026.profile", "real");
+  document.body.classList.remove("test-mode");
+  closeAccessModal();
+  location.reload();                              // reboot limpo → boot() mostra o gate se os reais tiverem PIN
+}
+function closeAccessModal() { const m = document.getElementById("accessModal"); if (m) m.classList.add("hidden"); }
 
 /* ---------- Sincronização (Google Sheet via Apps Script) ---------- */
 const SYNC_CFG_KEY = "financas2026.sync";
@@ -2302,12 +2386,26 @@ function renderSeedBanner() {   // banner "dados de exemplo" no topo do conteúd
 }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { const o = $("#onboarding"); if (o && !o.classList.contains("hidden")) finishOnboarding(); } });
 
+/* Carrega o perfil de TESTE (dados fictícios, store separado) — sem senha, com selo "MODO TESTE" */
+function loadTestProfile() {
+  localStorage.setItem("financas2026.profile", "test");
+  window.CRYPTO_KEY = null;
+  let raw = localStorage.getItem(TEST_STORE_KEY);
+  let d = null; try { d = raw ? JSON.parse(raw) : null; } catch (e) {}
+  DATA = d ? migrate(d) : buildSeed();   // seed fictício se o teste ainda estiver vazio
+  if (!d) saveData(DATA);                 // grava no store de teste (profile=test → profileKey=demo)
+  const ls = $("#lockScreen"); if (ls) ls.classList.add("hidden");
+  document.body.classList.add("test-mode");
+  startApp();
+}
 async function boot() {
   applyTheme();
   applyConfigLink();
+  if (localStorage.getItem("financas2026.profile") === "test") { loadTestProfile(); return; }  // estava em teste
+  document.body.classList.remove("test-mode");
   let raw = localStorage.getItem(STORE_KEY) || localStorage.getItem("financas2026.v1");
   let parsed = null; try { parsed = raw ? JSON.parse(raw) : null; } catch (e) {}
-  if (parsed && parsed.enc) { showLock(parsed); return; }   // bloqueado: exige PIN
+  if (parsed && parsed.enc) { showLock(parsed); return; }   // reais protegidos → tela de acesso (PIN / 0000=teste)
   DATA = parsed ? migrate(parsed) : buildSeed();
   window.__eraSeedNovo = !parsed;                 // 1ª vez (sem dados salvos) → decide o onboarding
   if (!parsed) { saveData(DATA); localStorage.setItem("financas2026.isSeed", "1"); }
