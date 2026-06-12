@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.31";
+const APP_VERSION = "3.11.32";
 const VERSION_NOTES = "✨ Visual novo: os lançamentos entram com animação e as caixas viram 'folhas' que sobem de baixo com alça e X";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.32",
+    bullets: [
+      "A aba Débito também entra em cascata (consistência com as outras abas)",
+      "Painel de contas: fechamento mais ajustado e código limpo",
+    ]
+  },
   {
     version: "3.11.31",
     bullets: [
@@ -307,7 +314,7 @@ function showBillAlert(conta) {
 function closeBillAlert() {
   const m = $("#alertModal"); if (!m) return;
   m.classList.add("closing");
-  setTimeout(() => { m.classList.add("hidden"); m.classList.remove("closing"); }, 440);
+  setTimeout(() => { m.classList.add("hidden"); m.classList.remove("closing"); }, 300);
 }
 function pedirNotificacao() {
   if (!("Notification" in window)) {
@@ -1392,8 +1399,8 @@ function renderDiaria(view) {
   Object.keys(cats).sort().forEach(cat => {
     const sub = cats[cat].reduce((s, x) => s + (Number(x.d.valor) || 0), 0);
     const itens = sortRows(cats[cat], listSort.diaria, getD);
-    html += `<div class="group-head">${esc(cat)} <span>${brl(sub)}</span></div><div class="list">${itens.map(({ d, idx }) =>
-      `<div class="list-row" data-didx="${idx}"><div class="desc"><div class="name">${esc(d.desc || "—")}</div>${(() => { const met = d.metodo === "pix" ? `<span class="met-pill pix">⚡ PIX</span>` : d.metodo === "debito" ? `<span class="met-pill debito">💳 Débito</span>` : ""; const dia = d.dia ? `dia ${d.dia}` : ""; return (met || dia) ? `<div class="sub">${[dia, met].filter(Boolean).join(" · ")}</div>` : ""; })()}</div><span class="amount">${brl(d.valor)}</span></div>`).join("")}</div>`;
+    html += `<div class="group-head">${esc(cat)} <span>${brl(sub)}</span></div><div class="list">${itens.map(({ d, idx }, gi) =>
+      `<div class="list-row" data-didx="${idx}" style="--i:${Math.min(gi, 16)}"><div class="desc"><div class="name">${esc(d.desc || "—")}</div>${(() => { const met = d.metodo === "pix" ? `<span class="met-pill pix">⚡ PIX</span>` : d.metodo === "debito" ? `<span class="met-pill debito">💳 Débito</span>` : ""; const dia = d.dia ? `dia ${d.dia}` : ""; return (met || dia) ? `<div class="sub">${[dia, met].filter(Boolean).join(" · ")}</div>` : ""; })()}</div><span class="amount">${brl(d.valor)}</span></div>`).join("")}</div>`;
   });
   view.innerHTML = html;
   $$("[data-didx]", view).forEach(r => r.onclick = () => openDiariaModal(+r.dataset.didx));
