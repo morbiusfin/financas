@@ -338,8 +338,8 @@ select.sel { cursor: pointer; }
 }
 .tab.active::before { content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
   width: 30px; height: 3px; border-radius: 0 0 4px 4px; background: linear-gradient(90deg, var(--accent-2), var(--accent)); }
-/* Teclado aberto: a tabbar fica fixa (reposicionada via JS/visualViewport, acima do teclado).
-   Só o FAB some (não faz sentido o + boiando sobre o teclado). */
+/* Teclado aberto: a tabbar NÃO se mexe (fica travada em position:fixed; bottom:0; translateZ(0)).
+   Nada de reposição — não sobe, não flutua, não treme. Só o FAB some. */
 body.kbd-open #fab { transform: translateY(160%) scale(.8); opacity: 0; pointer-events: none; }
 
 /* ===== MODAL ===== */
