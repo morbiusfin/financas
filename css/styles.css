@@ -809,6 +809,7 @@ html.theme-dark #rain { opacity: .7; }
    O coin.png já é redondo (cantos transparentes), então não precisa recortar. Fundo dourado = rede de segurança. */
 #splash .coin-face { position: absolute; inset: 0; border-radius: 50%;
   backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  clip-path: circle(50%); -webkit-clip-path: circle(50%);            /* prende qualquer brilho ao círculo (≠ overflow:hidden, seguro no iOS) */
   background: radial-gradient(circle at 36% 30%, #ffe9ad 0%, #f3bb45 38%, #cc8a12 72%, #7e5207 100%); }
 #splash .coin-face img { width: 100%; height: 100%; display: block; }
 #splash .cf-front { transform: translateZ(9px); }                          /* face da frente: +Z = meia espessura */
@@ -820,9 +821,13 @@ html.theme-dark #rain { opacity: .7; }
   /* gradiente ao longo da ESPESSURA: escuro nas junções com as faces, brilho metálico no meio (aresta arredondada) */
   background: linear-gradient(to right, #4a2f05 0%, #9a6b0c 16%, #ffe7a6 50%, #d9991f 72%, #5a3a07 100%); }
 #splash .coin-edge i.r2 { filter: brightness(.78); }                       /* estrias alternadas = serrilhado milled */
-#splash .coin-shine { position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.78) 49%, rgba(255,255,255,.78) 51%, transparent 60%);
-  transform: translateX(-150%); animation: coinShine 1.9s ease-in-out infinite; }
+/* brilho FIXO (não desliza mais → não tem como escapar pra fora da moeda); só respira de leve */
+#splash .coin-shine { position: absolute; inset: 0; pointer-events: none; border-radius: 50%;
+  background: linear-gradient(118deg, transparent 38%, rgba(255,255,255,.30) 48%, rgba(255,255,255,.08) 56%, transparent 64%);
+  animation: coinGloss 2.8s ease-in-out infinite; }
+/* reflexo glossy fixo no alto-esquerda = cara de moeda polida */
+#splash .cf-front::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(ellipse 58% 42% at 32% 25%, rgba(255,255,255,.5), rgba(255,255,255,0) 60%); }
 #splash .coin-glow { position: absolute; inset: -22%; border-radius: 50%; pointer-events: none; z-index: -1;
   background: radial-gradient(circle, rgba(245,166,35,.5) 0%, rgba(245,166,35,.16) 42%, transparent 68%);
   filter: blur(10px); animation: coinGlow 1.9s ease-in-out infinite; }
@@ -830,7 +835,7 @@ html.theme-dark #rain { opacity: .7; }
   background: radial-gradient(50% 50%, rgba(0,0,0,.5), transparent 72%); filter: blur(3px); animation: coinShadow 1.9s ease-in-out infinite; }
 /* inclina 8° no X o tempo todo → nunca fica 100% de perfil (anel oco); parece uma moeda girando de verdade */
 @keyframes coinSpin { from { transform: rotateX(8deg) rotateY(0deg); } to { transform: rotateX(8deg) rotateY(360deg); } }
-@keyframes coinShine { 0% { transform: translateX(-150%); } 30%,100% { transform: translateX(150%); } }
+@keyframes coinGloss { 0%,100% { opacity: .5; } 50% { opacity: .95; } }
 @keyframes coinGlow { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: .95; transform: scale(1.06); } }
 @keyframes coinShadow { 0%,100% { transform: translateX(-50%) scaleX(1); opacity: .5; } 50% { transform: translateX(-50%) scaleX(.78); opacity: .7; } }
 

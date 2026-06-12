@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.33";
-const VERSION_NOTES = "🪙 Moeda da abertura corrigida: não fica mais 'oca' e mostra o ₿ nas duas faces (sem espelhar)";
+const APP_VERSION = "3.11.34";
+const VERSION_NOTES = "🪙 Moeda da abertura mais bonita: tirei o risco branco que ficava flutuando do lado e dei um acabamento polido";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.34",
+    bullets: [
+      "Tirei aquele risco branco que ficava flutuando ao lado da moeda (o brilho 'escapava')",
+      "Brilho da moeda agora é fixo e polido (reflexo no alto), preso ao círculo dela",
+      "Acabamento geral mais bonito na abertura",
+    ]
+  },
   {
     version: "3.11.33",
     bullets: [
