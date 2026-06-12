@@ -608,18 +608,21 @@ html.theme-dark #rain { opacity: .7; }
 /* ---- Moeda de Bitcoin REAL girando em 3D (2 faces) + brilho ao passar ---- */
 #splash .coin-stage { position: relative; z-index: 1; width: 172px; height: 172px; perspective: 900px;
   animation: splashPop .7s cubic-bezier(.2,.9,.2,1.2) both; }
-#splash .coin3d { position: absolute; inset: 0; transform-style: preserve-3d; animation: coinSpin 1.9s cubic-bezier(.5,.08,.5,.92) infinite;
-  filter: drop-shadow(0 16px 28px rgba(0,0,0,.5)); }
+/* NÃO usar filter aqui: filter força transform-style:flat e ACHATA o 3D (vira adesivo). */
+#splash .coin3d { position: absolute; inset: 0; transform-style: preserve-3d; -webkit-transform-style: preserve-3d;
+  animation: coinSpin 2.4s cubic-bezier(.45,.05,.55,.95) infinite; }
 #splash .coin-face { position: absolute; inset: 0; border-radius: 50%; overflow: hidden;
   backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 #splash .coin-face img { width: 100%; height: 100%; display: block; }
-#splash .cf-front { transform: translateZ(8px); }                         /* face da frente, à frente no eixo Z */
-#splash .cf-back { transform: rotateY(180deg) translateZ(8px); }          /* face de trás, atrás → dá ESPESSURA */
+#splash .cf-front { transform: translateZ(9px); }                          /* face da frente: +Z = meia espessura */
+#splash .cf-back { transform: rotateY(180deg) translateZ(9px); }           /* face de trás: atrás → dá ESPESSURA (X+Y+Y) */
 #splash .cf-back img { transform: scaleX(-1); }                            /* desespelha: o ₿ fica da esq→dir nos 2 lados */
-/* borda (rim) cilíndrica = espessura real da moeda */
-#splash .coin-edge { position: absolute; inset: 0; transform-style: preserve-3d; }
+/* parede (rim) cilíndrica de verdade = espessura real; cada <i> = uma estria do serrilhado */
+#splash .coin-edge { position: absolute; inset: 0; transform-style: preserve-3d; -webkit-transform-style: preserve-3d; }
 #splash .coin-edge i { position: absolute; left: 50%; top: 50%; display: block; transform-origin: center center;
-  background: linear-gradient(to bottom, #6e4506 0%, #b9800f 22%, #ffe6a0 50%, #f1b231 64%, #8a5a0a 100%); }
+  /* gradiente ao longo da ESPESSURA: escuro nas junções com as faces, brilho metálico no meio (aresta arredondada) */
+  background: linear-gradient(to right, #4a2f05 0%, #9a6b0c 16%, #ffe7a6 50%, #d9991f 72%, #5a3a07 100%); }
+#splash .coin-edge i.r2 { filter: brightness(.78); }                       /* estrias alternadas = serrilhado milled */
 #splash .coin-shine { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.78) 49%, rgba(255,255,255,.78) 51%, transparent 60%);
   transform: translateX(-150%); animation: coinShine 1.9s ease-in-out infinite; }

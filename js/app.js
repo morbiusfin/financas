@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.20";
-const VERSION_NOTES = "✨ Cabeçalho das listas repaginado + aviso de nova atualização com 1 toque pra aplicar";
+const APP_VERSION = "3.11.21";
+const VERSION_NOTES = "🪙 Moeda de abertura agora gira em 3D de verdade — espessura real e borda dourada serrilhada";
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);

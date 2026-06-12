@@ -37,13 +37,17 @@
     <div class="splash-tag">suas finanças em movimento</div>
   </div>
   <script>
-    /* gera a borda (rim) 3D da moeda — segmentos ao redor da circunferência dão espessura real */
+    /* gera a parede (rim) 3D da moeda = espessura real (X+Y+Y).
+       Moeda gira no eixo Y → cada estria fica em rotateZ(φ) translateX(R) rotateY(90deg),
+       com LARGURA = espessura (T, ao longo de Z) e ALTURA = passo do arco (ao longo da tangente). */
     (function () {
       var edge = document.querySelector('#splash .coin-edge'); if (!edge) return;
-      var N = 72, R = 80, T = 16, arc = (2 * Math.PI * R / N) + 1.2, html = '';
+      var N = 90, R = 80, T = 18, arc = (2 * Math.PI * R / N) + 1.4, html = '';
       for (var i = 0; i < N; i++) {
         var a = (360 / N) * i;
-        html += '<i style="width:' + arc.toFixed(2) + 'px;height:' + T + 'px;transform:translate(-50%,-50%) rotateZ(' + a + 'deg) translateY(' + R + 'px) rotateX(90deg)"></i>';
+        html += '<i class="' + (i % 2 ? 'r2' : '') + '" style="width:' + T + 'px;height:' + arc.toFixed(2) +
+          'px;margin-left:' + (-T / 2) + 'px;margin-top:' + (-arc / 2).toFixed(2) +
+          'px;transform:rotateZ(' + a.toFixed(2) + 'deg) translateX(' + R + 'px) rotateY(90deg)"></i>';
       }
       edge.innerHTML = html;
     })();
