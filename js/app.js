@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.13";
+const APP_VERSION = "3.11.14";
 const VERSION_NOTES = "🔔 \"Próximas contas\" agora mostra só as que estão PERTO de vencer (na janela de aviso ou 5 dias) + atrasadas — não a lista do mês todo";
 let history = [];
 let redoStack = [];
@@ -148,8 +148,7 @@ function contasPerto(m) {
   return vencimentos(m).filter(v => {
     if (v.pago) return false;
     if (v.vencida) return true;                                   // atrasada = urgente, sempre mostra
-    const win = (v.aviso && v.aviso > 0) ? v.aviso : 5;
-    return v.daysLeft >= 0 && v.daysLeft <= win;
+    return v.daysLeft >= 0 && v.daysLeft <= 7;                    // só dentro dos próximos 7 dias (senão não mostra nada)
   });
 }
 
@@ -820,8 +819,8 @@ function renderGraficos(host) {
       <div class="g-sim">
         <div class="field-row">
           <label class="field" style="margin:0;flex:2"><span>🧪 Quero gastar (R$)</span><input id="gSimInput" type="number" step="0.01" inputmode="decimal" placeholder="0,00" /></label>
-          <label class="field" style="margin:0;flex:1"><span>Parcelas</span><input id="gSimN" type="number" min="1" max="48" value="1" /></label>
-          <button type="button" id="gSimClear" class="sim-clear" style="align-self:flex-end;margin-bottom:14px">↺</button>
+          <label class="field" style="margin:0;flex:1"><span>Parcelas</span><select id="gSimN" class="sel">${Array.from({ length: 60 }, (_, i) => `<option value="${i + 1}"${i === 0 ? " selected" : ""}>${i + 1}×</option>`).join("")}</select></label>
+          <button type="button" id="gSimClear" class="sim-clear" title="Limpar">↺</button>
         </div>
         <div id="gSimVerdict" class="sim-verdict hint">Digite um valor pra simular em cima do gráfico.</div>
       </div>
