@@ -805,8 +805,11 @@ html.theme-dark #rain { opacity: .7; }
 /* NÃO usar filter aqui: filter força transform-style:flat e ACHATA o 3D (vira adesivo). */
 #splash .coin3d { position: absolute; inset: 0; transform-style: preserve-3d; -webkit-transform-style: preserve-3d;
   animation: coinSpin 2.4s cubic-bezier(.45,.05,.55,.95) infinite; }
-#splash .coin-face { position: absolute; inset: 0; border-radius: 50%; overflow: hidden;
-  backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+/* SEM overflow:hidden — esse combo (overflow+border-radius dentro de preserve-3d) some no Safari/iOS.
+   O coin.png já é redondo (cantos transparentes), então não precisa recortar. Fundo dourado = rede de segurança. */
+#splash .coin-face { position: absolute; inset: 0; border-radius: 50%;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  background: radial-gradient(circle at 36% 30%, #ffe9ad 0%, #f3bb45 38%, #cc8a12 72%, #7e5207 100%); }
 #splash .coin-face img { width: 100%; height: 100%; display: block; }
 #splash .cf-front { transform: translateZ(9px); }                          /* face da frente: +Z = meia espessura */
 #splash .cf-back { transform: rotateY(180deg) translateZ(9px); }           /* face de trás: atrás → dá ESPESSURA (X+Y+Y) */
@@ -825,7 +828,8 @@ html.theme-dark #rain { opacity: .7; }
   filter: blur(10px); animation: coinGlow 1.9s ease-in-out infinite; }
 #splash .coin-shadow { position: absolute; left: 50%; bottom: -28px; width: 128px; height: 15px; transform: translateX(-50%);
   background: radial-gradient(50% 50%, rgba(0,0,0,.5), transparent 72%); filter: blur(3px); animation: coinShadow 1.9s ease-in-out infinite; }
-@keyframes coinSpin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+/* inclina 8° no X o tempo todo → nunca fica 100% de perfil (anel oco); parece uma moeda girando de verdade */
+@keyframes coinSpin { from { transform: rotateX(8deg) rotateY(0deg); } to { transform: rotateX(8deg) rotateY(360deg); } }
 @keyframes coinShine { 0% { transform: translateX(-150%); } 30%,100% { transform: translateX(150%); } }
 @keyframes coinGlow { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: .95; transform: scale(1.06); } }
 @keyframes coinShadow { 0%,100% { transform: translateX(-50%) scaleX(1); opacity: .5; } 50% { transform: translateX(-50%) scaleX(.78); opacity: .7; } }
