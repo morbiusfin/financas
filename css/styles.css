@@ -54,7 +54,7 @@ html.theme-dark {
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; padding: 0; width: 100%; overflow-x: hidden; }
+html, body { margin: 0; padding: 0; width: 100%; overflow-x: clip; }   /* clip (não hidden) p/ NÃO quebrar o position:sticky do header no iOS */
 /* iOS (iPhone 14 Pro Max etc.): pinta html + áreas seguras pra NÃO aparecer faixa branca
    embaixo da tabbar nem no overscroll/bounce. Cor segue o tema (claro/escuro). */
 html { background: var(--bg-grad-2); min-height: 100%; overscroll-behavior-y: none; }

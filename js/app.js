@@ -1,11 +1,20 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.34";
-const VERSION_NOTES = "🪙 Moeda da abertura mais bonita: tirei o risco branco que ficava flutuando do lado e dei um acabamento polido";
+const APP_VERSION = "3.11.35";
+const VERSION_NOTES = "🧹 Header mais limpo + barra de meses fixa ao rolar; desfazer/refazer só aparecem quando dá pra usar";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.35",
+    bullets: [
+      "Header mais limpo: ⚙️ Configurações e 🔄 Sincronização saíram daqui (já estão no menu ☰)",
+      "↩︎ Desfazer e ↪︎ Refazer só aparecem quando há uma ação pra desfazer/refazer",
+      "A barra de meses agora fica fixa no topo ao rolar a página (em qualquer aba)",
+      "Frase da abertura: 'suas finanças na palma da mão'",
+    ]
+  },
   {
     version: "3.11.34",
     bullets: [
@@ -385,8 +394,8 @@ function render() {
   if (selMode && (curTab !== selTab || curMonth !== selMonth)) { selMode = false; selected = new Set(); selTab = null; selMonth = -1; }
   const noAnim = suppressNextAnim; suppressNextAnim = false;
   renderMonthBar();
-  const ub = $("#btnUndo"); if (ub) { ub.disabled = !history.length; ub.style.opacity = history.length ? "1" : ".35"; }
-  const rb = $("#btnRedo"); if (rb) { rb.disabled = !redoStack.length; rb.style.opacity = redoStack.length ? "1" : ".35"; }
+  const ub = $("#btnUndo"); if (ub) { ub.style.display = history.length ? "" : "none"; }       // ↩︎ só aparece se há o que desfazer
+  const rb = $("#btnRedo"); if (rb) { rb.style.display = redoStack.length ? "" : "none"; }      // ↪︎ só aparece se há o que refazer
   $("#screenTitle").textContent = annual && curTab === "resumo" ? "Resumo " + (DATA.year + curYear()) : ({
     resumo: "Resumo", receitas: "Receitas", fixas: "Despesas Fixas",
     cartao: "Cartão", diaria: "Débitos do dia a dia"
@@ -1798,7 +1807,8 @@ document.addEventListener("keydown", (e) => {
 });
 $("#btnCancel").onclick = closeModal;
 $("#modal").onclick = (e) => { if (e.target.id === "modal") closeModal(); };
-$("#btnSettings").onclick = () => { $("#saldoInicial").value = DATA.saldoInicial || 0; renderNotifBtn(); showModal("#settingsModal"); };
+function openSettings() { $("#saldoInicial").value = DATA.saldoInicial || 0; renderNotifBtn(); showModal("#settingsModal"); }
+{ const bs = $("#btnSettings"); if (bs) bs.onclick = openSettings; }   // botão saiu do header; fica no menu
 $("#btnCloseSettings").onclick = () => { DATA.saldoInicial = parseFloat($("#saldoInicial").value) || 0; persist(); $("#settingsModal").classList.add("hidden"); };
 $("#settingsModal").onclick = (e) => { if (e.target.id === "settingsModal") $("#settingsModal").classList.add("hidden"); };
 $("#btnExport").onclick = () => { const b = new Blob([JSON.stringify(DATA, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `financas-${DATA.year}-backup.json`; a.click(); toast("Backup exportado"); };
@@ -1817,7 +1827,7 @@ $("#miImport").onclick = () => { closeMenu(); $("#importFile").click(); };
 $("#miExport").onclick = () => { closeMenu(); $("#btnExport").click(); };
 $("#miSync").onclick = () => { closeMenu(); if (syncCfg()) pullSync(true, null, true); else configurarSync(); };
 $("#miSim").onclick = () => { closeMenu(); curTab = "resumo"; resumoView = "graficos"; $$(".tab").forEach(x => x.classList.toggle("active", /Resumo/.test(x.textContent))); suppressNextAnim = true; window.scrollTo(0, 0); render(); };
-$("#miConfig").onclick = () => { closeMenu(); $("#btnSettings").click(); };
+$("#miConfig").onclick = () => { closeMenu(); openSettings(); };
 $("#miAcesso").onclick = () => { closeMenu(); openAccessModal(); };   // dados reais (PIN) e modo teste (0000)
 $("#miTema").onclick = () => { cycleTheme(); };
 $("#miZero").onclick = () => { closeMenu(); wipeToZero(_onbHide, _onbHide); };
