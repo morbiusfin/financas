@@ -317,7 +317,8 @@ select.sel { cursor: pointer; }
   box-shadow: 0 -6px 22px rgba(0,0,0,.22);
   /* estabiliza o fixed no iOS (camada de GPU própria → não treme/sobe na rolagem) */
   transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform; backface-visibility: hidden;
-  transition: transform .28s cubic-bezier(.4,0,.2,1), background-color .35s ease, box-shadow .35s ease; }
+  /* SEM transição no transform → o reposicionamento via visualViewport (teclado/scroll) é instantâneo, sem lag */
+  transition: background-color .35s ease, box-shadow .35s ease; }
 #fab { transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s ease; }
 .tab { flex: 1; background: 0; border: 0; padding: 9px 0 7px; font-size: 11px; color: var(--muted);
   display: flex; flex-direction: column; align-items: center; gap: 3px; font-weight: 700; position: relative; transition: color .2s ease; }
@@ -337,8 +338,8 @@ select.sel { cursor: pointer; }
 }
 .tab.active::before { content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
   width: 30px; height: 3px; border-radius: 0 0 4px 4px; background: linear-gradient(90deg, var(--accent-2), var(--accent)); }
-/* Teclado aberto: desliza a tabbar e o FAB pra fora (não ficam boiando no meio da tela) */
-body.kbd-open .tabbar { transform: translateY(110%) translateZ(0); }
+/* Teclado aberto: a tabbar fica fixa (reposicionada via JS/visualViewport, acima do teclado).
+   Só o FAB some (não faz sentido o + boiando sobre o teclado). */
 body.kbd-open #fab { transform: translateY(160%) scale(.8); opacity: 0; pointer-events: none; }
 
 /* ===== MODAL ===== */

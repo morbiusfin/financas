@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.18";
+const APP_VERSION = "3.11.19";
 const VERSION_NOTES = "✨ Cabeçalho das listas repaginado + aviso de nova atualização com 1 toque pra aplicar";
 let history = [];
 let redoStack = [];
@@ -1959,23 +1959,29 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   });
 })();
 
-/* ---------- Teclado aberto: esconde a tabbar (no iOS o position:fixed gruda
-   no topo do teclado e "sobe" pro meio da tela ao rolar). Some o FAB também. ---------- */
+/* ---------- Teclado aberto: a tabbar fica SEMPRE fixa, grudada logo acima do
+   teclado (reposicionada via visualViewport → estável mesmo rolando). O FAB some. ---------- */
 (function keyboardAware() {
-  const setKbd = (on) => document.body.classList.toggle("kbd-open", !!on);
   const isField = (el) => el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) &&
     !/^(button|submit|checkbox|radio|range)$/i.test(el.type || "");
-  // visualViewport = detecção confiável do teclado no iOS (a viewport encolhe)
-  if (window.visualViewport) {
-    const vv = window.visualViewport, base = () => window.innerHeight;
-    const onVV = () => setKbd((base() - vv.height) > 140 && isField(document.activeElement));
-    vv.addEventListener("resize", onVV);
-    vv.addEventListener("scroll", onVV);
+  const vv = window.visualViewport;
+  // mantém a tabbar ancorada no fundo da área VISÍVEL (acima do teclado), instantâneo (sem lag no scroll)
+  function positionBar() {
+    const tb = document.querySelector(".tabbar"); if (!tb) return;
+    let dy = 0;
+    if (vv) dy = Math.min(0, vv.offsetTop + vv.height - window.innerHeight); // negativo = sobe acima do teclado
+    tb.style.transform = `translateY(${dy}px) translateZ(0)`;
   }
-  // fallback (e p/ navegadores sem visualViewport): foco em campo de texto
+  const setKbd = (on) => { document.body.classList.toggle("kbd-open", !!on); positionBar(); };
+  if (vv) {
+    const onVV = () => { setKbd((window.innerHeight - vv.height) > 140 && isField(document.activeElement)); };
+    vv.addEventListener("resize", onVV);
+    vv.addEventListener("scroll", positionBar);   // rolar com teclado aberto → recalcula, fica fixa
+  }
+  // fallback (foco em campo de texto)
   let blurT = null;
   document.addEventListener("focusin", (e) => { if (isField(e.target)) { clearTimeout(blurT); setKbd(true); } });
-  document.addEventListener("focusout", (e) => { if (isField(e.target)) { clearTimeout(blurT); blurT = setTimeout(() => { if (!isField(document.activeElement)) setKbd(false); }, 120); } });
+  document.addEventListener("focusout", (e) => { if (isField(e.target)) { clearTimeout(blurT); blurT = setTimeout(() => { if (!isField(document.activeElement)) { setKbd(false); positionBar(); } }, 120); } });
 })();
 
 boot();
