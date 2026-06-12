@@ -1,8 +1,49 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.24";
-const VERSION_NOTES = "📌 Barra de menu agora some de vez enquanto você digita — não sobe mais ao rolar (corrigido pra valer)";
+const APP_VERSION = "3.11.25";
+const VERSION_NOTES = "✨ Novidades agora aparecem num modal elegante — toque no ✨ no cabeçalho para ver o changelog";
+
+/* ===== Changelog — últimas versões (mais recente primeiro) ===== */
+const CHANGELOG = [
+  {
+    version: "3.11.25",
+    bullets: [
+      "Modal de novidades no cabeçalho: ícone ✨ com badge pulsante aparece quando há atualização",
+      "Substitui o banner grande intrusivo por um acesso discreto e elegante",
+      "Changelog completo visível antes de aceitar a atualização",
+      "Toast pequeno 'Atualizado para vX' no lugar do banner verde grande",
+    ]
+  },
+  {
+    version: "3.11.24",
+    bullets: [
+      "Barra de menu some completamente enquanto o teclado está aberto",
+      "Correção: tabbar não subia mais ao rolar após fechar o teclado",
+    ]
+  },
+  {
+    version: "3.11.23",
+    bullets: [
+      "Seleção múltipla de lançamentos com apagar por mês",
+      "Confirmar exclusão em lote via modal (sem prompt() nativo)",
+    ]
+  },
+  {
+    version: "3.11.22",
+    bullets: [
+      "Moeda Bitcoin 3D girando na tela de splash com reflexo e sombra dinâmica",
+      "Borda animada de gradiente no card de saldo do Resumo",
+    ]
+  },
+  {
+    version: "3.11.21",
+    bullets: [
+      "Simulador 'vale a pena comprar?' integrado ao Resumo",
+      "Impacto do lançamento calculado em tempo real no modal de edição",
+    ]
+  },
+];
 let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
@@ -1787,8 +1828,7 @@ function checkVersion() {
   const seen = localStorage.getItem("financas2026.ver");
   if (seen === APP_VERSION) return;
   localStorage.setItem("financas2026.ver", APP_VERSION);
-  const b = $("#verBanner");
-  if (b) { b.innerHTML = `🎉 Atualizado para <b>v${APP_VERSION}</b> — ${VERSION_NOTES} <span class="ver-x">✕</span>`; b.classList.remove("hidden"); b.onclick = () => b.classList.add("hidden"); }
+  toast(`🎉 Atualizado para v${APP_VERSION}`);   // toast pequeno no lugar do banner verde grande
 }
 
 // ===== "Nova atualização disponível" — compara a versão no ar (version.json) com a rodando =====
@@ -1802,14 +1842,26 @@ async function checkForUpdate() {
     if (j && j.version && j.version !== APP_VERSION) showUpdateBanner();
   } catch (e) {}
 }
-function showUpdateBanner() {
-  const b = $("#updateBanner"); if (!b) return;
+function showUpdateBanner() {            // "tem atualização" → revela o ícone ✨ no cabeçalho (não mais o banner grande)
+  const icon = $("#btnWhatsNew"); if (!icon) return;
   updateShown = true;
-  b.classList.remove("hidden");
-  requestAnimationFrame(() => b.classList.add("show"));
-  const btn = $("#updateBtn");
-  if (btn) btn.onclick = async () => {
-    btn.textContent = "Atualizando…"; btn.disabled = true;
+  icon.classList.remove("hidden");       // CSS .wn-btn:not(.hidden) já faz o bob + o .wn-dot pulsa
+}
+// abre o modal central de novidades com o changelog
+function openWhatsNew() {
+  const m = $("#whatsNewModal"); if (!m) return;
+  const ver = $("#wnVersion"); if (ver) ver.textContent = "v" + APP_VERSION;
+  const body = $("#wnBody");
+  if (body) body.innerHTML = (CHANGELOG || []).map(function (c) {
+    return '<div class="wn-entry"><div class="wn-entry-ver">v' + esc(c.version) + '</div><ul>'
+      + (c.bullets || []).map(function (b) { return '<li>' + esc(b) + '</li>'; }).join("") + '</ul></div>';
+  }).join("");
+  m.classList.remove("hidden");
+}
+function closeWhatsNew() { const m = $("#whatsNewModal"); if (m) m.classList.add("hidden"); }
+function applyUpdate(btn) {               // "Aceitar e atualizar": aplica o SW novo e recarrega
+  if (btn) { btn.textContent = "Atualizando…"; btn.disabled = true; }
+  (async () => {
     try {
       if ("serviceWorker" in navigator) {
         const reg = await navigator.serviceWorker.getRegistration();
@@ -1817,8 +1869,14 @@ function showUpdateBanner() {
       }
     } catch (e) {}
     setTimeout(() => location.reload(), 250);
-  };
+  })();
 }
+(function bindWhatsNew() {                 // liga o ícone e os botões do modal (elementos estáticos)
+  const i = $("#btnWhatsNew"); if (i) i.onclick = openWhatsNew;
+  const a = $("#wnAccept"); if (a) a.onclick = () => applyUpdate(a);
+  const c = $("#wnClose"); if (c) c.onclick = closeWhatsNew;
+  const m = $("#whatsNewModal"); if (m) m.onclick = (e) => { if (e.target === m) closeWhatsNew(); };
+})();
 
 /* ---------- Segurança: PIN + criptografia (AES-256-GCM) ---------- */
 const b64 = (u8) => btoa(String.fromCharCode(...new Uint8Array(u8)));

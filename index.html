@@ -61,6 +61,7 @@
         <button id="btnRefresh" class="icon-btn" aria-label="Atualizar" title="Atualizar agora">🔄</button>
         <button id="btnUndo" class="icon-btn" aria-label="Desfazer" title="Desfazer (Ctrl+Z)">↩︎</button>
         <button id="btnRedo" class="icon-btn" aria-label="Refazer" title="Refazer (Ctrl+Y)">↪︎</button>
+        <button id="btnWhatsNew" class="icon-btn wn-btn hidden" title="Novidades disponíveis" aria-label="Novidades">✨<span class="wn-dot" aria-hidden="true"></span></button>
         <button id="btnSettings" class="icon-btn" aria-label="Configurações">⚙️</button>
       </div>
     </div>
@@ -95,11 +96,20 @@
   <!-- BANNER DE VERSÃO -->
   <div id="verBanner" class="ver-banner hidden"></div>
 
-  <!-- BANNER "NOVA ATUALIZAÇÃO DISPONÍVEL" (toast no topo) -->
-  <div id="updateBanner" class="update-banner hidden" role="alert">
-    <span class="ub-spark">✨</span>
-    <span class="ub-txt"><b>Nova atualização disponível</b><i>toque para aplicar as novidades</i></span>
-    <button type="button" id="updateBtn" class="ub-btn">Atualizar</button>
+  <!-- MODAL: novidades / changelog (substitui o banner grande) -->
+  <div id="whatsNewModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="wnTitle">
+    <div class="modal-card wn-card">
+      <button type="button" id="wnClose" class="wn-close" aria-label="Fechar">✕</button>
+      <div class="wn-header">
+        <span class="wn-spark" aria-hidden="true">✨</span>
+        <h2 id="wnTitle">Novidades</h2>
+        <p id="wnVersion" class="wn-version"></p>
+      </div>
+      <div id="wnBody" class="wn-body"></div>
+      <div class="modal-actions">
+        <button type="button" id="wnAccept" class="btn primary">Aceitar e atualizar</button>
+      </div>
+    </div>
   </div>
 
   <!-- MAIN CONTENT -->
