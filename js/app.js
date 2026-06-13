@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.44";
-const VERSION_NOTES = "🎯 Nada de piscar: ao incluir, editar, excluir ou interagir, a tela atualiza estática e suave (a animação de entrada fica só na abertura)";
+const APP_VERSION = "3.11.45";
+const VERSION_NOTES = "📲 Corrigido no celular: dentro de Categorias/janelas, arrastar pra cima rola normal (não dispara mais o 'atualizar app') e os campos não dão zoom";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.45",
+    bullets: [
+      "Bug do celular: com uma janela aberta (ex.: Categorias), arrastar pra cima rola a lista — não dispara mais o 'puxar pra atualizar'",
+      "Os campos de categoria não causam mais zoom ao tocar (iPhone)",
+      "Pente fino nos gestos de toque: o 'puxar pra atualizar' agora respeita qualquer janela/menu aberto",
+    ]
+  },
   {
     version: "3.11.44",
     bullets: [
@@ -2813,12 +2821,20 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   const ptr = $("#ptr"), txt = $("#ptrText"), TH = 70;
   let startY = 0, pulling = false, armed = false;
   const atTop = () => (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
-  const modalAberto = () => !$("#modal").classList.contains("hidden") || !$("#settingsModal").classList.contains("hidden");
+  // Bloqueia o "puxar pra atualizar" se QUALQUER overlay estiver aberto (senão ele rouba o scroll
+  // de dentro do modal — ex.: Categorias — e o usuário "não consegue subir"). scroll-locked cobre
+  // todos os .modal; somamos menu, onboarding e a tela de código.
+  const bloqueado = () =>
+    document.body.classList.contains("scroll-locked")
+    || !!document.querySelector(".menu-drawer:not(.hidden), .onb:not(.hidden), #lockScreen:not(.hidden), #unlockReveal")
+    || document.body.classList.contains("kbd-open");
+  const cancelPTR = () => { pulling = false; ptr.style.height = "0"; ptr.style.opacity = "0"; };
   window.addEventListener("touchstart", (e) => {
-    if (atTop() && !modalAberto()) { startY = e.touches[0].clientY; pulling = true; armed = false; }
+    if (atTop() && !bloqueado()) { startY = e.touches[0].clientY; pulling = true; armed = false; }
   }, { passive: true });
   window.addEventListener("touchmove", (e) => {
     if (!pulling) return;
+    if (bloqueado()) { cancelPTR(); return; }   // abriu algo no meio do gesto → aborta
     const dy = e.touches[0].clientY - startY;
     if (dy > 0 && atTop()) {
       if (e.cancelable) e.preventDefault();
