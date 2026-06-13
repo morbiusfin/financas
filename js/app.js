@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.49";
-const VERSION_NOTES = "📊 Porcentagens pelo app: % da receita em cada aba, % do disponível gasto, % poupado, % do orçamento usado, % previsto×realizado";
+const APP_VERSION = "3.11.50";
+const VERSION_NOTES = "✨ 'Leitura do mês' no topo do Resumo: diz em linguagem simples o que pede atenção (vencimentos, cartão, débito…) + chance de fechar o mês no positivo";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.50",
+    bullets: [
+      "Novo bloco 'Leitura do mês' no topo do Resumo: em linguagem simples, aponta o que mais pede atenção (contas atrasadas, vencimentos, cartão, débito ou receita)",
+      "Estatística fácil: quanto você consegue cobrir das despesas e a chance (alta/média/baixa) de fechar o mês no positivo",
+      "Sem repetir informação: tirei o insight 'Maior gasto' (já aparece na rosca e na leitura do mês)",
+    ]
+  },
   {
     version: "3.11.49",
     bullets: [
@@ -614,9 +622,6 @@ function computeInsights(m) {
         text: `Despesas ${d > 0 ? "subiram" : "caíram"} <b>${Math.abs(d)}%</b> vs ${mLong(m - 1)} (${brl(ant)} → ${brl(desp)}).` });
     }
   }
-  const cats = [{ n: "Cartão", v: cartaoMes(m) }, { n: "Despesas Fixas", v: fixasMes(m) }, { n: "Dia a dia", v: diariaMes(m) }].sort((a, b) => b.v - a.v);
-  if (cats[0].v > 0 && desp > 0)
-    out.push({ ic: "🥇", tone: "info", text: `Maior gasto: <b>${cats[0].n}</b> — ${brl(cats[0].v)} (${_pct(cats[0].v, desp)}% do total).` });
   const metas = DATA.metas || {}, estouro = [];
   [["fixas", fixasMes(m), "Fixas"], ["cartao", cartaoMes(m), "Cartão"], ["diaria", diariaMes(m), "Dia a dia"]]
     .forEach(([k, v, n]) => { if ((metas[k] || 0) > 0 && v > metas[k]) estouro.push(n); });
@@ -634,6 +639,49 @@ function renderInsights(m) {
   return `<div class="section-card fade-in"><h3>💡 Insights</h3><div class="insights">${
     ins.map(i => `<div class="insight ${i.tone}"><span class="ic">${i.ic}</span><span>${i.text}</span></div>`).join("")
   }</div></div>`;
+}
+
+/* ---------- "Leitura do mês": narrativa local (sem IA externa) — prioriza o que pede atenção
+   + 1 estatística simples (cobertura e chance de fechar no positivo). NÃO repete os Insights. ---------- */
+function monthNarrative(m) {
+  const rec = receitaMes(m), desp = despesaMes(m), disp = disponivelMes(m), sobra = disp - desp;
+  const fx = fixasMes(m), ca = cartaoMes(m), di = diariaMes(m);
+  const alertas = contasPerto(m);
+  const atrasadas = alertas.filter(a => (a.daysLeft | 0) < 0);
+  const venceHoje = alertas.filter(a => a.daysLeft === 0);
+  const na = atrasadas.length, nh = venceHoje.length;
+  let icon, atencao;
+  if (na) { icon = "⚠️"; atencao = `O que pede atenção agora ${na > 1 ? "são" : "é"} <b>${na} conta${na > 1 ? "s" : ""} atrasada${na > 1 ? "s" : ""}</b> — quite ${na > 1 ? "essas" : "essa"} primeiro pra não virar bola de neve.`; }
+  else if (nh) { icon = "🔔"; atencao = `<b>${nh} conta${nh > 1 ? "s" : ""} ${nh > 1 ? "vencem" : "vence"} hoje</b> — confira na lista abaixo pra não perder o prazo.`; }
+  else if (sobra < 0) { icon = "🔴"; atencao = `Do jeito atual, <b>${mLong(m)} fecha no vermelho</b>. Vale segurar os gastos que não são essenciais.`; }
+  else if (desp <= 0) { icon = "🌱"; atencao = `${mLong(m)} ainda está <b>sem despesas lançadas</b> — comece registrando o que já gastou.`; }
+  else {
+    const top = [["o cartão", ca], ["os débitos do dia a dia", di], ["as contas fixas", fx]].sort((a, b) => b[1] - a[1])[0];
+    if (rec > 0 && sobra >= rec * 0.2) { icon = "✅"; atencao = `Mês sob controle. Quem mais pesa no bolso é <b>${top[0]}</b>, mas ainda sobra um bom tanto.`; }
+    else { icon = "👀"; atencao = `Quem mais puxa seus gastos é <b>${top[0]}</b> — é por aí que dá pra economizar mais.`; }
+  }
+  let stat = "";
+  if (desp > 0) {
+    const cob = Math.round(disp / desp * 100);
+    let chance, cor;
+    if (sobra >= desp) { chance = "alta"; cor = "#0f9a4c"; }
+    else if (sobra >= 0) { chance = "média"; cor = "#b9760a"; }
+    else { chance = "baixa"; cor = "var(--red)"; }
+    const mesNome = mLong(m).split(" ")[0];
+    const cobTxt = cob >= 100
+      ? `Você tem como pagar <b>todas</b> as despesas previstas do mês${sobra > 0 ? ", e ainda sobra" : ""}`
+      : `Com o que está disponível, dá pra pagar <b>${cob}%</b> das despesas previstas`;
+    stat = `${cobTxt}. Chance de fechar ${mesNome} no positivo: <b style="color:${cor}">${chance}</b>.`;
+  }
+  return { icon, atencao, stat };
+}
+function renderNarrative(m) {
+  const n = monthNarrative(m);
+  return `<div class="section-card ai-card fade-in">
+    <div class="ai-badge">✨ Leitura do mês</div>
+    <p class="ai-line"><span class="ai-ic">${n.icon}</span><span>${n.atencao}</span></p>
+    ${n.stat ? `<p class="ai-stat"><span class="ai-ic">📊</span><span>${n.stat}</span></p>` : ""}
+  </div>`;
 }
 
 /* ---------- Tema (claro / escuro / automático) ---------- */
@@ -669,6 +717,7 @@ function renderResumo(view) {
 
   const totalVenc = alertas.reduce((s, v) => s + (Number(v.val) || 0), 0);
   view.innerHTML = toggle + `
+    ${renderNarrative(m)}
     ${alertas.length ? `<div class="section-card venc-card fade-in" id="vencCard">
       <div class="venc-head">
         <span class="venc-bell">🔔</span>
