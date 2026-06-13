@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.61";
-const VERSION_NOTES = "🔄 Uma bolinha girando aparece no canto do cabeçalho enquanto sincroniza com a nuvem e some assim que termina";
+const APP_VERSION = "3.11.62";
+const VERSION_NOTES = "🆕 A tela de Novidades agora mostra só as melhorias da versão atual, não o histórico inteiro";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.62",
+    bullets: [
+      "A tela de Novidades passa a mostrar apenas as melhorias desta versão (não a lista de tudo que já mudou)",
+    ]
+  },
   {
     version: "3.11.61",
     bullets: [
@@ -2468,12 +2474,13 @@ function showUpdateBanner() {            // "tem atualização" → revela o íc
 // abre o modal central de novidades com o changelog
 function openWhatsNew() {
   const m = $("#whatsNewModal"); if (!m) return;
-  const ver = $("#wnVersion"); if (ver) ver.textContent = "v" + APP_VERSION;
+  // Mostra SÓ as melhorias da versão ATUAL (a mais recente), não o histórico inteiro.
+  const atual = (CHANGELOG || [])[0] || { version: APP_VERSION, bullets: [] };
+  const ver = $("#wnVersion"); if (ver) ver.textContent = "v" + esc(atual.version);
   const body = $("#wnBody");
-  if (body) body.innerHTML = (CHANGELOG || []).map(function (c) {
-    return '<div class="wn-entry"><div class="wn-entry-ver">v' + esc(c.version) + '</div><ul>'
-      + (c.bullets || []).map(function (b) { return '<li>' + esc(b) + '</li>'; }).join("") + '</ul></div>';
-  }).join("");
+  if (body) body.innerHTML = '<div class="wn-entry"><ul>'
+    + (atual.bullets || []).map(function (b) { return '<li>' + esc(b) + '</li>'; }).join("")
+    + '</ul></div>';
   m.classList.remove("hidden");
 }
 function closeWhatsNew() { const m = $("#whatsNewModal"); if (m) m.classList.add("hidden"); }
