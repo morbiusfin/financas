@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.46";
-const VERSION_NOTES = "📱 Faixa no rodapé do iPhone: agora o fundo todo termina na cor da barra de baixo — a faixa some de vez";
+const APP_VERSION = "3.11.47";
+const VERSION_NOTES = "🧠 Simulador mais claro: diz EM QUE MÊS dá pra comprar (sem jargão) · texto mais legível no tema claro · Orçado/Realizado alinhado";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.47",
+    bullets: [
+      "Simulador mais inteligente e claro: em vez de 'pior mês', diz quanto você ficaria devendo e EM QUE MÊS dá pra comprar (no mesmo parcelamento) ou em quantas vezes cabe já",
+      "Texto secundário mais legível no tema claro (menos lavado)",
+      "'Orçado / Realizado' alinhado com a margem do card, com um separador",
+    ]
+  },
   {
     version: "3.11.46",
     bullets: [
@@ -735,24 +743,26 @@ function verdictData() {
   if (!simBuy || simBuy <= 0) return null;
   const m = curMonth, total = simBuy, n = simN, parcela = total / n, rec = receitaMes(m) || 1, comfort = rec * 0.1;
   const bal = simBalForStart(total, n, m), { mn, idx } = minFrom(bal, m);
-  const comoPaga = n > 1 ? `${n}× de <b>${brl(parcela)}</b>` : "à vista";
+  const comoPaga = n > 1 ? `em <b>${n}× de ${brl(parcela)}</b>` : "<b>à vista</b>";
+  const comoMant = n > 1 ? `em ${n}× de ${brl(parcela)}` : "à vista";
   let cls, icon, head, extra = "";
   if (mn < 0) {
     cls = "bad"; icon = "⛔";
-    head = `Agora não cabe (${comoPaga}). No pior mês (<b>${mLong(idx)}</b>) faltaria <b>${brl(mn)}</b>.`;
+    // "mês mais apertado" explicado; déficit como valor POSITIVO ("ficaria devendo")
+    head = `Comprando <b>agora</b> ${comoPaga}, em algum mês você <b>ficaria no vermelho</b> em <b>${brl(Math.abs(mn))}</b> — o mês mais apertado seria <b>${mLong(idx)}</b>.`;
     const e = earliestFeasibleMonth(total, n), sug = suggestParcelas(total), parts = [];
-    if (e !== null && e > m) parts.push(`📅 Dá pra comprar a partir de <b>${mLong(e)}</b> (no mesmo parcelamento).`);
-    if (sug !== null) parts.push(`💳 Ou parcele em <b>${sug}×</b> de ${brl(total / sug)} pra caber já em ${mLong(m)} sem se afogar.`);
-    if (!parts.length) parts.push(`Essa compra não cabe nem parcelando bastante — considere reduzir o valor.`);
+    if (e !== null && e > m) parts.push(`📅 <b>Quando dá pra comprar:</b> a partir de <b>${mLong(e)}</b>, ${comoMant} — aí cabe sem ficar no vermelho.`);
+    if (sug !== null && sug > n) parts.push(`💳 <b>Pra comprar já em ${mLong(m)}:</b> parcele em <b>${sug}× de ${brl(total / sug)}</b>.`);
+    if (!parts.length) parts.push(`Mesmo parcelando bastante não cabe nos próximos 3 anos — o valor é alto demais pro seu fluxo. Vale reduzir.`);
     extra = parts.join("<br>");
   } else if (mn < comfort) {
     cls = "warn"; icon = "🟡";
-    head = `Dá pra comprar (${comoPaga}), mas aperta: no pior mês (<b>${mLong(idx)}</b>) sobra só <b>${brl(mn)}</b>.`;
+    head = `<b>Dá pra comprar agora</b> ${comoPaga}, mas fica apertado: depois de pagar, no mês mais apertado (<b>${mLong(idx)}</b>) sobra só <b>${brl(mn)}</b>.`;
     const sug = suggestParcelas(total);
-    if (sug !== null && sug > n) extra = `💳 Pra ficar tranquilo, parcele em <b>${sug}×</b> de ${brl(total / sug)}.`;
+    if (sug !== null && sug > n) extra = `💳 Pra ficar tranquilo, parcele em <b>${sug}× de ${brl(total / sug)}</b>.`;
   } else {
     cls = "good"; icon = "✅";
-    head = `Pode comprar! (${comoPaga}) No pior mês (<b>${mLong(idx)}</b>) ainda sobra <b>${brl(mn)}</b>.`;
+    head = `<b>Pode comprar agora</b> ${comoPaga}. Depois de pagar, no mês mais apertado (<b>${mLong(idx)}</b>) ainda sobra <b>${brl(mn)}</b>.`;
   }
   return { cls, icon, head, extra };
 }

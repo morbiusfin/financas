@@ -14,7 +14,7 @@
   --card: #ffffff;
   --card-2: #f7f9f8;
   --ink: #11201a;
-  --muted: #6b7872;
+  --muted: #51605a;   /* mais escuro = texto secundário legível no tema claro (era #6b7872, lavado) */
   --line: #e7eae9;
   --shadow: 0 4px 18px rgba(16,40,30,.07);
   --shadow-lg: 0 14px 40px rgba(16,40,30,.16);
@@ -624,8 +624,9 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
 .cat-name-inp:focus, .cat-orc:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 .cat-del { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 10px; border: 0; background: transparent; color: var(--muted); font-size: 17px; cursor: pointer; }
 .cat-del:active { transform: scale(.9); }
-.orc-sum { display: flex; justify-content: space-between; gap: 12px; padding: 8px 2px 0; font-size: 14px; color: var(--muted); }
-.orc-sum b { font-size: 16px; }
+/* alinhado com a margem do card (o pai .g-detail já dá 16px laterais) + separador discreto no topo */
+.orc-sum { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0 4px; margin-top: 4px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+.orc-sum b { font-size: 16px; color: var(--ink); }
 
 /* ===== Seletor de emoji (estilo WhatsApp) ===== */
 .emoji-tabs { display: flex; flex-wrap: nowrap; gap: 5px; overflow-x: auto; padding: 2px 0 10px; margin-bottom: 4px;
