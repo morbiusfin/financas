@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.50";
-const VERSION_NOTES = "✨ 'Leitura do mês' no topo do Resumo: diz em linguagem simples o que pede atenção (vencimentos, cartão, débito…) + chance de fechar o mês no positivo";
+const APP_VERSION = "3.11.51";
+const VERSION_NOTES = "📱 Barra de baixo nova (estilo apps modernos): flutuante, arredondada e com a aba ativa em destaque";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.51",
+    bullets: [
+      "Barra de navegação repaginada (inspirada nos apps top tipo 99): agora é flutuante, arredondada e descolada das bordas",
+      "A aba em que você está fica destacada numa 'pílula' verde — fica claro onde você está",
+      "Toque mais gostoso (a barra reage ao tocar) e tudo na zona de alcance do polegar",
+    ]
+  },
   {
     version: "3.11.50",
     bullets: [
