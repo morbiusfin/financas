@@ -24,6 +24,9 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
+/* mockup de teste (iphone.html ?frame=1): força as áreas seguras reais do iPhone 14 Pro Max
+   pra eu VER no localhost exatamente como fica no celular (no device real continua o env()). */
+html.framed { --safe-top: 59px; --safe-bottom: 34px; }
 
 /* ----- MODO ESCURO: automático (segue o sistema) e forçado (theme-dark) ----- */
 @media (prefers-color-scheme: dark) {
@@ -86,9 +89,9 @@ body {
    tabbar (z-45) e dos modais; some sob o splash/lock (que cobrem tudo). */
 body::after {
   content: ""; position: fixed; left: 0; right: 0; bottom: 0;
-  height: var(--safe-bottom); background: var(--card);
-  z-index: 44; pointer-events: none;
-  transition: background-color .35s ease;
+  height: calc(78px + var(--safe-bottom));   /* "dock": conteúdo some suave sob a barra + preenche o home indicator */
+  background: linear-gradient(180deg, transparent 0%, var(--card) 46%);
+  z-index: 38; pointer-events: none;
 }
 
 /* tabular numbers nos valores monetários */
@@ -125,7 +128,7 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .header-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .icon-btn {
   background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.10); color: #fff;
-  font-size: 16px; width: 38px; height: 38px; border-radius: 11px;
+  font-size: 17px; width: 44px; height: 44px; border-radius: 12px;
   display: inline-flex; align-items: center; justify-content: center;
   transition: transform .12s ease, background .2s ease; backdrop-filter: blur(4px);
 }

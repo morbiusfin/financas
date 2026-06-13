@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MorbiusFin · iPhone 14 Pro Max (mockup de testes)</title>
+  <style>
+    /* Mockup de testes mobile — NÃO é o app. Emula o iPhone 14 Pro Max (430×932 pt)
+       com ilha dinâmica + indicador de home, e injeta as áreas seguras reais no app
+       (via ?frame=1 → html.framed). Serve só pra VER no localhost como fica no celular. */
+    :root { --w: 430px; --h: 932px; --radius: 56px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+      background: radial-gradient(120% 120% at 50% 0%, #2a2f3a, #14161b 70%); font-family: -apple-system, "Segoe UI", Roboto, sans-serif; padding: 28px 12px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .toolbar button { background: #2b3340; color: #e7ecf2; border: 1px solid #3a4350; border-radius: 10px; padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .toolbar button:hover { background: #36404f; }
+    .device { position: relative; width: var(--w); height: var(--h); flex: 0 0 auto;
+      background: #000; border-radius: var(--radius);
+      box-shadow: 0 0 0 13px #1b1d22, 0 0 0 15px #2c3038, 0 40px 90px rgba(0,0,0,.6); }
+    .screen { position: absolute; inset: 0; border-radius: var(--radius); overflow: hidden; background: #000; }
+    .screen iframe { width: 100%; height: 100%; border: 0; display: block; }
+    /* ilha dinâmica + indicador de home, desenhados POR CIMA do app (como no iPhone) */
+    .island { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 126px; height: 36px; background: #000; border-radius: 20px; z-index: 5; pointer-events: none; }
+    .home { position: absolute; bottom: 9px; left: 50%; transform: translateX(-50%); width: 144px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.55); z-index: 5; pointer-events: none; }
+    .label { color: #9aa3af; font-size: 13px; text-align: center; }
+    .label b { color: #e7ecf2; }
+    .hint { color: #6b7280; font-size: 11.5px; max-width: 460px; text-align: center; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="reloadApp()">↻ Recarregar app</button>
+    <button onclick="setView('resumo')">Resumo</button>
+    <button onclick="setView('fixas')">Fixas</button>
+    <button onclick="setView('cartao')">Cartão</button>
+    <button onclick="toggleTheme()">🌗 Tema</button>
+  </div>
+
+  <div class="device" id="device">
+    <div class="screen"><iframe id="app" src="index.html?frame=1"></iframe></div>
+    <div class="island"></div>
+    <div class="home"></div>
+  </div>
+
+  <div class="label"><b>iPhone 14 Pro Max</b> · 430 × 932 pt · áreas seguras simuladas (topo 59 / base 34)</div>
+  <div class="hint">Mockup só de teste no localhost. A barra/indicador de baixo aqui mostram exatamente onde fica a "área do home indicator" no celular — é aqui que conferimos se sobra qualquer faixa.</div>
+
+  <script>
+    const ifr = document.getElementById('app');
+    function reloadApp() { ifr.src = 'index.html?frame=1&_=' + Date.now(); }
+    function setView(tab) {
+      try {
+        const d = ifr.contentWindow.document;
+        const t = [...d.querySelectorAll('.tab')].find(x => new RegExp(tab, 'i').test(x.textContent));
+        if (t) t.click();
+      } catch (e) {}
+    }
+    function toggleTheme() {
+      try { ifr.contentWindow.localStorage.setItem('financas2026.theme',
+        ifr.contentWindow.localStorage.getItem('financas2026.theme') === 'light' ? 'dark' : 'light'); reloadApp(); } catch (e) {}
+    }
+  </script>
+</body>
+</html>

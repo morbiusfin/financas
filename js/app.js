@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.51";
-const VERSION_NOTES = "📱 Barra de baixo nova (estilo apps modernos): flutuante, arredondada e com a aba ativa em destaque";
+const APP_VERSION = "3.11.52";
+const VERSION_NOTES = "📱 Tela cheia: o rodapé agora preenche a área do indicador do iPhone (sem faixa) e o conteúdo some suave sob a barra · botões do topo maiores";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.52",
+    bullets: [
+      "Rodapé em tela cheia: a área do indicador do iPhone fica preenchida com a cor do app (sem faixa)",
+      "O conteúdo desaparece suavemente sob a barra de baixo (acabamento premium)",
+      "Botões do topo (menu, novidades) maiores e mais fáceis de tocar",
+    ]
+  },
   {
     version: "3.11.51",
     bullets: [

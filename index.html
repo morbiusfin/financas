@@ -9,7 +9,9 @@
   <meta name="apple-mobile-web-app-title" content="MorbiusFin" />
   <title>MorbiusFin</title>
   <!-- tema aplicado ANTES do 1º paint → sem flash claro↔escuro na abertura -->
-  <script>try{var t=localStorage.getItem("financas2026.theme"),h=document.documentElement;if(t==="dark")h.classList.add("theme-dark");else if(t==="light")h.classList.add("theme-light");}catch(e){}</script>
+  <script>try{var t=localStorage.getItem("financas2026.theme"),h=document.documentElement;if(t==="dark")h.classList.add("theme-dark");else if(t==="light")h.classList.add("theme-light");
+  /* mockup de teste (iphone.html): simula as áreas seguras do iPhone 14 Pro Max */
+  if(location.search.indexOf("frame=")>=0)h.classList.add("framed");}catch(e){}</script>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="icon" href="icons/icon-192.png" />
