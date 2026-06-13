@@ -1,11 +1,20 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.39";
-const VERSION_NOTES = "🔓 Tela de código abre com animação (cadeado abrindo + tela se dividindo) · pop-up de contas no meio da tela · gráfico sem fatia vazia";
+const APP_VERSION = "3.11.40";
+const VERSION_NOTES = "📋 Menu mais bonito: itens aparecem em sequência e o título não cola mais no topo · botão do aviso agora é só 'OK'";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.40",
+    bullets: [
+      "Menu repaginado: os itens entram em sequência (animação suave) e com mais respiro",
+      "O título 'Menu' não cola mais no topo (respeita a área do relógio)",
+      "Botão do aviso de contas: 'OK, entendi' virou só 'OK'",
+      "Passe de revisão: telas e modais conferidos, sem bugs",
+    ]
+  },
   {
     version: "3.11.39",
     bullets: [
@@ -2070,7 +2079,12 @@ $("#importFile").onchange = (e) => { const f = e.target.files[0]; if (!f) return
 $("#btnReset").onclick = () => { if (confirm("Apagar tudo e voltar aos dados de exemplo?")) { DATA = resetData(); persist(); toast("Restaurado"); $("#settingsModal").classList.add("hidden"); } };
 
 /* ---------- Menu lateral (☰) — hub de opções ---------- */
-function openMenu() { const m = $("#menuDrawer"); if (!m) return; const v = $("#menuVer"); if (v) v.textContent = APP_VERSION; m.classList.remove("hidden"); }
+function openMenu() {
+  const m = $("#menuDrawer"); if (!m) return;
+  const v = $("#menuVer"); if (v) v.textContent = APP_VERSION;
+  m.classList.remove("hidden");
+  $$(".menu-item", m).forEach((it, i) => it.style.setProperty("--mi", i));   // entrada em sequência (stagger)
+}
 function closeMenu() { const m = $("#menuDrawer"); if (m) m.classList.add("hidden"); }
 const _onbHide = () => { const o = $("#onboarding"); if (o) o.classList.add("hidden"); };
 $("#btnMenu").onclick = openMenu;

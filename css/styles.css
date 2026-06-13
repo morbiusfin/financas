@@ -156,13 +156,16 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .menu-btn { font-size: 18px; flex: 0 0 auto; }
 .menu-drawer { position: fixed; inset: 0; z-index: 115; background: rgba(0,0,0,.5); backdrop-filter: blur(2px); display: flex; }
 .menu-drawer.hidden { display: none; }
-.menu-panel { width: 84%; max-width: 340px; height: 100%; background: var(--card); border-right: 1px solid var(--line);
-  box-shadow: 8px 0 40px rgba(0,0,0,.4); padding: 16px 14px calc(18px + var(--safe-bottom)); overflow-y: auto;
-  display: flex; flex-direction: column; gap: 8px; animation: drawerIn .22s cubic-bezier(.2,.9,.2,1.05) both; }
+.menu-panel { width: 86%; max-width: 350px; height: 100%; background: var(--card); border-right: 1px solid var(--line);
+  box-shadow: 8px 0 40px rgba(0,0,0,.4); padding: calc(14px + var(--safe-top)) 15px calc(18px + var(--safe-bottom)); overflow-y: auto;
+  display: flex; flex-direction: column; gap: 9px; animation: drawerIn .26s cubic-bezier(.2,.9,.2,1.05) both; }
 @keyframes drawerIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-@media (prefers-reduced-motion: reduce){ .menu-panel { animation: none; } }
-.menu-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 10px; }
-.menu-head span { font-size: 17px; font-weight: 800; color: var(--ink); }
+.menu-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 12px; margin-bottom: 2px; }
+.menu-head span { font-size: 20px; font-weight: 800; color: var(--ink); letter-spacing: -.3px; }
+/* itens entram em sequência (stagger) ao abrir o menu */
+.menu-drawer:not(.hidden) .menu-item { animation: menuItemIn .34s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(.05s + var(--mi, 0) * .045s); }
+@keyframes menuItemIn { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce){ .menu-panel, .menu-drawer:not(.hidden) .menu-item { animation: none; } }
 .menu-x { background: var(--card-2); border: 1px solid var(--line); color: var(--ink); width: 36px; height: 36px;
   border-radius: 10px; font-size: 15px; cursor: pointer; font-family: var(--font); }
 .menu-item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--card-2);
