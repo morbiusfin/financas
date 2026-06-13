@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.62";
-const VERSION_NOTES = "🆕 A tela de Novidades agora mostra só as melhorias da versão atual, não o histórico inteiro";
+const APP_VERSION = "3.11.63";
+const VERSION_NOTES = "🔔 Sino de alertas no cabeçalho: aparece pulsando quando há conta atrasada ou perto de vencer (com a quantidade) e leva direto pra lista";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.63",
+    bullets: [
+      "Novo sino de alertas no canto do cabeçalho: aparece balançando quando há conta a pagar (atrasada ou perto de vencer)",
+      "Mostra a quantidade de contas — vermelho se tem atrasada/vence hoje, âmbar se são só as próximas",
+      "Tocar no sino leva direto pra lista de Contas a vencer; quando não há nada a pagar, ele some",
+    ]
+  },
   {
     version: "3.11.62",
     bullets: [
@@ -615,6 +623,7 @@ function render() {
   renderMonthBar();
   const ub = $("#btnUndo"); if (ub) { ub.style.display = history.length ? "" : "none"; }       // ↩︎ só aparece se há o que desfazer
   const rb = $("#btnRedo"); if (rb) { rb.style.display = redoStack.length ? "" : "none"; }      // ↪︎ só aparece se há o que refazer
+  updateBell();                                                                                 // 🔔 alertas de contas no header
   $("#screenTitle").textContent = annual && curTab === "resumo" ? "Resumo " + (DATA.year + curYear()) : ({
     resumo: "Resumo", receitas: "Receitas", fixas: "Despesas Fixas",
     cartao: "Cartão", diaria: "Débitos do dia a dia"
@@ -862,6 +871,27 @@ function renderResumo(view) {
 }
 
 // Rola até os vencimentos E pisca um destaque em volta (mostra qual focar).
+// 🔔 Sino de notificações no header: aparece pulsando quando há conta a pagar (atrasada ou perto de vencer).
+//    Vermelho = tem atrasada/vence hoje; âmbar = só próximas. Some quando não há nada a pagar.
+function updateBell() {
+  const b = document.getElementById("btnBell"); if (!b) return;
+  const alertas = contasPerto(curMonth);
+  const n = alertas.length;
+  if (!n) { b.classList.add("hidden"); return; }
+  const urgente = alertas.some(a => (a.daysLeft | 0) <= 0);   // atrasada ou vence hoje
+  b.classList.toggle("warn", !urgente);                       // .warn = só próximas (âmbar)
+  const badge = b.querySelector(".bell-badge"); if (badge) badge.textContent = n > 9 ? "9+" : String(n);
+  b.title = `${n} conta${n > 1 ? "s" : ""} a pagar`;
+  b.classList.remove("hidden");
+}
+// Tocar no sino → vai pro Resumo do mês atual e destaca a lista de contas a vencer
+function abrirAlertas() {
+  if (DATA.year === REAL_TODAY.getFullYear()) curMonth = REAL_TODAY.getMonth();   // garante o mês atual (onde estão os alertas)
+  annual = false; curTab = "resumo"; resumoView = "resumo";
+  $$(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === "resumo"));
+  suppressNextAnim = true; window.scrollTo(0, 0); render();
+  setTimeout(focarVencimentos, 80);
+}
 function focarVencimentos() {
   scrollToEl("#vencCard");
   const card = $("#vencCard"); if (!card) return;
@@ -2496,6 +2526,7 @@ function applyUpdate(btn) {               // "Aceitar e atualizar": aplica o SW 
     setTimeout(() => location.reload(), 250);
   })();
 }
+(function bindBell() { const b = $("#btnBell"); if (b) b.onclick = abrirAlertas; })();
 (function bindWhatsNew() {                 // liga o ícone e os botões do modal (elementos estáticos)
   const i = $("#btnWhatsNew"); if (i) i.onclick = openWhatsNew;
   const a = $("#wnAccept"); if (a) a.onclick = () => applyUpdate(a);

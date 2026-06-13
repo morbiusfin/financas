@@ -125,6 +125,22 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .app-header h1 { font-size: 21px; font-weight: 800; margin: 0; letter-spacing: -.3px; line-height: 36px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+/* 🔔 sino de alertas no header — aparece balançando quando há conta a pagar; some quando não há */
+.bell-btn { position: relative; overflow: visible; }
+.bell-btn.hidden { display: none; }
+.bell-btn:not(.hidden) { animation: bellSwing 2.4s ease-in-out infinite; transform-origin: 50% 18%; }
+@keyframes bellSwing {
+  0%, 55%, 100% { transform: rotate(0); }
+  60% { transform: rotate(13deg); } 67% { transform: rotate(-10deg); }
+  74% { transform: rotate(7deg); } 81% { transform: rotate(-4deg); } 88% { transform: rotate(0); }
+}
+.bell-badge { position: absolute; top: 1px; right: 1px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 99px; background: var(--red); color: #fff; font-size: 10.5px; font-weight: 800; line-height: 14px; text-align: center;
+  border: 1.5px solid var(--card); animation: bellPulse 1.6s ease-in-out infinite; }
+.bell-btn.warn .bell-badge { background: #c8860b; animation-name: bellPulseWarn; }
+@keyframes bellPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(229,72,77,.55); } 50% { box-shadow: 0 0 0 6px rgba(229,72,77,0); } }
+@keyframes bellPulseWarn { 0%,100% { box-shadow: 0 0 0 0 rgba(200,134,11,.55); } 50% { box-shadow: 0 0 0 6px rgba(200,134,11,0); } }
+@media (prefers-reduced-motion: reduce) { .bell-btn:not(.hidden) { animation: none; } .bell-badge { animation: none; } }
 /* bolinha de "sincronizando" no header — aparece durante o sync e some ao terminar */
 .sync-spin { width: 18px; height: 18px; border-radius: 50%; flex: 0 0 auto; box-sizing: border-box;
   border: 2.5px solid rgba(255,255,255,.28); border-top-color: #fff;
