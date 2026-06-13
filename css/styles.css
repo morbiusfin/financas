@@ -325,30 +325,45 @@ body:has(#fab:not(.hidden)) main { padding-bottom: 104px; }
 /* enquanto a tela de código está aberta, esconde tabbar e + (tela cheia, sem faixa no fim) */
 body.lock-on .tabbar, body.lock-on #fab { visibility: hidden; }
 
-/* ===== Animação de desbloqueio: cadeado abre + a tela se divide no meio + cadeado some p/ direita ===== */
+/* ===== Desbloqueio: pré-carga (anel de progresso) → estalo + flash → portas abrem ===== */
 .unlock-reveal { position: fixed; inset: 0; z-index: 1500; pointer-events: none; overflow: hidden;
   transform: translateZ(0); -webkit-transform: translateZ(0); }
-.unlock-reveal .ur-half { position: absolute; top: 0; bottom: 0; width: 50.5%;
-  background: linear-gradient(160deg, #0b3d2e 0%, #12734d 100%);
-  transition: transform .72s cubic-bezier(.7,0,.2,1); }
-.unlock-reveal .ur-left { left: 0; }
-.unlock-reveal .ur-right { right: 0; }
+.unlock-reveal .ur-half { position: absolute; top: 0; bottom: 0; width: 50.6%;
+  background: radial-gradient(120% 90% at 50% 38%, #11593f 0%, #0b3d2e 45%, #06251a 100%);
+  transition: transform .76s cubic-bezier(.66,0,.2,1); }
+.unlock-reveal .ur-left { left: 0; } .unlock-reveal .ur-right { right: 0; }
 .unlock-reveal.go .ur-left { transform: translateX(-100%); }
 .unlock-reveal.go .ur-right { transform: translateX(100%); }
-/* centro: cadeado + spinner de pré-carga + texto */
+/* flash de luz que estoura ao destravar */
+.unlock-reveal .ur-burst { position: absolute; top: 50%; left: 50%; width: 220px; height: 220px; margin: -110px 0 0 -110px; z-index: 1;
+  border-radius: 50%; background: radial-gradient(circle, rgba(21,194,102,.55), rgba(21,194,102,0) 62%); opacity: 0; }
+.unlock-reveal.unlocked .ur-burst { animation: urBurst .7s ease-out forwards; }
+@keyframes urBurst { 0% { opacity: 0; transform: scale(.3); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(2.4); } }
+/* centro: anel de progresso + cadeado + nome + texto */
 .unlock-reveal .ur-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;
-  display: flex; flex-direction: column; align-items: center; gap: 14px; transition: opacity .4s ease; }
-.unlock-reveal .ur-lock { font-size: 64px; animation: urPop .42s cubic-bezier(.34,1.56,.64,1) both; filter: drop-shadow(0 10px 22px rgba(0,0,0,.45)); }
-.unlock-reveal .ur-spin { width: 30px; height: 30px; border-radius: 50%;
-  border: 3px solid rgba(255,255,255,.25); border-top-color: #fff; animation: urSpin .8s linear infinite; }
-.unlock-reveal .ur-txt { color: rgba(255,255,255,.85); font-size: 13.5px; font-weight: 700; letter-spacing: .3px; }
-/* ao revelar (não mais loading): some o spinner/texto; ao abrir (.go): metades separam + centro esvaece */
-.unlock-reveal:not(.loading) .ur-spin, .unlock-reveal:not(.loading) .ur-txt { opacity: 0; transition: opacity .25s ease; }
-.unlock-reveal.go .ur-center { opacity: 0; }
+  display: flex; flex-direction: column; align-items: center; gap: 12px; transition: opacity .4s ease, transform .5s ease; }
+.unlock-reveal .ur-ring { position: relative; width: 92px; height: 92px; }
+.unlock-reveal .ur-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.unlock-reveal .ur-ring-bg { fill: none; stroke: rgba(255,255,255,.16); stroke-width: 5; }
+.unlock-reveal .ur-ring-fg { fill: none; stroke: var(--accent-2); stroke-width: 5; stroke-linecap: round;
+  stroke-dasharray: 214; stroke-dashoffset: 214; filter: drop-shadow(0 0 6px rgba(11,209,122,.6)); }
+.unlock-reveal.loading .ur-ring-fg { animation: urFill 1.05s cubic-bezier(.4,0,.2,1) forwards; }
+.unlock-reveal .ur-lock { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 42px;
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.45)); animation: urBreathe 1.4s ease-in-out infinite; }
+.unlock-reveal .ur-name { color: #fff; font-weight: 800; font-size: 22px; letter-spacing: .5px; text-shadow: 0 2px 18px rgba(75,210,150,.4); }
+.unlock-reveal .ur-txt { color: rgba(255,255,255,.7); font-size: 12.5px; font-weight: 700; letter-spacing: .4px; }
+/* ao destravar: cadeado dá um "estalo", anel/texto somem */
+.unlock-reveal.unlocked .ur-lock { animation: urUnlock .5s cubic-bezier(.34,1.7,.5,1) forwards; }
+.unlock-reveal.unlocked .ur-ring-fg { opacity: 0; transition: opacity .25s ease; }
+.unlock-reveal.unlocked .ur-ring-bg { opacity: 0; transition: opacity .25s ease; }
+.unlock-reveal.unlocked .ur-txt { opacity: 0; transition: opacity .2s ease; }
+/* ao abrir as portas: o centro esvaece e sobe de leve */
+.unlock-reveal.go .ur-center { opacity: 0; transform: translate(-50%, -64%) scale(.92); }
 .unlock-reveal.nofx .ur-half { transition: none; }
-@keyframes urPop { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.18); opacity: 1; } 100% { transform: scale(1); } }
-@keyframes urSpin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .unlock-reveal .ur-spin { animation: none; } }
+@keyframes urFill { to { stroke-dashoffset: 0; } }
+@keyframes urBreathe { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.08); } }
+@keyframes urUnlock { 0% { transform: translate(-50%,-50%) scale(1) rotate(0); } 40% { transform: translate(-50%,-52%) scale(1.35) rotate(-9deg); } 100% { transform: translate(-50%,-50%) scale(1.12) rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .unlock-reveal .ur-lock, .unlock-reveal .ur-ring-fg { animation: none; } }
 
 /* ===== Aviso "ative a tela cheia" (install antigo no iOS) ===== */
 .fs-hint { position: fixed; inset: 0; z-index: 1600; background: rgba(0,0,0,.5); backdrop-filter: blur(3px);
@@ -968,6 +983,14 @@ body.splash-on .tabbar, body.splash-on #fab { visibility: hidden; }
 @keyframes splashName { from { opacity: 0; transform: translateY(14px) scale(.9); } to { opacity: 1; transform: none; } }
 @keyframes splashFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes splashGlow { 0%,100% { opacity: .55; transform: scale(1); } 50% { opacity: .95; transform: scale(1.08); } }
+/* barra de pré-carga (sutil) na abertura */
+#splash .splash-loader { position: relative; z-index: 1; width: 132px; height: 3px; border-radius: 99px; margin-top: 24px;
+  background: rgba(255,255,255,.13); overflow: hidden; opacity: 0; animation: splashFade .6s ease .95s forwards; }
+#splash .splash-loader span { position: absolute; top: 0; bottom: 0; width: 42%; border-radius: 99px;
+  background: linear-gradient(90deg, transparent, rgba(95,225,165,.95), transparent); animation: splashLoad 1.2s ease-in-out infinite; }
+@keyframes splashLoad { 0% { left: -44%; } 100% { left: 104%; } }
+#splash.reveal .splash-loader { opacity: 0; transition: opacity .3s ease; }
+@media (prefers-reduced-motion: reduce) { #splash .splash-loader span { animation: none; left: 0; width: 100%; } }
 
 .hidden { display: none !important; }
 

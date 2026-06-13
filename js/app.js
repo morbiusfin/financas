@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.56";
-const VERSION_NOTES = "⏳ Ao destravar com o código, agora tem um pré-carregamento (sem bug aparecendo) · o aviso de contas só abre depois do app já estar na tela";
+const APP_VERSION = "3.11.57";
+const VERSION_NOTES = "✨ Abertura após a senha mais bonita: anel de progresso (pré-carga), cadeado destravando com estalo + flash de luz e as portas abrindo · barra de loading no splash";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.57",
+    bullets: [
+      "Desbloqueio repaginado: anel de progresso que preenche (pré-carga real, ganha tempo pro app montar)",
+      "O cadeado destrava com um estalo e um flash de luz verde, e a tela abre como duas portas",
+      "A abertura normal também ganhou uma barrinha de carregamento no splash",
+    ]
+  },
   {
     version: "3.11.56",
     bullets: [
@@ -2510,23 +2518,39 @@ function playUnlock(after) {
   const sp = document.getElementById("splash"); if (sp) sp.remove();   // splash não interfere mais no fluxo do lock
   const ls = $("#lockScreen");
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // cortina cobre TUDO + PRÉ-CARREGAMENTO (spinner) — o app monta por trás e só revela quando estiver pronto (sem bug aparecendo)
+  // cortina cobre TUDO + PRÉ-CARGA com anel de progresso — o app monta por trás (ganha tempo) e só revela pronto
   const ov = document.createElement("div");
   ov.id = "unlockReveal"; ov.className = "unlock-reveal loading";
-  ov.innerHTML = '<div class="ur-half ur-left"></div><div class="ur-half ur-right"></div>' +
-    '<div class="ur-center"><div class="ur-lock">🔒</div><div class="ur-spin"></div><div class="ur-txt">Preparando…</div></div>';
+  ov.innerHTML =
+    '<div class="ur-half ur-left"></div><div class="ur-half ur-right"></div>' +
+    '<div class="ur-burst"></div>' +
+    '<div class="ur-center">' +
+      '<div class="ur-ring">' +
+        '<svg viewBox="0 0 80 80" aria-hidden="true"><circle class="ur-ring-bg" cx="40" cy="40" r="34"/><circle class="ur-ring-fg" cx="40" cy="40" r="34"/></svg>' +
+        '<div class="ur-lock">🔒</div>' +
+      '</div>' +
+      '<div class="ur-name">MorbiusFin</div>' +
+      '<div class="ur-txt">Preparando…</div>' +
+    '</div>';
   document.body.appendChild(ov);
   if (ls) ls.classList.add("hidden");   // some o lock; a cortina (mesmo verde) cobre tudo
   after();                              // monta o app POR TRÁS da cortina (pré-carrega)
-  // garante que o app pintou (2 frames) e dá um respiro pros gráficos/listas assentarem antes de revelar
-  const abrir = () => {
-    const lk = ov.querySelector(".ur-lock"); if (lk) lk.textContent = "🔓";   // cadeado abre
-    ov.classList.remove("loading");
-    if (reduce) { ov.classList.add("nofx"); setTimeout(() => { try { ov.remove(); } catch (e) {} }, 60); return; }
-    requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add("go")));   // metades separam + cadeado some
-    setTimeout(() => { try { ov.remove(); } catch (e) {} }, 950);
-  };
-  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(abrir, reduce ? 250 : 700)));   // ~0,7s de pré-carga
+
+  const finish = () => { try { ov.remove(); } catch (e) {} };
+  if (reduce) {                         // movimento reduzido: pré-carga curta + sem efeitos
+    setTimeout(() => { ov.classList.add("nofx", "go"); setTimeout(finish, 120); }, 350);
+    return;
+  }
+  const preMs = 1050;                   // anel preenche ~1s = tempo pro app/gráficos assentarem
+  // 1) destrava: cadeado abre com estalo + flash de luz
+  setTimeout(() => {
+    const lk = ov.querySelector(".ur-lock"); if (lk) lk.textContent = "🔓";
+    ov.classList.remove("loading"); ov.classList.add("unlocked");   // pop do cadeado + burst de glow + some spinner/anel/texto
+  }, preMs);
+  // 2) abre as portas (depois do estalo)
+  setTimeout(() => ov.classList.add("go"), preMs + 320);
+  // 3) remove a cortina ao terminar
+  setTimeout(finish, preMs + 320 + 760);
 }
 
 /* ===== Conta e acesso: dados reais protegidos (PIN 4 díg) + modo teste (0000) ===== */
