@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.55";
-const VERSION_NOTES = "📲 Se a faixa no rodapé ainda aparece, o app agora detecta e mostra o passo pra ativar a tela cheia (recriar o ícone)";
+const APP_VERSION = "3.11.56";
+const VERSION_NOTES = "⏳ Ao destravar com o código, agora tem um pré-carregamento (sem bug aparecendo) · o aviso de contas só abre depois do app já estar na tela";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.56",
+    bullets: [
+      "Ao entrar com o código, agora há um pré-carregamento ('Preparando…') — o app monta por trás e só aparece pronto (nada pisca/aparece pela metade)",
+      "O aviso de 'Contas a vencer' só abre alguns segundos depois do app já estar na tela (não atropela mais a abertura)",
+    ]
+  },
   {
     version: "3.11.55",
     bullets: [
@@ -476,8 +483,9 @@ function checkAndNotify() {
   const conta = contaMaisUrgente();
   if (!conta) { cacheNextBill(""); return; }
   cacheNextBill(conta.desc);                                     // p/ o push diário (app fechado)
-  // 1) AVISO DENTRO DO APP — pop-up no MEIO da tela (só a 1ª conta, só o nome)
-  setTimeout(() => showBillAlert(conta), 500);
+  // 1) AVISO DENTRO DO APP — pop-up no MEIO da tela, 5s DEPOIS do app abrir (deixa ver a tela primeiro;
+  //    não interrompe se você já estiver com algo aberto)
+  setTimeout(() => { if (!document.querySelector(".modal:not(.hidden)") && !document.getElementById("splash")) showBillAlert(conta); }, 5000);
   // 2) NOTIFICAÇÃO DO SISTEMA — título = nome do app, corpo = só o nome da conta
   if (("Notification" in window) && Notification.permission === "granted") {
     try { new Notification("MorbiusFin", { body: `${conta.desc} ${proxTxt(conta.daysLeft)}`, icon: "icons/icon-192.png", tag: "vencimentos" }); } catch (e) {}
@@ -2502,18 +2510,23 @@ function playUnlock(after) {
   const sp = document.getElementById("splash"); if (sp) sp.remove();   // splash não interfere mais no fluxo do lock
   const ls = $("#lockScreen");
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduce) { if (ls) ls.classList.add("hidden"); after(); return; }
+  // cortina cobre TUDO + PRÉ-CARREGAMENTO (spinner) — o app monta por trás e só revela quando estiver pronto (sem bug aparecendo)
   const ov = document.createElement("div");
-  ov.id = "unlockReveal"; ov.className = "unlock-reveal";
-  ov.innerHTML = '<div class="ur-half ur-left"></div><div class="ur-half ur-right"></div><div class="ur-lock">🔒</div>';
+  ov.id = "unlockReveal"; ov.className = "unlock-reveal loading";
+  ov.innerHTML = '<div class="ur-half ur-left"></div><div class="ur-half ur-right"></div>' +
+    '<div class="ur-center"><div class="ur-lock">🔒</div><div class="ur-spin"></div><div class="ur-txt">Preparando…</div></div>';
   document.body.appendChild(ov);
   if (ls) ls.classList.add("hidden");   // some o lock; a cortina (mesmo verde) cobre tudo
-  after();                              // monta o app POR TRÁS da cortina
-  requestAnimationFrame(() => requestAnimationFrame(() => {
+  after();                              // monta o app POR TRÁS da cortina (pré-carrega)
+  // garante que o app pintou (2 frames) e dá um respiro pros gráficos/listas assentarem antes de revelar
+  const abrir = () => {
     const lk = ov.querySelector(".ur-lock"); if (lk) lk.textContent = "🔓";   // cadeado abre
-    ov.classList.add("go");                                                    // metades separam + cadeado some p/ direita
-  }));
-  setTimeout(() => { try { ov.remove(); } catch (e) {} }, 1150);
+    ov.classList.remove("loading");
+    if (reduce) { ov.classList.add("nofx"); setTimeout(() => { try { ov.remove(); } catch (e) {} }, 60); return; }
+    requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add("go")));   // metades separam + cadeado some
+    setTimeout(() => { try { ov.remove(); } catch (e) {} }, 950);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(abrir, reduce ? 250 : 700)));   // ~0,7s de pré-carga
 }
 
 /* ===== Conta e acesso: dados reais protegidos (PIN 4 díg) + modo teste (0000) ===== */

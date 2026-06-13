@@ -335,12 +335,20 @@ body.lock-on .tabbar, body.lock-on #fab { visibility: hidden; }
 .unlock-reveal .ur-right { right: 0; }
 .unlock-reveal.go .ur-left { transform: translateX(-100%); }
 .unlock-reveal.go .ur-right { transform: translateX(100%); }
-.unlock-reveal .ur-lock { position: absolute; top: 50%; left: 50%; font-size: 66px; z-index: 2;
-  transform: translate(-50%, -50%); animation: urPop .42s cubic-bezier(.34,1.56,.64,1) both;
-  filter: drop-shadow(0 10px 22px rgba(0,0,0,.45)); transition: transform .6s ease .12s, opacity .55s ease .12s; }
-.unlock-reveal.go .ur-lock { transform: translate(190%, -50%) scale(.7) rotate(8deg); opacity: 0; }
-@keyframes urPop { 0% { transform: translate(-50%,-50%) scale(.5); opacity: 0; } 60% { transform: translate(-50%,-50%) scale(1.18); opacity: 1; } 100% { transform: translate(-50%,-50%) scale(1); } }
-@media (prefers-reduced-motion: reduce) { .unlock-reveal { display: none; } }
+/* centro: cadeado + spinner de pré-carga + texto */
+.unlock-reveal .ur-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;
+  display: flex; flex-direction: column; align-items: center; gap: 14px; transition: opacity .4s ease; }
+.unlock-reveal .ur-lock { font-size: 64px; animation: urPop .42s cubic-bezier(.34,1.56,.64,1) both; filter: drop-shadow(0 10px 22px rgba(0,0,0,.45)); }
+.unlock-reveal .ur-spin { width: 30px; height: 30px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,.25); border-top-color: #fff; animation: urSpin .8s linear infinite; }
+.unlock-reveal .ur-txt { color: rgba(255,255,255,.85); font-size: 13.5px; font-weight: 700; letter-spacing: .3px; }
+/* ao revelar (não mais loading): some o spinner/texto; ao abrir (.go): metades separam + centro esvaece */
+.unlock-reveal:not(.loading) .ur-spin, .unlock-reveal:not(.loading) .ur-txt { opacity: 0; transition: opacity .25s ease; }
+.unlock-reveal.go .ur-center { opacity: 0; }
+.unlock-reveal.nofx .ur-half { transition: none; }
+@keyframes urPop { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.18); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes urSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .unlock-reveal .ur-spin { animation: none; } }
 
 /* ===== Aviso "ative a tela cheia" (install antigo no iOS) ===== */
 .fs-hint { position: fixed; inset: 0; z-index: 1600; background: rgba(0,0,0,.5); backdrop-filter: blur(3px);
