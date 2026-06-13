@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.41";
-const VERSION_NOTES = "😀 Seletor de emoji estilo WhatsApp: 8 categorias e mais de 1300 emojis · corrigida a faixa no rodapé ao abrir";
+const APP_VERSION = "3.11.42";
+const VERSION_NOTES = "📱 Faixa no rodapé (área do dedinho do iPhone) sumiu: combina com a barra de baixo no app e fica escura na abertura · barra de baixo com mais respiro";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.42",
+    bullets: [
+      "A faixa no rodapé (área do indicador do iPhone) some: o fundo passou a combinar com a barra de baixo",
+      "Na abertura essa faixa fica verde-escura (igual à tela inicial), não mais branca",
+      "Barra de baixo com mais respiro — ícones e textos não colam mais na margem",
+    ]
+  },
   {
     version: "3.11.41",
     bullets: [

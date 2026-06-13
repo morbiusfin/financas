@@ -55,9 +55,12 @@ html.theme-dark {
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; padding: 0; width: 100%; overflow-x: clip; }   /* clip (não hidden) p/ NÃO quebrar o position:sticky do header no iOS */
-/* iOS (iPhone 14 Pro Max etc.): pinta html + áreas seguras pra NÃO aparecer faixa branca
-   embaixo da tabbar nem no overscroll/bounce. Cor segue o tema (claro/escuro). */
-html { background: var(--bg-grad-2); min-height: 100%; overscroll-behavior-y: none; }
+/* iOS/Android (área do home indicator + overscroll): o fundo do html é o que aparece nessa faixa.
+   Igualamos à COR DA TABBAR (--card) → no app a faixa some (mesma cor da barra de baixo).
+   Segue o tema (claro/escuro) automaticamente. */
+html { background: var(--card); min-height: 100%; overscroll-behavior-y: none; transition: background-color .35s ease; }
+/* durante a tela de abertura, a faixa fica VERDE-ESCURA (igual o splash) em vez de branca */
+html:has(body.splash-on), html:has(body.lock-on) { background: #05110c; }
 body {
   font-family: var(--font);
   /* coluna que ocupa a tela inteira → o conteúdo preenche igual em TODAS as abas
@@ -69,7 +72,7 @@ body {
     linear-gradient(180deg, var(--bg-grad-1), var(--bg-grad-2));
   background-attachment: fixed;
   color: var(--ink);
-  padding-bottom: calc(70px + var(--safe-bottom));
+  padding-bottom: calc(82px + var(--safe-bottom));
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   transition: background-color .35s ease, color .35s ease;
@@ -512,7 +515,7 @@ select.sel { cursor: pointer; }
 /* Fundo SÓLIDO e contínuo até a base (área da home indicator no iPhone vira parte da barra,
    não um bloco escuro destacado). Sem transparência = sem "salto" embaixo. */
 .tabbar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--card);
-  border-top: 1px solid var(--line); padding-bottom: var(--safe-bottom); z-index: 45;
+  border-top: 1px solid var(--line); padding-top: 4px; padding-bottom: calc(8px + var(--safe-bottom)); z-index: 45;
   box-shadow: 0 -6px 22px rgba(0,0,0,.22);
   /* estabiliza o fixed no iOS (camada de GPU própria → não treme/sobe na rolagem) */
   transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform; backface-visibility: hidden;
