@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.60";
-const VERSION_NOTES = "⭕ Carregamento do splash agora é em círculo (spinner) e sai por completo ANTES de o app abrir — sem encavalar com a abertura";
+const APP_VERSION = "3.11.61";
+const VERSION_NOTES = "🔄 Uma bolinha girando aparece no canto do cabeçalho enquanto sincroniza com a nuvem e some assim que termina";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.61",
+    bullets: [
+      "Enquanto o app sincroniza com a nuvem, aparece uma bolinha girando no canto do cabeçalho",
+      "Assim que termina de carregar, a bolinha some — só aparece em syncs que demoram (não pisca nas verificações rápidas)",
+    ]
+  },
   {
     version: "3.11.60",
     bullets: [
@@ -2715,10 +2722,22 @@ let lastSyncInfo = { when: 0, ok: null, msg: "ainda não sincronizou", remoteTs:
 // force=true → a WEB é a fonte da verdade: adota a nuvem sempre que houver e for diferente
 // (usado no botão 🔄 e no puxar-para-atualizar). Sem force = merge por timestamp (boot/auto).
 const isTestMode = () => localStorage.getItem("financas2026.profile") === "test";
+// Bolinha "sincronizando" no header: aparece SÓ se o sync demora >220ms (não pisca nos polls rápidos de 7s) e some ao terminar.
+let _syncBusyN = 0, _syncBusyTimer = 0;
+function setSyncBusy(on) {
+  const el = document.getElementById("syncSpin");
+  if (on) {
+    _syncBusyN++;
+    if (!_syncBusyTimer) _syncBusyTimer = setTimeout(() => { _syncBusyTimer = 0; if (_syncBusyN > 0 && el) el.classList.remove("hidden"); }, 220);
+  } else {
+    _syncBusyN = Math.max(0, _syncBusyN - 1);
+    if (_syncBusyN === 0) { if (_syncBusyTimer) { clearTimeout(_syncBusyTimer); _syncBusyTimer = 0; } if (el) el.classList.add("hidden"); }
+  }
+}
 async function pullSync(aviso, onProg, force) {
   if (isTestMode()) return { ok: false, reason: "teste" };   // NUNCA sincroniza no modo teste (não baixa os reais)
   const c = syncCfg(); if (!c || pulling) return { ok: false, reason: "sem-config" };
-  pulling = true;
+  pulling = true; setSyncBusy(true);
   let result = { ok: false, reason: "?" };
   try {
     if (onProg) onProg(25, "Conectando à nuvem…");
@@ -2758,7 +2777,7 @@ async function pullSync(aviso, onProg, force) {
     lastSyncInfo = { when: Date.now(), ok: false, msg: "falha de rede/CORS ao baixar", remoteTs: 0 };
     if (aviso) toast("Sync (baixar) falhou");
   }
-  finally { pulling = false; }
+  finally { pulling = false; setSyncBusy(false); }
   return result;
 }
 
@@ -2790,8 +2809,9 @@ function pushSync() {
   if (!DATA.updatedAt) DATA.updatedAt = Date.now();
   clearTimeout(pushT);
   pushT = setTimeout(() => {
+    setSyncBusy(true);
     fetch(c.url, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ token: c.token, data: DATA }) }).catch(() => {});
+      body: JSON.stringify({ token: c.token, data: DATA }) }).catch(() => {}).finally(() => setSyncBusy(false));
   }, 600);
 }
 

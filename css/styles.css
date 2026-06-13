@@ -125,6 +125,13 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .app-header h1 { font-size: 21px; font-weight: 800; margin: 0; letter-spacing: -.3px; line-height: 36px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+/* bolinha de "sincronizando" no header — aparece durante o sync e some ao terminar */
+.sync-spin { width: 18px; height: 18px; border-radius: 50%; flex: 0 0 auto; box-sizing: border-box;
+  border: 2.5px solid rgba(255,255,255,.28); border-top-color: #fff;
+  animation: syncSpin .7s linear infinite; }
+.sync-spin.hidden { display: none; }
+@keyframes syncSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .sync-spin { animation-duration: 1.5s; } }
 .icon-btn {
   background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.10); color: #fff;
   font-size: 17px; width: 44px; height: 44px; border-radius: 12px;
