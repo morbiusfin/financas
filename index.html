@@ -8,6 +8,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="MorbiusFin" />
   <title>MorbiusFin</title>
+  <!-- tema aplicado ANTES do 1º paint → sem flash claro↔escuro na abertura -->
+  <script>try{var t=localStorage.getItem("financas2026.theme"),h=document.documentElement;if(t==="dark")h.classList.add("theme-dark");else if(t==="light")h.classList.add("theme-light");}catch(e){}</script>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="icon" href="icons/icon-192.png" />
@@ -17,7 +19,7 @@
   <link rel="stylesheet" href="css/styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 </head>
-<body>
+<body class="splash-on">
   <!-- FUNDO ANIMADO: chuva de números/cifras (estilo Matrix), sutil -->
   <canvas id="rain" aria-hidden="true"></canvas>
 

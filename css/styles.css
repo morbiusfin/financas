@@ -518,6 +518,9 @@ select.sel { cursor: pointer; }
 body.kbd-open .tabbar { display: none !important; }
 body.kbd-open #fab { transform: translateY(160%) scale(.8); opacity: 0; pointer-events: none; }
 
+/* fundo congelado enquanto um modal está aberto (não rola por trás do bottom-sheet) */
+body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: hidden; overscroll-behavior: none; }
+
 /* ===== MODAL ===== */
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: flex; align-items: flex-end; justify-content: center;
   backdrop-filter: blur(2px); animation: fadeInUp .2s ease both; }
@@ -545,6 +548,15 @@ body.kbd-open #fab { transform: translateY(160%) scale(.8); opacity: 0; pointer-
 @keyframes rowIn { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
 #view:not(.no-anim) .list .list-row { animation: rowIn .42s cubic-bezier(.2,.7,.2,1) both; animation-delay: calc(var(--i, 0) * .032s); }
 @media (prefers-reduced-motion: reduce) { #view .list .list-row { animation: none !important; } }
+/* segmentado À vista / Parcelado */
+.seg { display: flex; gap: 6px; padding: 4px; margin-bottom: 14px; background: var(--card-2); border: 1px solid var(--line); border-radius: 13px; }
+.seg-btn { flex: 1; padding: 11px 8px; border: 0; border-radius: 10px; background: transparent; color: var(--muted);
+  font-weight: 800; font-size: 14px; font-family: var(--font); cursor: pointer; transition: background .18s ease, color .18s ease, box-shadow .18s ease; }
+.seg-btn.active { background: var(--card); color: var(--accent-2); box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.seg-btn:active { transform: scale(.97); }
+/* 4 dígitos do cartão na lista "Meus cartões" */
+.card-last4 { font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .5px; }
+
 .field { display: block; margin-bottom: 14px; }
 .field span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; font-weight: 700; }
 .field input, .field select { width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 13px; font-size: 16px;
@@ -793,7 +805,11 @@ html.theme-dark #rain { opacity: .7; }
 .impact-warn b { font-weight: 800; }
 
 /* ===== Splash de abertura ===== */
-#splash { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+#splash { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  /* camada de GPU própria → compõe ACIMA da tabbar (que tem translateZ(0)); senão a tabbar pinta por cima no rodapé no iOS (flash) */
+  transform: translateZ(0); -webkit-transform: translateZ(0); will-change: opacity, transform; }
+/* enquanto o splash está na tela, esconde tabbar e + → zero flash no rodapé na abertura */
+body.splash-on .tabbar, body.splash-on #fab { visibility: hidden; }
 #splash .splash-bg { position: absolute; inset: 0; z-index: 0;
   background: radial-gradient(72% 58% at 50% 38%, #0e4a36 0%, #08231a 56%, #05110c 100%);
   transition: transform .95s cubic-bezier(.76,0,.24,1); }

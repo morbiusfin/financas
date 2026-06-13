@@ -72,8 +72,8 @@ function buildSeed() {
   const metas = { fixas: 2200, cartao: 900, diaria: 500 };
 
   const cartoes = [
-    { id: uid(), nome: "Mercado Pago", fechamento: 29, vencimento: 7 },
-    { id: uid(), nome: "Nubank", fechamento: 3, vencimento: 10 },
+    { id: uid(), nome: "Mercado Pago", last4: "1950", fechamento: 29, vencimento: 7 },
+    { id: uid(), nome: "Nubank", last4: "7034", fechamento: 3, vencimento: 10 },
   ];
 
   return { year: 2026, saldoInicial: 0, receitas, fixas, cartao, diaria, metas, cartoes };

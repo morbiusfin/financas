@@ -1,11 +1,23 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.36";
-const VERSION_NOTES = "✨ Abertura mais limpa e rápida: tirei a moeda; agora é só o nome MorbiusFin";
+const APP_VERSION = "3.11.37";
+const VERSION_NOTES = "💳 Compra no cartão repaginada: à vista/parcelado (até 60×), data única no calendário e cartão pelos 4 dígitos · fundo não rola mais atrás do modal · seleção não pula pro topo · abertura sem flash";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.37",
+    bullets: [
+      "Nova compra no cartão: escolha À vista ou Parcelado — parcelado abre a lista até 60×",
+      "Uma data só (calendário, já marcando hoje) no lugar de dia + mês",
+      "Cartão aparece pelos últimos 4 dígitos (•••• 1950) em vez de 'fecha 29'",
+      "A fatura é calculada pelo fechamento do cartão (compra após o fechamento cai no mês seguinte)",
+      "O fundo não rola mais por trás do modal aberto (compra, cartão, configurações)",
+      "Segurar um item pra selecionar não pula mais pro topo da página",
+      "Abertura sem piscar: tema certo de cara e sem flash na barra de baixo",
+    ]
+  },
   {
     version: "3.11.36",
     bullets: [
@@ -410,9 +422,16 @@ function render() {
   $("#fab").classList.toggle("hidden", curTab === "resumo" || selMode);   // sem + durante a seleção
   const view = $("#view");
   view.classList.toggle("no-anim", noAnim);
+  // preserva a posição do scroll ao reconstruir a lista (senão entrar em seleção por toque-longo
+  // — ou qualquer re-render — pula pro topo, porque innerHTML="" colapsa a altura).
+  // Quem QUER ir pro topo (trocar aba/ano/visão) já faz window.scrollTo(0,0) ANTES, então prevY=0.
+  // Se um modal travou o scroll (body fixed), o lock é quem manda → não mexe.
+  const locked = document.body.classList.contains("scroll-locked");
+  const prevY = locked ? null : (window.scrollY || window.pageYOffset || 0);
   view.innerHTML = "";
   if (curTab === "resumo") { if (annual) renderAnual(view); else renderResumo(view); }
   else renderLista(view);
+  if (prevY != null && prevY > 0) window.scrollTo(0, prevY);   // restaura onde estava (a altura já está correta, render é síncrono)
   if (noAnim) requestAnimationFrame(() => requestAnimationFrame(() => { const v = $("#view"); if (v) v.classList.remove("no-anim"); }));
   updateBulkBar();   // mostra/esconde a barra flutuante de apagar conforme a seleção
   if (typeof renderSeedBanner === "function") renderSeedBanner();   // banner "dados de exemplo" (modo Explorar)
@@ -1477,12 +1496,13 @@ function toggleStatus(tab, idx) {
 const empty = (msg) => `<div class="empty">${msg || "Nada lançado neste mês."}<br>Toque em + para adicionar.</div>`;
 
 /* ---------- Cartões cadastrados (fechamento/vencimento) ---------- */
+function cardLabel(c) { return c ? (esc(c.nome || "Cartão") + (c.last4 ? ` •••• ${esc(c.last4)}` : "")) : ""; }
 function renderCardsSection() {
   const cs = DATA.cartoes || [];
   if (!cs.length) return "";                                   // cadastro agora é pelo + (toque no botão flutuante)
   const itens = cs.map((c, i) => `<div class="card-line" data-cidx="${i}">
       <div class="card-ic">💳</div>
-      <div class="desc"><div class="name">${esc(c.nome || "Cartão")}</div>
+      <div class="desc"><div class="name">${esc(c.nome || "Cartão")}${c.last4 ? ` <span class="card-last4">•••• ${esc(c.last4)}</span>` : ""}</div>
         <div class="sub">fecha dia <b>${c.fechamento || "—"}</b> · vence dia <b>${c.vencimento || "—"}</b></div></div>
       <span class="card-edit">editar ›</span></div>`).join("");
   return `<div class="section-card fade-in"><h3>💳 Meus cartões</h3><div class="card-list">${itens}</div></div>`;
@@ -1496,6 +1516,7 @@ function openCardModal(idx) {
   $("#modalTitle").textContent = isNew ? "Cadastrar cartão" : "Editar cartão";
   $("#entryForm").innerHTML = `
     <label class="field"><span>Nome do cartão</span><input id="c_nome" type="text" value="${isNew ? "" : esc(c.nome || "")}" placeholder="Ex.: Mercado Pago" required /></label>
+    <label class="field"><span>Últimos 4 dígitos</span><input id="c_last4" type="text" inputmode="numeric" maxlength="4" value="${isNew || !c.last4 ? "" : esc(c.last4)}" placeholder="ex.: 1950" /></label>
     <div class="field-row">
       <label class="field"><span>Fecha a fatura (dia)</span><input id="c_fech" type="number" min="1" max="31" inputmode="numeric" value="${isNew || !c.fechamento ? "" : c.fechamento}" placeholder="ex.: 29" /></label>
       <label class="field"><span>Vence / paga (dia)</span><input id="c_venc" type="number" min="1" max="31" inputmode="numeric" value="${isNew || !c.vencimento ? "" : c.vencimento}" placeholder="ex.: 7" /></label>
@@ -1505,7 +1526,8 @@ function openCardModal(idx) {
   $("#btnDelete").onclick = () => { DATA.cartoes.splice(idx, 1); persist(); closeModal(); toast("Cartão removido"); };
   $("#entryForm").onsubmit = (e) => {
     e.preventDefault();
-    const o = { nome: $("#c_nome").value.trim() || "Cartão", fechamento: parseInt($("#c_fech").value) || null, vencimento: parseInt($("#c_venc").value) || null };
+    const last4 = ($("#c_last4").value.match(/\d/g) || []).join("").slice(-4) || null;
+    const o = { nome: $("#c_nome").value.trim() || "Cartão", last4, fechamento: parseInt($("#c_fech").value) || null, vencimento: parseInt($("#c_venc").value) || null };
     if (isNew) DATA.cartoes.push({ id: uid(), ...o }); else Object.assign(c, o);
     persist(); closeModal(); toast(isNew ? "Cartão cadastrado ✓" : "Cartão salvo ✓");
   };
@@ -1517,36 +1539,55 @@ function parcelaStartMonth(purchaseMonth, purchaseDay, fechamento) {
   if (!fechamento || !purchaseDay) return purchaseMonth;
   return purchaseDay <= fechamento ? purchaseMonth : purchaseMonth + 1;
 }
+// data de hoje em ISO (YYYY-MM-DD) para o <input type="date">
+function todayISO() { const d = new Date(), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+// converte a data escolhida em { dia, mes (índice absoluto a partir de Jan/DATA.year) }
+function dateParts(iso) {
+  if (!iso) return { dia: null, mes: curMonth };
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d.getTime())) return { dia: null, mes: curMonth };
+  let mes = (d.getFullYear() - DATA.year) * 12 + d.getMonth();
+  if (mes < 0) mes = 0;
+  return { dia: d.getDate(), mes };
+}
 function openCartaoModal() {
   const cs = DATA.cartoes || [];
   $("#modalTitle").textContent = "Nova compra no cartão";
-  const cardOpts = cs.map(c => `<option value="${c.id}">${esc(c.nome)} (fecha ${c.fechamento || "?"})</option>`).join("");
+  const cardOpts = cs.map(c => `<option value="${c.id}">${cardLabel(c)}</option>`).join("");
+  const parcOpts = Array.from({ length: 59 }, (_, i) => `<option value="${i + 2}">${i + 2}×</option>`).join("");  // 2× a 60×
   $("#entryForm").innerHTML = `
     ${cs.length ? "" : `<p class="hint" style="text-align:left;margin-bottom:10px">💡 Cadastre seu cartão (com o dia do fechamento) em <b>Meus cartões</b> para as parcelas caírem no mês certo.</p>`}
     <label class="field"><span>Descrição</span><input id="f_desc" type="text" required placeholder="Ex.: Tênis" /></label>
     <label class="field"><span>Cartão</span><select id="f_card">${cardOpts}<option value="">Outro (sem cadastro)</option></select></label>
-    <div class="field-row">
-      <label class="field"><span>Valor de cada parcela</span><input id="f_val" type="number" step="0.01" inputmode="decimal" placeholder="0,00" required /></label>
-      <label class="field"><span>Nº de parcelas</span><input id="f_n" type="number" min="1" max="48" inputmode="numeric" value="1" /></label>
+    <div class="seg" id="f_seg" role="tablist">
+      <button type="button" class="seg-btn active" data-pay="avista">À vista</button>
+      <button type="button" class="seg-btn" data-pay="parc">Parcelado</button>
     </div>
     <div class="field-row">
-      <label class="field"><span>Mês da compra</span><select id="f_mes" class="sel">${monthOptionsHTML(curMonth)}</select></label>
-      <label class="field"><span>Dia da compra</span><select id="f_dia" class="sel"></select></label>
+      <label class="field"><span id="f_val_lbl">Valor da compra</span><input id="f_val" type="number" step="0.01" inputmode="decimal" placeholder="0,00" required /></label>
+      <label class="field" id="f_n_field" style="display:none"><span>Em quantas vezes</span><select id="f_n" class="sel">${parcOpts}</select></label>
     </div>
+    <label class="field"><span>Data da compra</span><input id="f_data" type="date" value="${todayISO()}" min="${DATA.year}-01-01" /></label>
     <label class="field row-check nec-check"><input id="f_nec" type="checkbox" /><span>🔒 Necessário — não posso deixar de pagar</span></label>
     <div id="f_parc_prev" class="impact"></div>`;
-  fillDaySelect("f_dia", "f_mes", null);
-  ["f_val", "f_n", "f_dia", "f_card"].forEach(id => { const el = $("#" + id); if (el) { el.oninput = updateParcelaPreview; el.onchange = updateParcelaPreview; } });
-  $("#f_mes").onchange = () => { fillDaySelect("f_dia", "f_mes"); updateParcelaPreview(); };
+  // segmento À vista / Parcelado → muda a interface na hora
+  $$("#f_seg .seg-btn").forEach(b => b.onclick = () => {
+    $$("#f_seg .seg-btn").forEach(x => x.classList.toggle("active", x === b));
+    const parc = b.dataset.pay === "parc";
+    $("#f_n_field").style.display = parc ? "" : "none";
+    $("#f_val_lbl").textContent = parc ? "Valor de cada parcela" : "Valor da compra";
+    updateParcelaPreview();
+  });
+  ["f_val", "f_n", "f_data", "f_card"].forEach(id => { const el = $("#" + id); if (el) { el.oninput = updateParcelaPreview; el.onchange = updateParcelaPreview; } });
   updateParcelaPreview();
   $("#btnDelete").classList.add("hidden");
   $("#entryForm").onsubmit = (e) => {
     e.preventDefault();
+    const parc = $("#f_seg .seg-btn.active").dataset.pay === "parc";
     const valor = parseFloat($("#f_val").value) || 0;
-    const n = Math.max(1, parseInt($("#f_n").value) || 1);
-    const dia = parseInt($("#f_dia").value) || null;
+    const n = parc ? Math.min(60, Math.max(2, parseInt($("#f_n").value) || 2)) : 1;
+    const { dia, mes: base } = dateParts($("#f_data").value);
     const card = cs.find(c => c.id === $("#f_card").value) || null;
-    const base = +$("#f_mes").value;
     const start = parcelaStartMonth(base, dia, card ? card.fechamento : null);
     const paidUntil = realMesAbs();
     const nec = $("#f_nec") ? $("#f_nec").checked : false;
@@ -1563,12 +1604,12 @@ function openCartaoModal() {
 }
 function updateParcelaPreview() {
   const el = $("#f_parc_prev"); if (!el) return;
+  const parc = $("#f_seg .seg-btn.active") && $("#f_seg .seg-btn.active").dataset.pay === "parc";
   const valor = parseFloat($("#f_val") && $("#f_val").value) || 0;
-  const n = Math.max(1, parseInt($("#f_n") && $("#f_n").value) || 1);
-  const dia = parseInt($("#f_dia") && $("#f_dia").value) || null;
+  const n = parc ? Math.min(60, Math.max(2, parseInt($("#f_n") && $("#f_n").value) || 2)) : 1;
+  const { dia, mes: base } = dateParts($("#f_data") && $("#f_data").value);
   const cs = DATA.cartoes || [];
   const card = cs.find(c => c.id === ($("#f_card") && $("#f_card").value)) || null;
-  const base = $("#f_mes") ? (+$("#f_mes").value) : curMonth;
   const start = parcelaStartMonth(base, dia, card ? card.fechamento : null);
   const fim = start + n - 1;
   el.className = "impact ok";
@@ -1772,6 +1813,37 @@ function openDiariaModal(idx, method) {
 /* ---------- Infra ---------- */
 function showModal(s) { $(s).classList.remove("hidden"); }
 function closeModal() { $("#modal").classList.add("hidden"); }
+
+/* ---------- Trava de scroll do fundo enquanto um modal está aberto ----------
+   No iOS, sem isso o scroll "vaza" pra página atrás do modal/bottom-sheet.
+   position:fixed no body (com top = -scrollY) congela o fundo; restaura ao fechar.
+   Um MutationObserver mantém a trava em dia para QUALQUER .modal (compra, cartão,
+   configurações, sync, alerta…), sem precisar editar cada ponto de fechar. */
+let _scrollLockY = 0;
+function lockScroll() {
+  if (document.body.classList.contains("scroll-locked")) return;
+  _scrollLockY = window.scrollY || window.pageYOffset || 0;
+  document.body.style.top = `-${_scrollLockY}px`;
+  document.body.classList.add("scroll-locked");
+}
+function unlockScroll() {
+  if (!document.body.classList.contains("scroll-locked")) return;
+  document.body.classList.remove("scroll-locked");
+  document.body.style.top = "";
+  window.scrollTo(0, _scrollLockY);
+}
+let _slRaf = 0;
+function refreshScrollLock() {
+  if (_slRaf) return;
+  _slRaf = requestAnimationFrame(() => {
+    _slRaf = 0;
+    if (document.querySelector(".modal:not(.hidden)")) lockScroll(); else unlockScroll();
+  });
+}
+try {
+  new MutationObserver(refreshScrollLock)
+    .observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"] });
+} catch (e) {}
 function persist() {
   DATA.updatedAt = Date.now();
   localStorage.removeItem("financas2026.isSeed");   // ação real do usuário → some o banner "dados de exemplo"
@@ -2294,6 +2366,7 @@ function startApp() {
 }
 function setSplashMsg(t) { const el = document.querySelector("#splash .splash-tag"); if (el) el.textContent = t; }
 function hideSplash() {
+  document.body.classList.remove("splash-on");   // libera tabbar/+ (o splash, em camada própria, ainda cobre até a cortina passar)
   const sp = document.getElementById("splash");
   if (sp && !sp.classList.contains("reveal")) {
     sp.classList.add("reveal");
