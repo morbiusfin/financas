@@ -1,11 +1,21 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.48";
-const VERSION_NOTES = "💧 'Orçado / Realizado' virou uma caixinha com respiro — não cola mais na margem";
+const APP_VERSION = "3.11.49";
+const VERSION_NOTES = "📊 Porcentagens pelo app: % da receita em cada aba, % do disponível gasto, % poupado, % do orçamento usado, % previsto×realizado";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.49",
+    bullets: [
+      "Porcentagens úteis pelo app: quanto cada aba (Fixas/Cartão/Débito) representa da receita do mês",
+      "No resumo: % do disponível que virou despesa e % do que entrou que você guardou",
+      "Previsto × Realizado e Orçamento (META) mostram o % concluído / usado",
+      "Caixinha Orçado × Realizado mostra '% do orçamento' (verde dentro / vermelho estourou)",
+      "Receitas mostram o % já recebido",
+    ]
+  },
   {
     version: "3.11.48",
     bullets: [
@@ -674,8 +684,8 @@ function renderResumo(view) {
       <div class="flow-row"><span>Saldo inicial <i>(sobrou do mês anterior)</i></span><b>${brl(sIni)}</b></div>
       <div class="flow-row plus"><span>+ Receitas</span><b class="pos">${brl(rec)}</b></div>
       <div class="flow-row eq"><span>= Disponível</span><b>${brl(disp)}</b></div>
-      <div class="flow-row minus"><span>− Despesas</span><b class="neg">${brl(desp)}</b></div>
-      <div class="flow-row total"><span>= Sobra do mês</span><b id="sobraVal" class="countup ${sobra >= 0 ? "pos" : "neg"}" data-amt="${sobra}">${brl(sobra)}</b></div>
+      <div class="flow-row minus"><span>− Despesas ${disp > 0 ? `<i>(${Math.round(desp / disp * 100)}% do disponível)</i>` : ""}</span><b class="neg">${brl(desp)}</b></div>
+      <div class="flow-row total"><span>= Sobra do mês ${rec > 0 ? `<i>(guardou ${Math.round((rec - desp) / rec * 100)}% do que entrou no mês)</i>` : ""}</span><b id="sobraVal" class="countup ${sobra >= 0 ? "pos" : "neg"}" data-amt="${sobra}">${brl(sobra)}</b></div>
     </div>
 
     ${renderInsights(m)}
@@ -848,9 +858,9 @@ function scrollToEl(sel) {
 function barPrevReal(label, real, prev, lblReal, lblPrev) {
   const tot = real + prev, pct = tot ? Math.round(real / tot * 100) : 0;
   return `<div class="pr-block">
-    <div class="pr-head"><span>${label}</span><span>${brl(real)} <i>de ${brl(tot)}</i></span></div>
+    <div class="pr-head"><span>${label}</span><span>${brl(real)} <i>de ${brl(tot)} · ${pct}%</i></span></div>
     <div class="pr-bar"><div class="pr-fill" style="width:${pct}%"></div></div>
-    <div class="pr-legend"><span>✅ ${lblReal}: ${brl(real)}</span><span>⏳ ${lblPrev}: ${brl(prev)}</span></div>
+    <div class="pr-legend"><span>✅ ${lblReal}: ${brl(real)} (${pct}%)</span><span>⏳ ${lblPrev}: ${brl(prev)} (${100 - pct}%)</span></div>
   </div>`;
 }
 
@@ -900,9 +910,9 @@ function renderMetas(m) {
   ].filter(i => (metas[i.k] || 0) > 0);
   if (!itens.length) return "";
   return `<div class="section-card"><h3>Orçamento do mês (META)</h3>${itens.map(i => {
-    const meta = metas[i.k], pct = Math.min(100, Math.round(i.val / meta * 100)), over = i.val > meta;
+    const meta = metas[i.k], rawPct = Math.round(i.val / meta * 100), pct = Math.min(100, rawPct), over = i.val > meta;
     return `<div class="pr-block">
-      <div class="pr-head"><span>${i.name}</span><span class="${over ? "neg" : ""}">${brl(i.val)} <i>/ ${brl(meta)}</i></span></div>
+      <div class="pr-head"><span>${i.name}</span><span class="${over ? "neg" : ""}">${brl(i.val)} <i>/ ${brl(meta)} · ${rawPct}%</i></span></div>
       <div class="pr-bar"><div class="pr-fill ${over ? "over" : ""}" style="width:${pct}%"></div></div>
     </div>`;
   }).join("")}</div>`;
@@ -1506,7 +1516,7 @@ function renderLista(view) {
   rows = sortRows(rows, listSort[curTab], { val: x => x.l.vals[curMonth] || 0, dia: x => x.l.dia, desc: x => x.l.desc, nec: x => x.l.nec });
   view.innerHTML = `
     ${curTab === "cartao" ? renderCardsSection() : ""}
-    <div class="list-header"><span class="lbl">${rows.length} lançamento(s) em ${mLong(curMonth)}</span><span class="total">${brl(total)}</span></div>
+    <div class="list-header"><span class="lbl">${rows.length} lançamento(s) em ${mLong(curMonth)}${receitaMes(curMonth) > 0 ? ` · ${Math.round(total / receitaMes(curMonth) * 100)}% da receita` : ""}</span><span class="total">${brl(total)}</span></div>
     ${rows.length ? (selMode ? selBarHTML(curTab) : sortBarHTML(curTab)) : ""}
     <div class="list">${rows.length ? rows.map(({ l, idx }, i) => lineRow(l, idx, i)).join("") : empty()}</div>`;
   bindRows(view);
@@ -1518,7 +1528,7 @@ function renderLista(view) {
 function renderReceitas(view) {
   const m = curMonth;
   const groups = [["Ativa", "Renda recorrente"], ["Extra", "Renda extra"]];
-  let html = `<div class="list-header"><span class="lbl">Recebido ${brl(recebido(m))} · a receber ${brl(aReceber(m))}</span><span class="total">${brl(receitaMes(m))}</span></div>` + (selMode ? selBarHTML("receitas") : sortBarHTML("receitas"));
+  let html = `<div class="list-header"><span class="lbl">Recebido ${brl(recebido(m))}${receitaMes(m) > 0 ? ` (${Math.round(recebido(m) / receitaMes(m) * 100)}%)` : ""} · a receber ${brl(aReceber(m))}</span><span class="total">${brl(receitaMes(m))}</span></div>` + (selMode ? selBarHTML("receitas") : sortBarHTML("receitas"));
   groups.forEach(([tipo, titulo]) => {
     let rows = DATA.receitas.map((l, idx) => ({ l, idx }))
       .filter(x => x.l.tipo === tipo && (x.l.vals[m] > 0 || (x.l.sts[m] || "vazio") !== "vazio"));
@@ -1555,7 +1565,7 @@ function renderDiaria(view) {
   // agrupa por categoria
   const cats = {};
   rows.forEach(({ d, idx }) => { (cats[d.categoria || "Geral"] = cats[d.categoria || "Geral"] || []).push({ d, idx }); });
-  let html = `<div class="list-header"><span class="lbl">${rows.length} compra(s) em ${mLong(m)}</span><span class="total">${brl(total)}</span></div>`;
+  let html = `<div class="list-header"><span class="lbl">${rows.length} compra(s) em ${mLong(m)}${receitaMes(m) > 0 ? ` · ${Math.round(total / receitaMes(m) * 100)}% da receita` : ""}</span><span class="total">${brl(total)}</span></div>`;
   if (!rows.length) { html += `<div class="list">${empty("Nenhuma compra no débito.")}</div>`; }
   else html += sortBarHTML("diaria");
   const getD = { val: x => Number(x.d.valor) || 0, dia: x => x.d.dia, desc: x => x.d.desc, nec: () => false };
@@ -2062,7 +2072,11 @@ function renderOrcRealChart(m) {
     }
   });
   const totO = top.reduce((s, x) => s + x.o, 0), totR = top.reduce((s, x) => s + x.r, 0);
-  if (resumoEl) resumoEl.innerHTML = `<div class="orc-sum"><span>Orçado <b>${brl(totO)}</b></span><span>Realizado <b class="${(totO > 0 && totR > totO) ? "neg" : "pos"}">${brl(totR)}</b></span></div>`;
+  if (resumoEl) {
+    const usoPct = totO > 0 ? Math.round(totR / totO * 100) : null;
+    const usoTxt = usoPct != null ? `<span class="orc-pct ${totR > totO ? "neg" : "pos"}">${usoPct}% do orçamento</span>` : "";
+    resumoEl.innerHTML = `<div class="orc-sum"><span>Orçado <b>${brl(totO)}</b></span>${usoTxt}<span>Realizado <b class="${(totO > 0 && totR > totO) ? "neg" : "pos"}">${brl(totR)}</b></span></div>`;
+  }
 }
 
 /* ---------- Infra ---------- */

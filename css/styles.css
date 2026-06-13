@@ -629,6 +629,8 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
   margin: 6px 0 14px; padding: 13px 16px; background: var(--card-2); border: 1px solid var(--line);
   border-radius: 13px; font-size: 14px; color: var(--muted); }
 .orc-sum b { font-size: 16px; color: var(--ink); }
+.orc-pct { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); white-space: nowrap; }
+.orc-pct.pos { color: #0f9a4c; } .orc-pct.neg { color: var(--red); }
 
 /* ===== Seletor de emoji (estilo WhatsApp) ===== */
 .emoji-tabs { display: flex; flex-wrap: nowrap; gap: 5px; overflow-x: auto; padding: 2px 0 10px; margin-bottom: 4px;
@@ -735,6 +737,7 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
 .flow-row.total { background: linear-gradient(135deg, var(--green-2), var(--green)); color: #fff; margin: 0 -16px; padding: 16px; border-radius: 0 0 18px 18px; }
 .flow-row.total b { font-size: 22px; letter-spacing: -.4px; }
 .flow-row.total .pos { color: #7dffb4; } .flow-row.total .neg { color: #ff9a9d; }
+.flow-row.total span i { color: rgba(255,255,255,.82); }   /* % na linha verde fica legível */
 
 .pr-block { margin: 14px 0; padding: 0 16px; }
 .pr-head { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; margin-bottom: 7px; }
