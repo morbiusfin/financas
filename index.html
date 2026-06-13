@@ -203,21 +203,21 @@
 
   <!-- MODAL: categorias e orçamento -->
   <div id="catModal" class="modal hidden">
-    <div class="modal-card">
-      <button type="button" id="catClose" class="sheet-x" aria-label="Fechar">✕</button>
-      <h2>Categorias e orçamento</h2>
-      <p class="hint" style="text-align:left;margin:-6px 0 12px">Defina uma <b>meta de gasto por mês</b> em cada categoria. O total vira seu orçamento e aparece no gráfico <b>Orçamento × Realizado</b>.</p>
-      <div id="catMgrTotal" class="cat-total"></div>
-      <div id="catMgrList"></div>
-      <button type="button" id="catAdd" class="btn ghost" style="width:100%;margin-top:8px">＋ Nova categoria</button>
+    <div class="modal-card sheet-tall">
+      <div class="sheet-head"><h2>Categorias e orçamento</h2><button type="button" id="catClose" class="sheet-x" aria-label="Fechar">✕</button></div>
+      <div class="modal-scroll">
+        <p class="hint" style="text-align:left;margin:0 0 12px">Defina uma <b>meta de gasto por mês</b> em cada categoria. O total vira seu orçamento e aparece no gráfico <b>Orçamento × Realizado</b>.</p>
+        <div id="catMgrTotal" class="cat-total"></div>
+        <div id="catMgrList"></div>
+        <button type="button" id="catAdd" class="btn ghost" style="width:100%;margin-top:8px">＋ Nova categoria</button>
+      </div>
     </div>
   </div>
 
   <!-- MODAL: escolher emoji -->
   <div id="emojiModal" class="modal hidden">
-    <div class="modal-card">
-      <button type="button" id="emojiClose" class="sheet-x" aria-label="Fechar">✕</button>
-      <h2>Escolher emoji</h2>
+    <div class="modal-card sheet-tall">
+      <div class="sheet-head"><h2>Escolher emoji</h2><button type="button" id="emojiClose" class="sheet-x" aria-label="Fechar">✕</button></div>
       <div id="emojiTabs" class="emoji-tabs"></div>
       <div id="emojiCatName" class="emoji-cat-name"></div>
       <div id="emojiGrid" class="emoji-grid"></div>

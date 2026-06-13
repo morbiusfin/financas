@@ -554,7 +554,17 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
 .modal.hidden { display: none; }
 .modal-card { background: var(--card); color: var(--ink); width: 100%; max-width: 520px; border-radius: 22px 22px 0 0;
   padding: 22px 18px calc(20px + var(--safe-bottom)); max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg);
-  border: 1px solid var(--line); border-bottom: 0; animation: slideUp .26s cubic-bezier(.2,.8,.2,1); }
+  border: 1px solid var(--line); border-bottom: 0; animation: slideUp .26s cubic-bezier(.2,.8,.2,1);
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }   /* contain → não "prende" o scroll no body travado (iOS) */
+
+/* Modais altos (Categorias, Emoji): cabeçalho FIXO (título + ✕ sempre visíveis) e só o corpo rola */
+.modal-card.sheet-tall { display: flex; flex-direction: column; overflow: hidden; padding-top: 24px; }
+.modal-card.sheet-tall .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; margin-bottom: 10px; }
+.modal-card.sheet-tall .sheet-head h2 { margin: 0; }
+.modal-card.sheet-tall .sheet-head .sheet-x { position: static; top: auto; right: auto; flex: 0 0 auto; }
+.modal-card.sheet-tall .modal-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scrollbar-width: none; }
+.modal-card.sheet-tall .modal-scroll::-webkit-scrollbar { display: none; }
+.modal-card.sheet-tall .emoji-grid { flex: 1 1 auto; min-height: 0; max-height: none; }   /* a grade ocupa o resto e rola */
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .modal-card h2 { margin: 0 0 16px; font-size: 19px; font-weight: 800; letter-spacing: -.3px; }
 

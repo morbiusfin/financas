@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.42";
-const VERSION_NOTES = "📱 Faixa no rodapé (área do dedinho do iPhone) sumiu: combina com a barra de baixo no app e fica escura na abertura · barra de baixo com mais respiro";
+const APP_VERSION = "3.11.43";
+const VERSION_NOTES = "🛠️ Corrigido o travamento em Categorias/Emoji: o título e o ✕ ficam fixos no topo e a lista rola sem prender";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.43",
+    bullets: [
+      "Categorias e orçamento: o título e o ✕ ficam fixos no topo — dá pra fechar a qualquer momento",
+      "Corrigido o scroll que travava ao descer (não voltava mais pra cima) em Categorias e no seletor de emoji",
+      "Mesma proteção anti-travamento aplicada em todas as janelas",
+    ]
+  },
   {
     version: "3.11.42",
     bullets: [
