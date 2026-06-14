@@ -1,11 +1,20 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.69";
-const VERSION_NOTES = "📷 Ícone da câmera no perfil centralizado (virou ícone, não emoji) · 🎛️ menu com ícones alinhados em caixas e cada item entrando em cascata com pop";
+const APP_VERSION = "3.11.70";
+const VERSION_NOTES = "💑 Pareamento do casal mais à prova de erro: convite pra instalar o app (iPhone/Android), aviso de conexão que falhou e auto-pareamento ao abrir pelo link · campos do perfil alinhados";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.70",
+    bullets: [
+      "Pareamento do casal: novo 'Convidar para instalar' que manda o link do app com o passo a passo (iPhone e Android)",
+      "Aviso claro quando a conexão não fecha (ex.: 4G/5G) — orienta tentar no mesmo Wi-Fi e gerar convite novo",
+      "Abrir pelo link de convite já entra no pareamento sozinho, sem o tutorial atrapalhar",
+      "Campos do perfil (nome, data, tipo de conta) com rótulos alinhados",
+    ]
+  },
   {
     version: "3.11.69",
     bullets: [
@@ -2818,10 +2827,21 @@ function cpApplyRemote(remote) {
 }
 function cpSend() { if (!cpConnected() || _cp.applying) return; try { _cp.ch.send(JSON.stringify({ t: "data", data: DATA })); } catch (e) {} }
 function cpReset() { try { if (_cp.ch) _cp.ch.close(); } catch (e) {} try { if (_cp.pc) _cp.pc.close(); } catch (e) {} _cp = { pc: null, ch: null, role: null, applying: false }; }
+// avisa quando a conexão falha (rede 4G/5G costuma bloquear P2P sem servidor de apoio)
+function cpWatchState(pc) {
+  pc.onconnectionstatechange = () => {
+    const st = pc.connectionState;
+    if (st === "failed" || (st === "disconnected" && !cpConnected())) {
+      const el = document.querySelector("#pairBody .pair-wait, #pairBody .pair-msg");
+      if (el) el.innerHTML = '<span class="pair-err">Não fechou a conexão 😕 — pode ser a rede do celular (4G/5G). Tentem no <b>mesmo Wi-Fi</b> e gerem um convite novo.</span>';
+      refreshProfTipo();
+    }
+  };
+}
 async function cpCreateOffer() {
   cpReset(); _cp.role = "host";
   const pc = new RTCPeerConnection(RTC_CFG); _cp.pc = pc;
-  cpSetupChannel(pc.createDataChannel("fin"));
+  cpSetupChannel(pc.createDataChannel("fin")); cpWatchState(pc);
   await pc.setLocalDescription(await pc.createOffer()); await cpWaitIce(pc);
   return cpEncode({ t: pc.localDescription.type, s: pc.localDescription.sdp });
 }
@@ -2829,7 +2849,7 @@ async function cpAcceptAnswer(code) { const d = await cpDecode(code); await _cp.
 async function cpCreateAnswer(code) {
   cpReset(); _cp.role = "guest";
   const pc = new RTCPeerConnection(RTC_CFG); _cp.pc = pc;
-  pc.ondatachannel = (e) => cpSetupChannel(e.channel);
+  pc.ondatachannel = (e) => cpSetupChannel(e.channel); cpWatchState(pc);
   const d = await cpDecode(code);
   await pc.setRemoteDescription({ type: d.t, sdp: d.s });
   await pc.setLocalDescription(await pc.createAnswer()); await cpWaitIce(pc);
@@ -2860,11 +2880,14 @@ function renderPairBody() {
     const d = $("#pairDone"); if (d) d.onclick = closePairModal; return;
   }
   if (_pairStep === "home") {
-    b.innerHTML = '<p class="pair-intro">Conexão direta entre os dois celulares, sem nuvem. Um cria o convite, o outro entra.</p>'
+    b.innerHTML = '<p class="pair-intro">Conexão direta entre os dois celulares, <b>sem nuvem</b>. Um cria o convite, o outro entra.</p>'
       + '<button class="btn primary pair-role" id="pairHost">📤 Criar convite (sou o 1º)</button>'
-      + '<button class="btn ghost pair-role" id="pairGuest">📥 Tenho um convite (sou o 2º)</button>';
+      + '<button class="btn ghost pair-role" id="pairGuest">📥 Tenho um convite (sou o 2º)</button>'
+      + '<button class="btn ghost pair-role pair-invite" id="pairInstall">📲 Ela ainda não tem o app? Convidar</button>'
+      + '<div class="pair-hint">⚠️ Os dois precisam estar com o app aberto <b>ao mesmo tempo</b> pra parear. Funciona melhor no <b>mesmo Wi-Fi</b>.</div>';
     $("#pairHost").onclick = pairStartHost;
     $("#pairGuest").onclick = () => { _pairStep = "guest"; renderPairBody(); };
+    $("#pairInstall").onclick = pairInviteApp;
     return;
   }
   if (_pairStep === "guest") {
@@ -2906,14 +2929,28 @@ async function pairGuestGen() {
     + '<p class="pair-wait">Aguardando o parceiro conectar… 🔗</p>';
   pairFillShare("pairQR", "pairCopy", "pairShare", code, "Resposta MorbiusFin");
 }
-// abre direto pareando quando o app é aberto por um link de convite (#pair=…) — câmera nativa do celular
+// Convidar a esposa a INSTALAR o app (link simples + passo a passo iPhone/Android)
+async function pairInviteApp() {
+  const url = location.origin + location.pathname;
+  const msg = "Instala o MorbiusFin (nosso controle financeiro do casal): " + url
+    + "\n\n📱 Android: abra o link no Chrome → menu (⋮) → \"Instalar app\"."
+    + "\n🍎 iPhone: abra no Safari → Compartilhar → \"Adicionar à Tela de Início\"."
+    + "\n\nDepois é só a gente parear os dois celulares pelo app. 💚";
+  try {
+    if (navigator.share) await navigator.share({ title: "MorbiusFin", text: msg, url: url });
+    else { await navigator.clipboard.writeText(msg); toast("Convite copiado ✓ — cole no WhatsApp"); }
+  } catch (e) {}
+}
+// abre direto pareando quando o app é aberto por um link de convite (#pair=…) — ex.: câmera nativa do celular
 function cpCheckHashPair() {
-  const h = location.hash || ""; const i = h.indexOf("pair="); if (i < 0) return;
+  const h = location.hash || ""; const i = h.indexOf("pair="); if (i < 0) return false;
   const code = h.slice(i + 5); try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+  window.__pairing = true;                          // impede o onboarding de atropelar o pareamento
   const p = getPerfil(); p.tipo = "conjunta"; setPerfil(p);
   _profTipo = "conjunta"; _pairPrefill = code;
   openPairModal(); _pairStep = "guest"; renderPairBody();
-  setTimeout(() => { const ta = $("#pairInv"); if (ta) ta.value = code; pairGuestGen(); }, 60);
+  setTimeout(() => { const ta = $("#pairInv"); if (ta) ta.value = code; pairGuestGen(); }, 80);
+  return true;
 }
 (function bindPair() {
   const c = $("#pairClose"); if (c) c.onclick = closePairModal;
@@ -3512,6 +3549,7 @@ function onbStepIcon(kind) {
   return w('<rect x="3" y="4" width="18" height="15" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9.5" y1="19" x2="14.5" y2="19"/>');
 }
 function maybeStartOnboarding() {
+  if (window.__pairing) return;                          // veio por link de convite → pareamento manda, não mostra onboarding
   if (localStorage.getItem("financas2026.onboarded") === "1") return;
   if (!window.__eraSeedNovo) { localStorage.setItem("financas2026.onboarded", "1"); return; }  // retornante: não empurra
   const o = $("#onboarding"); if (!o || !o.classList.contains("hidden")) return;

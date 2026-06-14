@@ -180,7 +180,7 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .prof-photo .prof-photo-cam svg { width: 18px; height: 18px; display: block; }   /* ícone SVG = centralizado certinho (sem o emoji torto) */
 .prof-rm { background: none; border: 0; color: var(--red); font-family: var(--font); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px 8px; }
 .prof-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
-.prof-field span { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.prof-field span { font-size: 12.5px; font-weight: 700; color: var(--muted); text-align: left; padding-left: 13px; }   /* rótulo alinhado com o texto do campo (não centralizado solto) */
 .prof-field input { width: 100%; box-sizing: border-box; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--line);
   background: var(--card-2); color: var(--ink); font-family: var(--font); font-size: 16px; }
 .prof-field input:focus { outline: none; border-color: var(--accent); }
@@ -198,6 +198,9 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .pair-wait { color: var(--muted); text-align: center; font-weight: 700; }
 .pair-err { color: var(--red); font-weight: 700; }
 .pair-role { width: 100%; }
+.pair-invite { border-style: dashed; }
+.pair-hint { margin-top: 4px; padding: 10px 12px; border-radius: 11px; background: var(--card-2); border: 1px solid var(--line);
+  font-size: 12px; color: var(--muted); line-height: 1.5; }
 .pair-qr { display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 14px; padding: 10px; min-height: 80px; }
 .pair-qr svg { width: 200px; height: 200px; max-width: 60vw; max-height: 60vw; display: block; }
 .pair-noqr { color: #333; font-size: 12.5px; text-align: center; padding: 14px; }
