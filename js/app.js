@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.82";
+const APP_VERSION = "3.11.83";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.83",
+    bullets: [
+      "Modo admin (só o dono): segure o rodapé 'MorbiusFin · v…' no menu e digite o código pra abrir o painel",
+      "Painel do admin mostra o ambiente (TESTE / PRODUÇÃO), a versão e as novidades, e deixa aprovar a versão pra produção",
+    ]
+  },
   {
     version: "3.11.82",
     bullets: [
@@ -2753,6 +2760,7 @@ $("#btnMenu").onclick = openMenu;
 $("#menuClose").onclick = closeMenu;
 $("#menuDrawer").onclick = (e) => { if (e.target.id === "menuDrawer") closeMenu(); };
 { const mu = $("#miUpdate"); if (mu) mu.onclick = updateNow; }
+{ const ma = $("#miAdmin"); if (ma) ma.onclick = () => { closeMenu(); openAdminPanel(); }; }
 { const mp = $("#miPerfil"); if (mp) mp.onclick = () => { closeMenu(); openProfile(); }; }
 $("#miImport").onclick = () => { closeMenu(); $("#importFile").click(); };
 $("#miExport").onclick = () => { closeMenu(); $("#btnExport").click(); };
@@ -2770,6 +2778,87 @@ $("#miAcesso").onclick = () => { closeMenu(); openAccessModal(); };   // dados r
 $("#miTema").onclick = () => { cycleTheme(); };
 $("#miZero").onclick = () => { closeMenu(); wipeToZero(_onbHide, _onbHide); };
 const _te = $("#testExit"); if (_te) _te.onclick = exitTestMode;
+
+/* ===================== 🛡️ Modo ADMIN (só o dono) — controla a subida p/ produção ===================== */
+const ADMIN_CODE = "72730";   // código do dono (Kaick) — troca aqui se quiser
+const isAdmin = () => localStorage.getItem("financas2026.admin") === "1";
+function setAdmin(on) { if (on) localStorage.setItem("financas2026.admin", "1"); else localStorage.removeItem("financas2026.admin"); revealAdmin(); }
+function revealAdmin() { const mi = $("#miAdmin"); if (mi) mi.classList.toggle("hidden", !isAdmin()); }
+// Detecta o ambiente pela URL: produção (/MorbiusFin), teste (/financas) ou local
+function envInfo() {
+  const p = (location.pathname || "").toLowerCase();
+  if (/morbiusfin/.test(p)) return { tag: "PRODUÇÃO", cls: "env-prod", desc: "app dos usuários (MorbiusFin)" };
+  if (/financas/.test(p)) return { tag: "TESTE", cls: "env-test", desc: "ambiente de teste (Kaick)" };
+  return { tag: "LOCAL", cls: "env-local", desc: "rodando no seu computador" };
+}
+// Entrada secreta: segurar o rodapé "MorbiusFin · vX" abre o gate do admin
+(function bindAdminGate() {
+  const foot = $("#menuFoot"); if (!foot) return;
+  let t = null;
+  const start = () => { t = setTimeout(() => { t = null; isAdmin() ? openAdminPanel() : openAdminGate(); }, 650); };
+  const cancel = () => { if (t) { clearTimeout(t); t = null; } };
+  foot.addEventListener("pointerdown", start);
+  foot.addEventListener("pointerup", cancel);
+  foot.addEventListener("pointerleave", cancel);
+  foot.addEventListener("pointercancel", cancel);
+})();
+function adminModalEl(id, inner) {
+  let m = document.getElementById(id);
+  if (!m) {
+    m = document.createElement("div"); m.id = id; m.className = "modal center hidden";
+    document.body.appendChild(m);
+    m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); });
+  }
+  m.innerHTML = '<div class="modal-card admin-card">' + inner + '</div>';
+  return m;
+}
+function openAdminGate() {
+  const m = adminModalEl("adminGateModal",
+    '<button type="button" class="wn-close" id="agClose" aria-label="Fechar">✕</button>'
+    + '<div class="admin-head"><span>🛡️</span><h2>Modo admin</h2></div>'
+    + '<p class="admin-sub">Área do dono. Digite o código de administrador.</p>'
+    + '<input id="agCode" type="password" inputmode="numeric" class="lock-input" placeholder="•••••" autocomplete="off" style="text-align:center">'
+    + '<div id="agMsg" class="admin-msg"></div>'
+    + '<button type="button" class="btn primary" id="agOk" style="width:100%">Entrar</button>');
+  m.classList.remove("hidden");
+  const inp = $("#agCode", m), msg = $("#agMsg", m);
+  setTimeout(() => { try { inp.focus(); } catch (e) {} }, 60);
+  const tryIt = () => {
+    if (inp.value === ADMIN_CODE) { m.classList.add("hidden"); setAdmin(true); toast("🛡️ Modo admin ativado"); openAdminPanel(); }
+    else { msg.textContent = "código incorreto"; inp.value = ""; inp.focus(); }
+  };
+  $("#agOk", m).onclick = tryIt;
+  inp.onkeydown = e => { if (e.key === "Enter") tryIt(); };
+  inp.oninput = () => { if (inp.value.length >= ADMIN_CODE.length) tryIt(); };
+  $("#agClose", m).onclick = () => m.classList.add("hidden");
+}
+function openAdminPanel() {
+  const env = envInfo();
+  const atual = (CHANGELOG || [])[0] || { version: APP_VERSION, bullets: [] };
+  const aprovada = localStorage.getItem("financas2026.prodApproved") || "";
+  const jaAprovada = aprovada === APP_VERSION;
+  const bullets = (atual.bullets || []).map(b => '<li>' + esc(b) + '</li>').join("");
+  const m = adminModalEl("adminPanelModal",
+    '<button type="button" class="wn-close" id="apClose" aria-label="Fechar">✕</button>'
+    + '<div class="admin-head"><span>🛡️</span><h2>Painel do admin</h2></div>'
+    + '<div class="admin-env ' + env.cls + '">Ambiente: <b>' + env.tag + '</b><i>' + env.desc + '</i></div>'
+    + '<div class="admin-ver">Versão: <b>v' + esc(APP_VERSION) + '</b>' + (jaAprovada ? ' <span class="admin-ok">✅ aprovada p/ produção</span>' : '') + '</div>'
+    + '<div class="admin-cl"><div class="admin-cl-t">Novidades desta versão (v' + esc(atual.version) + '):</div><ul>' + bullets + '</ul></div>'
+    + '<button type="button" class="btn primary" id="apApprove" style="width:100%">' + (jaAprovada ? '✅ v' + esc(APP_VERSION) + ' aprovada' : '🚀 Aprovar v' + esc(APP_VERSION) + ' para produção') + '</button>'
+    + '<p class="admin-note">Aprovar marca esta versão como pronta. A publicação no MorbiusFin (produção) é feita pelo assistente quando você pedir — diga: <b>"sobe a v' + esc(APP_VERSION) + ' pra produção"</b>.</p>'
+    + '<button type="button" class="btn ghost" id="apLogout" style="width:100%">Sair do modo admin</button>');
+  m.classList.remove("hidden");
+  $("#apClose", m).onclick = () => m.classList.add("hidden");
+  $("#apApprove", m).onclick = async () => {
+    localStorage.setItem("financas2026.prodApproved", APP_VERSION);
+    const frase = "sobe a v" + APP_VERSION + " pra produção";
+    try { await navigator.clipboard.writeText(frase); } catch (e) {}
+    toast("✅ v" + APP_VERSION + " aprovada — pedido copiado");
+    openAdminPanel();
+  };
+  $("#apLogout", m).onclick = () => { setAdmin(false); m.classList.add("hidden"); toast("Saiu do modo admin"); };
+}
+revealAdmin();   // mostra o item do menu se o admin já estiver ativo neste aparelho
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
 
 // ===== Web Push (servidor: Cloudflare Worker) =====
