@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.65";
-const VERSION_NOTES = "✨ Trocar entre Resumo · Gráficos · Insights agora desliza: avançar entra pela direita, voltar pela esquerda";
+const APP_VERSION = "3.11.66";
+const VERSION_NOTES = "👤 'Editar perfil' no menu (foto/nome) + tipo de conta Pessoal ou Conjunta · 💑 conta de casal sincroniza os 2 celulares ao vivo por QR/código, direto entre eles (sem nuvem)";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.66",
+    bullets: [
+      "Novo 'Editar perfil' no menu: foto, nome e tipo de conta (Pessoal ou Conjunta)",
+      "Conta Conjunta (casal): pareie os 2 celulares por QR ou código — a conexão é direta entre os aparelhos",
+      "O que um lança aparece no outro em tempo real, sem passar pela nuvem",
+    ]
+  },
   {
     version: "3.11.65",
     bullets: [
@@ -2370,7 +2378,7 @@ function persist() {
   history.push(lastSnap); if (history.length > HISTORY_MAX) history.shift();
   redoStack = []; // ação nova invalida o "refazer"
   lastSnap = JSON.stringify(DATA);
-  saveData(DATA); render(); pushSync();
+  saveData(DATA); render(); pushSync(); cpSend();   // cpSend = manda a mudança pro parceiro (conta conjunta), ao vivo
 }
 function undo() {
   if (!history.length) { toast("Nada para desfazer"); return; }
@@ -2427,6 +2435,7 @@ const _onbHide = () => { const o = $("#onboarding"); if (o) o.classList.add("hid
 $("#btnMenu").onclick = openMenu;
 $("#menuClose").onclick = closeMenu;
 $("#menuDrawer").onclick = (e) => { if (e.target.id === "menuDrawer") closeMenu(); };
+{ const mp = $("#miPerfil"); if (mp) mp.onclick = () => { closeMenu(); openProfile(); }; }
 $("#miImport").onclick = () => { closeMenu(); $("#importFile").click(); };
 $("#miExport").onclick = () => { closeMenu(); $("#btnExport").click(); };
 $("#miSync").onclick = () => { closeMenu(); if (syncCfg()) pullSync(true, null, true); else configurarSync(); };
@@ -2603,15 +2612,21 @@ function renderAvatar() {
   }
   b.title = p.nome ? esc(p.nome) : "Meu perfil";
 }
-let _profFotoTmp = "";
+let _profFotoTmp = "", _profTipo = "pessoal";
 function openProfile() {
   const m = $("#profileModal"); if (!m) return;
   const p = getPerfil();
   $("#profNome").value = p.nome || "";
   $("#profNasc").value = p.nasc || "";
   _profFotoTmp = p.foto || "";
-  refreshProfPhoto();
+  _profTipo = p.tipo === "conjunta" ? "conjunta" : "pessoal";
+  refreshProfPhoto(); refreshProfTipo();
   m.classList.remove("hidden");
+}
+function refreshProfTipo() {
+  $$("#profTipoSeg .seg-btn").forEach(b => b.classList.toggle("active", b.dataset.tipo === _profTipo));
+  const conj = $("#profConjunta"); if (conj) conj.classList.toggle("hidden", _profTipo !== "conjunta");
+  const st = $("#profPairStatus"); if (st) st.innerHTML = cpConnected() ? '<span class="pair-ok">🟢 Pareado com o parceiro</span>' : "";
 }
 function refreshProfPhoto() {
   const ph = $("#profPhotoBtn"); if (!ph) return;
@@ -2625,6 +2640,7 @@ function saveProfile() {
   p.nome = ($("#profNome").value || "").trim();
   p.nasc = $("#profNasc").value || "";
   p.foto = _profFotoTmp || "";
+  p.tipo = _profTipo;
   setPerfil(p); renderAvatar();
   $("#profileModal").classList.add("hidden");
   toast("Perfil salvo ✅");
@@ -2635,6 +2651,8 @@ function saveProfile() {
   const m = $("#profileModal"); if (m) m.onclick = (e) => { if (e.target === m) m.classList.add("hidden"); };
   const pb = $("#profPhotoBtn"); if (pb) pb.onclick = () => $("#profFile").click();
   const rm = $("#profPhotoRemove"); if (rm) rm.onclick = () => { _profFotoTmp = ""; refreshProfPhoto(); };
+  $$("#profTipoSeg .seg-btn").forEach(b => b.onclick = () => { _profTipo = b.dataset.tipo; refreshProfTipo(); });
+  const pair = $("#profPair"); if (pair) pair.onclick = () => openPairModal();
   const sv = $("#profSave"); if (sv) sv.onclick = saveProfile;
   const f = $("#profFile"); if (f) f.onchange = (e) => {
     const file = e.target.files && e.target.files[0]; if (!file) return;
@@ -2700,6 +2718,168 @@ function cropExport() {
   const m = $("#notifModal"); if (m) m.onclick = (e) => { if (e.target === m) closeNotif(); };
 })();
 (function bindBell() { const b = $("#btnBell"); if (b) b.onclick = abrirAlertas; })();
+
+/* ===================== 💑 Conta conjunta — sync P2P ao vivo (WebRTC), SEM nuvem =====================
+   Um celular cria o "convite" (offer), o outro lê (QR/código) e devolve a "resposta" (answer).
+   Conexão DIRETA entre os aparelhos; os dados trafegam pelo canal P2P e NUNCA são guardados em servidor.
+   STUN do Google é usado só p/ descobrir o IP (não recebe dados). Vale enquanto os dois apps estão abertos. */
+const RTC_CFG = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+let _cp = { pc: null, ch: null, role: null, applying: false };
+let _pairStep = "home", _pairPrefill = "";
+function cpConnected() { return !!(_cp.ch && _cp.ch.readyState === "open"); }
+function _b64u(u8) { let s = ""; for (const b of u8) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+function _unb64u(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; const bin = atob(s); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return u8; }
+async function cpEncode(obj) {
+  const json = JSON.stringify(obj);
+  try {
+    if (window.CompressionStream) {
+      const cs = new CompressionStream("gzip");
+      const blob = await new Response(new Blob([json]).stream().pipeThrough(cs)).blob();
+      return "g" + _b64u(new Uint8Array(await blob.arrayBuffer()));
+    }
+  } catch (e) {}
+  return "j" + _b64u(new TextEncoder().encode(json));
+}
+async function cpDecode(str) {
+  str = (str || "").trim();
+  const i = str.indexOf("pair="); if (i >= 0) str = str.slice(i + 5);
+  str = str.trim();
+  const tag = str[0], bytes = _unb64u(str.slice(1));
+  if (tag === "g" && window.DecompressionStream) {
+    const ds = new DecompressionStream("gzip");
+    const blob = await new Response(new Blob([bytes]).stream().pipeThrough(ds)).blob();
+    return JSON.parse(await blob.text());
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+function cpWaitIce(pc) {
+  return new Promise(res => {
+    if (pc.iceGatheringState === "complete") return res();
+    const check = () => { if (pc.iceGatheringState === "complete") { pc.removeEventListener("icegatheringstatechange", check); res(); } };
+    pc.addEventListener("icegatheringstatechange", check);
+    setTimeout(res, 2800);   // não trava se o ICE demorar
+  });
+}
+function cpSetupChannel(ch) {
+  _cp.ch = ch;
+  ch.onopen = cpOnConnect;
+  ch.onclose = () => { refreshProfTipo(); renderPairBody(); };
+  ch.onmessage = (e) => { try { const m = JSON.parse(e.data); if (m && m.t === "data" && m.data) cpApplyRemote(m.data); } catch (er) {} };
+}
+function cpOnConnect() { toast("Casal pareado 🔗"); refreshProfTipo(); renderPairBody(); cpSend(); }
+function cpApplyRemote(remote) {
+  const lt = (DATA && DATA.updatedAt) || 0, rt = (remote && remote.updatedAt) || 0;
+  if (rt > lt) {
+    _cp.applying = true;
+    DATA = migrate(remote); if (!DATA.updatedAt) DATA.updatedAt = rt;
+    saveData(DATA); lastSnap = JSON.stringify(DATA); render();
+    _cp.applying = false;
+    toast("Atualizado pelo parceiro ⤓");
+  }
+}
+function cpSend() { if (!cpConnected() || _cp.applying) return; try { _cp.ch.send(JSON.stringify({ t: "data", data: DATA })); } catch (e) {} }
+function cpReset() { try { if (_cp.ch) _cp.ch.close(); } catch (e) {} try { if (_cp.pc) _cp.pc.close(); } catch (e) {} _cp = { pc: null, ch: null, role: null, applying: false }; }
+async function cpCreateOffer() {
+  cpReset(); _cp.role = "host";
+  const pc = new RTCPeerConnection(RTC_CFG); _cp.pc = pc;
+  cpSetupChannel(pc.createDataChannel("fin"));
+  await pc.setLocalDescription(await pc.createOffer()); await cpWaitIce(pc);
+  return cpEncode({ t: pc.localDescription.type, s: pc.localDescription.sdp });
+}
+async function cpAcceptAnswer(code) { const d = await cpDecode(code); await _cp.pc.setRemoteDescription({ type: d.t, sdp: d.s }); }
+async function cpCreateAnswer(code) {
+  cpReset(); _cp.role = "guest";
+  const pc = new RTCPeerConnection(RTC_CFG); _cp.pc = pc;
+  pc.ondatachannel = (e) => cpSetupChannel(e.channel);
+  const d = await cpDecode(code);
+  await pc.setRemoteDescription({ type: d.t, sdp: d.s });
+  await pc.setLocalDescription(await pc.createAnswer()); await cpWaitIce(pc);
+  return cpEncode({ t: pc.localDescription.type, s: pc.localDescription.sdp });
+}
+
+/* ----- UI do pareamento ----- */
+function pairLink(code) { return location.origin + location.pathname + "#pair=" + code; }
+function pairFillShare(qrId, copyId, shareId, code, title) {
+  const link = pairLink(code);
+  const qel = document.getElementById(qrId);
+  if (qel) {
+    qel.innerHTML = "";
+    try { const q = qrcode(0, "L"); q.addData(link); q.make(); qel.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); }
+    catch (e) { qel.innerHTML = '<div class="pair-noqr">Código grande demais pro QR — use <b>Copiar</b> ou <b>Compartilhar</b>.</div>'; }
+  }
+  const cp = document.getElementById(copyId);
+  if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(link); toast("Copiado ✓"); } catch (e) { toast("Copie o link manualmente"); } };
+  const sh = document.getElementById(shareId);
+  if (sh) sh.onclick = async () => { try { if (navigator.share) await navigator.share({ title: title, text: "Pareamento MorbiusFin (casal)", url: link }); else { await navigator.clipboard.writeText(link); toast("Copiado ✓"); } } catch (e) {} };
+}
+function openPairModal() { _pairStep = "home"; renderPairBody(); const m = $("#pairModal"); if (m) m.classList.remove("hidden"); }
+function closePairModal() { const m = $("#pairModal"); if (m) m.classList.add("hidden"); }
+function renderPairBody() {
+  const b = $("#pairBody"); if (!b) return;
+  if (cpConnected()) {
+    b.innerHTML = '<div class="pair-connected"><div class="pair-ok-big">🟢</div><p><b>Conectado!</b> O que um de vocês lançar aparece no outro em tempo real — direto entre os celulares, sem nuvem.</p><button class="btn primary" id="pairDone">Fechar</button></div>';
+    const d = $("#pairDone"); if (d) d.onclick = closePairModal; return;
+  }
+  if (_pairStep === "home") {
+    b.innerHTML = '<p class="pair-intro">Conexão direta entre os dois celulares, sem nuvem. Um cria o convite, o outro entra.</p>'
+      + '<button class="btn primary pair-role" id="pairHost">📤 Criar convite (sou o 1º)</button>'
+      + '<button class="btn ghost pair-role" id="pairGuest">📥 Tenho um convite (sou o 2º)</button>';
+    $("#pairHost").onclick = pairStartHost;
+    $("#pairGuest").onclick = () => { _pairStep = "guest"; renderPairBody(); };
+    return;
+  }
+  if (_pairStep === "guest") {
+    b.innerHTML = '<p class="pair-step"><b>1.</b> Cole aqui o convite do parceiro:</p>'
+      + '<textarea class="pair-ta" id="pairInv" placeholder="cole o convite…"></textarea>'
+      + '<button class="btn primary" id="pairGen">Gerar resposta</button>'
+      + '<button class="btn ghost" id="pairBack">Voltar</button><div class="pair-msg" id="pairMsg"></div>';
+    if (_pairPrefill) { $("#pairInv").value = _pairPrefill; }
+    $("#pairGen").onclick = pairGuestGen;
+    $("#pairBack").onclick = () => { _pairStep = "home"; renderPairBody(); };
+    return;
+  }
+}
+async function pairStartHost() {
+  _pairStep = "host"; const b = $("#pairBody");
+  b.innerHTML = '<p class="pair-step">Gerando convite…</p>';
+  let code; try { code = await cpCreateOffer(); } catch (e) { b.innerHTML = '<p class="pair-err">Não consegui criar o convite. Tente de novo.</p><button class="btn ghost" id="pairBack">Voltar</button>'; const bk = $("#pairBack"); if (bk) bk.onclick = () => { _pairStep = "home"; renderPairBody(); }; return; }
+  b.innerHTML = '<p class="pair-step"><b>1.</b> Envie este convite pro parceiro (QR, Copiar ou Compartilhar):</p>'
+    + '<div class="pair-qr" id="pairQR"></div>'
+    + '<div class="pair-actions"><button class="btn ghost" id="pairCopy">📋 Copiar</button><button class="btn ghost" id="pairShare">↗︎ Compartilhar</button></div>'
+    + '<p class="pair-step"><b>2.</b> Cole aqui a resposta que ele te mandar:</p>'
+    + '<textarea class="pair-ta" id="pairAns" placeholder="cole a resposta…"></textarea>'
+    + '<button class="btn primary" id="pairConnect">Conectar</button><div class="pair-msg" id="pairMsg"></div>';
+  pairFillShare("pairQR", "pairCopy", "pairShare", code, "Convite MorbiusFin");
+  $("#pairConnect").onclick = async () => {
+    const v = ($("#pairAns").value || "").trim(); if (!v) { $("#pairMsg").textContent = "Cole a resposta primeiro."; return; }
+    $("#pairMsg").textContent = "Conectando…";
+    try { await cpAcceptAnswer(v); } catch (e) { $("#pairMsg").textContent = "Resposta inválida — confira e tente de novo."; }
+  };
+}
+async function pairGuestGen() {
+  const inv = ($("#pairInv") ? $("#pairInv").value : _pairPrefill || "").trim();
+  if (!inv) { const m = $("#pairMsg"); if (m) m.textContent = "Cole o convite primeiro."; return; }
+  const b = $("#pairBody"); b.innerHTML = '<p class="pair-step">Gerando resposta…</p>';
+  let code; try { code = await cpCreateAnswer(inv); } catch (e) { b.innerHTML = '<p class="pair-err">Convite inválido. Peça outro pro parceiro.</p><button class="btn ghost" id="pairBack">Voltar</button>'; const bk = $("#pairBack"); if (bk) bk.onclick = () => { _pairStep = "guest"; _pairPrefill = ""; renderPairBody(); }; return; }
+  b.innerHTML = '<p class="pair-step"><b>2.</b> Mande esta resposta de volta pro parceiro:</p>'
+    + '<div class="pair-qr" id="pairQR"></div>'
+    + '<div class="pair-actions"><button class="btn ghost" id="pairCopy">📋 Copiar</button><button class="btn ghost" id="pairShare">↗︎ Compartilhar</button></div>'
+    + '<p class="pair-wait">Aguardando o parceiro conectar… 🔗</p>';
+  pairFillShare("pairQR", "pairCopy", "pairShare", code, "Resposta MorbiusFin");
+}
+// abre direto pareando quando o app é aberto por um link de convite (#pair=…) — câmera nativa do celular
+function cpCheckHashPair() {
+  const h = location.hash || ""; const i = h.indexOf("pair="); if (i < 0) return;
+  const code = h.slice(i + 5); try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+  const p = getPerfil(); p.tipo = "conjunta"; setPerfil(p);
+  _profTipo = "conjunta"; _pairPrefill = code;
+  openPairModal(); _pairStep = "guest"; renderPairBody();
+  setTimeout(() => { const ta = $("#pairInv"); if (ta) ta.value = code; pairGuestGen(); }, 60);
+}
+(function bindPair() {
+  const c = $("#pairClose"); if (c) c.onclick = closePairModal;
+  const m = $("#pairModal"); if (m) m.onclick = (e) => { if (e.target === m) closePairModal(); };
+})();
 (function bindWhatsNew() {                 // liga o ícone e os botões do modal (elementos estáticos)
   const i = $("#btnWhatsNew"); if (i) i.onclick = openWhatsNew;
   const a = $("#wnAccept"); if (a) a.onclick = () => applyUpdate(a);
@@ -3053,6 +3233,7 @@ function startApp() {
   if (curTab === "resumo" && !annual) renderCharts();
   checkAndNotify(); checkVersion();
   setTimeout(checkFullscreen, 3200);   // detecta install antigo (sem tela cheia → faixa no rodapé) e orienta a reinstalar
+  setTimeout(cpCheckHashPair, 600);    // se abriu por um link de convite (#pair=…), já entra no pareamento do casal
   const t0 = Date.now();
   // Splash curto (só o nome): mostra ~2,2s e revela o app; o sync continua por trás.
   const fecharSplash = (min) => { const espera = Math.max(0, min - (Date.now() - t0)); setTimeout(hideSplash, espera); };

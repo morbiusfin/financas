@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" />
   <link rel="stylesheet" href="css/styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" defer></script>
 </head>
 <body class="splash-on">
   <!-- FUNDO ANIMADO: chuva de números/cifras (estilo Matrix), sutil -->
@@ -121,8 +122,28 @@
       </div>
       <label class="prof-field"><span>Nome</span><input type="text" id="profNome" placeholder="Seu nome" maxlength="40" autocomplete="off"></label>
       <label class="prof-field"><span>Aniversário</span><input type="date" id="profNasc"></label>
+      <div class="prof-field"><span>Tipo de conta</span>
+        <div class="seg" id="profTipoSeg">
+          <button type="button" class="seg-btn active" data-tipo="pessoal">🙋 Pessoal</button>
+          <button type="button" class="seg-btn" data-tipo="conjunta">💑 Conjunta</button>
+        </div>
+      </div>
+      <div id="profConjunta" class="prof-conj hidden">
+        <p class="prof-conj-txt">Conta de casal: cada um no seu celular. Pareie os dois aparelhos por um código/QR e o que um lança aparece no outro <b>em tempo real</b> — direto entre os celulares, <b>sem nuvem</b>.</p>
+        <button type="button" id="profPair" class="btn primary">📲 Parear celulares</button>
+        <div id="profPairStatus" class="prof-pair-status"></div>
+      </div>
       <div class="modal-actions"><button type="button" id="profSave" class="btn primary">Salvar</button></div>
       <input type="file" id="profFile" accept="image/*" class="hidden" aria-hidden="true">
+    </div>
+  </div>
+
+  <!-- MODAL: pareamento do casal (WebRTC P2P — sem nuvem) -->
+  <div id="pairModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="pairTitle">
+    <div class="modal-card pair-card">
+      <button type="button" id="pairClose" class="wn-close" aria-label="Fechar">✕</button>
+      <h2 id="pairTitle" style="text-align:center">Parear celulares</h2>
+      <div id="pairBody" class="pair-body"></div>
     </div>
   </div>
 
@@ -149,6 +170,7 @@
   <div id="menuDrawer" class="menu-drawer hidden" role="dialog" aria-modal="true" aria-label="Menu">
     <nav class="menu-panel">
       <div class="menu-head"><span>Menu</span><button id="menuClose" class="menu-x" aria-label="Fechar">✕</button></div>
+      <button class="menu-item" id="miPerfil"><span class="mi-ic">👤</span><span><b>Editar perfil</b><i>foto, nome, conta pessoal ou conjunta</i></span></button>
       <button class="menu-item" id="miAcesso"><span class="mi-ic">🔒</span><span><b>Conta e acesso</b><i>reais (Face ID / PIN) e teste</i></span></button>
       <button class="menu-item" id="miSync"><span class="mi-ic">🔄</span><span><b>Sincronização</b><i>subir / baixar da nuvem</i></span></button>
       <button class="menu-item" id="miImport"><span class="mi-ic">⬆️</span><span><b>Importar dados</b><i>de um backup .json</i></span></button>

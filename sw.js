@@ -1,12 +1,13 @@
 /* Service Worker — network-first (sempre busca a versão nova; cache só offline) */
-const CACHE = "financas-v105";
+const CACHE = "financas-v106";
 const ASSETS = [
   "./", "./index.html",
   "./css/styles.css",
   "./js/data.js", "./js/app.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png",
-  "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+  "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js",
+  "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"
 ];
 
 self.addEventListener("install", (e) => {
