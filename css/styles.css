@@ -206,6 +206,12 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .av-opt.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 .av-import { display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--accent-2);
   background: var(--card-2); border: 2px dashed var(--line); }
+/* opção "Atualizar o app" no menu — só aparece quando há atualização; realce verde pulsante */
+.menu-item.mi-update { background: linear-gradient(135deg, rgba(21,194,102,.18), rgba(11,209,122,.10)); border: 1px solid rgba(21,194,102,.45); }
+.menu-item.mi-update .mi-ic { animation: miUpdPulse 1.6s ease-in-out infinite; }
+.menu-item.mi-update b { color: var(--accent-2); }
+@keyframes miUpdPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { .menu-item.mi-update .mi-ic { animation: none; } }
 .prof-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
 .prof-field span { font-size: 12.5px; font-weight: 700; color: var(--muted); text-align: left; padding-left: 13px; }   /* rótulo alinhado com o texto do campo (não centralizado solto) */
 .prof-field input { width: 100%; box-sizing: border-box; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--line); text-align: left; -webkit-appearance: none; appearance: none;

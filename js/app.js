@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.81";
+const APP_VERSION = "3.11.82";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.82",
+    bullets: [
+      "Nova opção no menu: 'Atualizar o app' aparece sempre que houver versão nova — é só tocar pra instalar",
+      "Atualização mais confiável: força o app a baixar tudo de novo (limpa o cache e troca a versão), resolvendo quando a atualização 'não subia' no celular",
+    ]
+  },
   {
     version: "3.11.81",
     bullets: [
@@ -2745,6 +2752,7 @@ const _onbHide = () => { const o = $("#onboarding"); if (o) o.classList.add("hid
 $("#btnMenu").onclick = openMenu;
 $("#menuClose").onclick = closeMenu;
 $("#menuDrawer").onclick = (e) => { if (e.target.id === "menuDrawer") closeMenu(); };
+{ const mu = $("#miUpdate"); if (mu) mu.onclick = updateNow; }
 { const mp = $("#miPerfil"); if (mp) mp.onclick = () => { closeMenu(); openProfile(); }; }
 $("#miImport").onclick = () => { closeMenu(); $("#importFile").click(); };
 $("#miExport").onclick = () => { closeMenu(); $("#btnExport").click(); };
@@ -2875,13 +2883,15 @@ async function checkForUpdate() {
     const r = await fetch("version.json?cb=" + Date.now(), { cache: "no-store" });
     if (!r.ok) return;
     const j = await r.json();
-    if (j && j.version && j.version !== APP_VERSION) showUpdateBanner();
+    if (j && j.version && j.version !== APP_VERSION) showUpdateBanner(j.version);
   } catch (e) {}
 }
-function showUpdateBanner() {            // "tem atualização" → revela o ícone ✨ no cabeçalho (não mais o banner grande)
-  const icon = $("#btnWhatsNew"); if (!icon) return;
-  updateShown = true;
-  icon.classList.remove("hidden");       // CSS .wn-btn:not(.hidden) já faz o bob + o .wn-dot pulsa
+let updateVer = "";
+function showUpdateBanner(ver) {          // "tem atualização" → ✨ no cabeçalho + OPÇÃO NO MENU
+  updateShown = true; if (ver) updateVer = ver;
+  const icon = $("#btnWhatsNew"); if (icon) icon.classList.remove("hidden");   // CSS já faz o bob + .wn-dot pulsa
+  const mi = $("#miUpdate"); if (mi) mi.classList.remove("hidden");            // opção no menu (some quando não há update)
+  const sub = $("#miUpdateSub"); if (sub) sub.textContent = updateVer ? ("toque para instalar a v" + updateVer) : "nova versão disponível";
 }
 // abre o modal central de novidades com o changelog
 function openWhatsNew() {
@@ -2896,18 +2906,32 @@ function openWhatsNew() {
   m.classList.remove("hidden");
 }
 function closeWhatsNew() { const m = $("#whatsNewModal"); if (m) m.classList.add("hidden"); }
-function applyUpdate(btn) {               // "Aceitar e atualizar": aplica o SW novo e recarrega
+function applyUpdate(btn) {               // "Aceitar e atualizar": força SW novo + limpa cache + recarrega
   if (btn) { btn.textContent = "Atualizando…"; btn.disabled = true; }
   (async () => {
+    let reloaded = false;
+    const go = () => { if (reloaded) return; reloaded = true; try { location.reload(); } catch (e) { location.href = location.pathname; } };
     try {
       if ("serviceWorker" in navigator) {
+        try { navigator.serviceWorker.addEventListener("controllerchange", go, { once: true }); } catch (e) {}
         const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) { try { await reg.update(); } catch (e) {} if (reg.waiting) reg.waiting.postMessage("skipWaiting"); }
+        if (reg) {
+          try { await reg.update(); } catch (e) {}
+          const w = reg.waiting || reg.installing;            // manda o SW novo assumir (waiting OU instalando)
+          if (w) { try { w.postMessage("skipWaiting"); } catch (e) {} }
+        }
+      }
+      // limpa TODO o cache do app → no reload, o network-first baixa tudo de novo (resolve "não sobe" no iOS)
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.filter(k => k !== "fin-meta").map(k => { try { return caches.delete(k); } catch (e) { return null; } }));
       }
     } catch (e) {}
-    setTimeout(() => location.reload(), 250);
+    setTimeout(go, 1500);   // fallback: se o controllerchange não vier, recarrega mesmo assim
   })();
 }
+// Opção do menu: atualiza agora (mesma rotina robusta), com aviso
+function updateNow() { closeMenu(); toast("Atualizando o app…"); applyUpdate(null); }
 /* ---------- 👤 Perfil (nome, aniversário, foto) — guardado SÓ no aparelho (localStorage), não vai pra nuvem nem pro repo ---------- */
 const PERFIL_KEY = "financas2026.perfil";
 function getPerfil() { try { return JSON.parse(localStorage.getItem(PERFIL_KEY) || "{}") || {}; } catch (e) { return {}; } }
