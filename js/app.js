@@ -1,11 +1,20 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.63";
-const VERSION_NOTES = "🔔 Sino de alertas no cabeçalho: aparece pulsando quando há conta atrasada ou perto de vencer (com a quantidade) e leva direto pra lista";
+const APP_VERSION = "3.11.64";
+const VERSION_NOTES = "👤 Foto de perfil no cabeçalho (nome, aniversário e foto com recorte circular) · 🔔 painel próprio de notificações · o sino para de piscar depois que você abre uma vez";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.64",
+    bullets: [
+      "Novo perfil no canto do cabeçalho: toque no avatar pra editar nome, data de aniversário e foto",
+      "A foto abre um recorte circular — arraste pra posicionar e use o zoom; dá pra trocar quando quiser",
+      "O sino agora abre um painel de notificações (área própria, não atropela a tela)",
+      "Depois que você abre as notificações uma vez, o sino para de piscar (volta a avisar só quando surge algo novo)",
+    ]
+  },
   {
     version: "3.11.63",
     bullets: [
@@ -871,8 +880,11 @@ function renderResumo(view) {
 }
 
 // Rola até os vencimentos E pisca um destaque em volta (mostra qual focar).
-// 🔔 Sino de notificações no header: aparece pulsando quando há conta a pagar (atrasada ou perto de vencer).
+// 🔔 Sino de notificações no header: balança/pulsa quando há conta a pagar (atrasada ou perto de vencer).
 //    Vermelho = tem atrasada/vence hoje; âmbar = só próximas. Some quando não há nada a pagar.
+//    Depois que o usuário ABRE as notificações uma vez, para de piscar (.seen) — até surgir algo novo.
+const NOTIF_SEEN_KEY = "financas2026.notifSeen";
+function notifSignature() { return contasPerto(curMonth).map(a => a.id + ":" + a.daysLeft).join("|"); }
 function updateBell() {
   const b = document.getElementById("btnBell"); if (!b) return;
   const alertas = contasPerto(curMonth);
@@ -880,13 +892,46 @@ function updateBell() {
   if (!n) { b.classList.add("hidden"); return; }
   const urgente = alertas.some(a => (a.daysLeft | 0) <= 0);   // atrasada ou vence hoje
   b.classList.toggle("warn", !urgente);                       // .warn = só próximas (âmbar)
+  const visto = localStorage.getItem(NOTIF_SEEN_KEY) === notifSignature();
+  b.classList.toggle("seen", visto);                          // .seen = não pisca mais (mas continua mostrando a contagem)
   const badge = b.querySelector(".bell-badge"); if (badge) badge.textContent = n > 9 ? "9+" : String(n);
   b.title = `${n} conta${n > 1 ? "s" : ""} a pagar`;
   b.classList.remove("hidden");
 }
-// Tocar no sino → vai pro Resumo do mês atual e destaca a lista de contas a vencer
+// Tocar no sino → ABRE o painel de notificações (área própria, não atropela o app) e marca como visto
 function abrirAlertas() {
   if (DATA.year === REAL_TODAY.getFullYear()) curMonth = REAL_TODAY.getMonth();   // garante o mês atual (onde estão os alertas)
+  try { localStorage.setItem(NOTIF_SEEN_KEY, notifSignature()); } catch (e) {}    // viu → para de piscar
+  renderNotifPanel();
+  const m = $("#notifModal"); if (m) m.classList.remove("hidden");
+  updateBell();
+}
+function closeNotif() { const m = $("#notifModal"); if (m) m.classList.add("hidden"); }
+function renderNotifPanel() {
+  const body = $("#notifBody"); if (!body) return;
+  const al = contasPerto(curMonth).slice().sort((a, b) => a.daysLeft - b.daysLeft);
+  $("#notifTitle").textContent = al.length ? "Contas a vencer" : "Notificações";
+  const ver = $("#notifVer"); if (ver) ver.style.display = al.length ? "" : "none";
+  if (!al.length) { body.innerHTML = `<div class="notif-empty">Nada a pagar por aqui 🎉</div>`; return; }
+  body.innerHTML = al.map(v => {
+    const cls = vencBadge(v.daysLeft).cls;
+    const u = (cls === "atras" || cls === "d0") ? "u-red" : (cls === "d1" || cls === "d3") ? "u-amber" : "u-green";
+    return `<div class="notif-row ${u}">
+      <div class="nr-main"><div class="nr-name">${esc(v.desc)}</div><div class="nr-sub">dia ${v.venc} ${vencBadgeHTML(v.daysLeft)} · ${brl(v.val)}</div></div>
+      <button class="vr-pay" data-pay="${v.id}">Pagar</button>
+    </div>`;
+  }).join("");
+  $$("[data-pay]", body).forEach(b => b.onclick = () => {
+    const l = DATA.fixas.find(x => x.id === b.dataset.pay);
+    if (l) { l.sts[curMonth] = "pago"; suppressNextAnim = true; persist(); toast("Pago ✅"); }   // persist() já re-renderiza + atualiza o sino
+    try { localStorage.setItem(NOTIF_SEEN_KEY, notifSignature()); } catch (e) {}   // painel aberto = visto; não volta a piscar
+    renderNotifPanel(); updateBell();
+    if (!contasPerto(curMonth).length) closeNotif();
+  });
+}
+// "Ver na lista" → fecha o painel e leva pro card de Contas a vencer no Resumo
+function verNaLista() {
+  closeNotif();
   annual = false; curTab = "resumo"; resumoView = "resumo";
   $$(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === "resumo"));
   suppressNextAnim = true; window.scrollTo(0, 0); render();
@@ -2526,6 +2571,117 @@ function applyUpdate(btn) {               // "Aceitar e atualizar": aplica o SW 
     setTimeout(() => location.reload(), 250);
   })();
 }
+/* ---------- 👤 Perfil (nome, aniversário, foto) — guardado SÓ no aparelho (localStorage), não vai pra nuvem nem pro repo ---------- */
+const PERFIL_KEY = "financas2026.perfil";
+function getPerfil() { try { return JSON.parse(localStorage.getItem(PERFIL_KEY) || "{}") || {}; } catch (e) { return {}; } }
+function setPerfil(p) { try { localStorage.setItem(PERFIL_KEY, JSON.stringify(p)); } catch (e) {} }
+function renderAvatar() {
+  const b = document.getElementById("btnProfile"); if (!b) return;
+  const p = getPerfil();
+  const img = b.querySelector(".avatar-img"), ini = b.querySelector(".avatar-ini");
+  if (p.foto) { b.classList.add("has-photo"); if (img) img.style.backgroundImage = `url("${p.foto}")`; }
+  else {
+    b.classList.remove("has-photo"); if (img) img.style.backgroundImage = "";
+    const nm = (p.nome || "").trim(); if (ini) ini.textContent = nm ? nm[0].toUpperCase() : "👤";
+  }
+  b.title = p.nome ? esc(p.nome) : "Meu perfil";
+}
+let _profFotoTmp = "";
+function openProfile() {
+  const m = $("#profileModal"); if (!m) return;
+  const p = getPerfil();
+  $("#profNome").value = p.nome || "";
+  $("#profNasc").value = p.nasc || "";
+  _profFotoTmp = p.foto || "";
+  refreshProfPhoto();
+  m.classList.remove("hidden");
+}
+function refreshProfPhoto() {
+  const ph = $("#profPhotoBtn"); if (!ph) return;
+  const img = ph.querySelector(".prof-photo-img");
+  if (_profFotoTmp) { ph.classList.remove("empty"); if (img) img.style.backgroundImage = `url("${_profFotoTmp}")`; }
+  else { ph.classList.add("empty"); if (img) img.style.backgroundImage = ""; }
+  $("#profPhotoRemove").classList.toggle("hidden", !_profFotoTmp);
+}
+function saveProfile() {
+  const p = getPerfil();
+  p.nome = ($("#profNome").value || "").trim();
+  p.nasc = $("#profNasc").value || "";
+  p.foto = _profFotoTmp || "";
+  setPerfil(p); renderAvatar();
+  $("#profileModal").classList.add("hidden");
+  toast("Perfil salvo ✅");
+}
+(function bindProfile() {
+  const open = $("#btnProfile"); if (open) open.onclick = openProfile;
+  const c = $("#profClose"); if (c) c.onclick = () => $("#profileModal").classList.add("hidden");
+  const m = $("#profileModal"); if (m) m.onclick = (e) => { if (e.target === m) m.classList.add("hidden"); };
+  const pb = $("#profPhotoBtn"); if (pb) pb.onclick = () => $("#profFile").click();
+  const rm = $("#profPhotoRemove"); if (rm) rm.onclick = () => { _profFotoTmp = ""; refreshProfPhoto(); };
+  const sv = $("#profSave"); if (sv) sv.onclick = saveProfile;
+  const f = $("#profFile"); if (f) f.onchange = (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = () => openCropper(r.result);
+    r.readAsDataURL(file);
+    e.target.value = "";   // permite reescolher o mesmo arquivo depois
+  };
+})();
+
+/* ---------- Recorte CIRCULAR da foto: arrasta pra posicionar + zoom; exporta 320×320 ---------- */
+let _crop = { img: null, S: 0, base: 1, z: 1, tx: 0, ty: 0, dispW: 0, dispH: 0 };
+function openCropper(dataUrl) {
+  const m = $("#cropModal"), img = $("#cropImg"), stage = $("#cropStage");
+  img.onload = () => {
+    const S = stage.clientWidth || 260;
+    _crop.img = img; _crop.S = S; _crop.z = 1;
+    _crop.base = S / Math.min(img.naturalWidth, img.naturalHeight);
+    $("#cropZoom").value = 1;
+    layoutCrop(true);
+    m.classList.remove("hidden");
+  };
+  img.src = dataUrl;
+}
+function layoutCrop(center) {
+  const c = _crop, img = c.img; if (!img) return;
+  c.dispW = img.naturalWidth * c.base * c.z;
+  c.dispH = img.naturalHeight * c.base * c.z;
+  if (center) { c.tx = (c.S - c.dispW) / 2; c.ty = (c.S - c.dispH) / 2; }
+  clampCrop(); applyCrop();
+}
+function clampCrop() { const c = _crop; c.tx = Math.min(0, Math.max(c.S - c.dispW, c.tx)); c.ty = Math.min(0, Math.max(c.S - c.dispH, c.ty)); }
+function applyCrop() { const c = _crop, img = c.img; if (!img) return; img.style.width = c.dispW + "px"; img.style.height = c.dispH + "px"; img.style.left = c.tx + "px"; img.style.top = c.ty + "px"; }
+function cropExport() {
+  const c = _crop, out = 320, k = out / c.S;
+  const cv = document.createElement("canvas"); cv.width = out; cv.height = out;
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle = "#06251a"; ctx.fillRect(0, 0, out, out);
+  ctx.drawImage(c.img, c.tx * k, c.ty * k, c.dispW * k, c.dispH * k);
+  return cv.toDataURL("image/jpeg", 0.85);
+}
+(function bindCropper() {
+  const stage = $("#cropStage"); if (!stage) return;
+  let drag = null;
+  stage.addEventListener("pointerdown", (e) => { if (!_crop.img) return; drag = { x: e.clientX, y: e.clientY, tx: _crop.tx, ty: _crop.ty }; try { stage.setPointerCapture(e.pointerId); } catch (er) {} });
+  stage.addEventListener("pointermove", (e) => { if (!drag) return; _crop.tx = drag.tx + (e.clientX - drag.x); _crop.ty = drag.ty + (e.clientY - drag.y); clampCrop(); applyCrop(); });
+  const end = () => drag = null;
+  stage.addEventListener("pointerup", end); stage.addEventListener("pointercancel", end); stage.addEventListener("pointerleave", end);
+  const zoom = $("#cropZoom"); if (zoom) zoom.oninput = (e) => {
+    const c = _crop; if (!c.img) return;
+    const nz = parseFloat(e.target.value) || 1, cx = c.S / 2, cy = c.S / 2, k = nz / c.z;
+    c.tx = cx - (cx - c.tx) * k; c.ty = cy - (cy - c.ty) * k; c.z = nz;
+    c.dispW = c.img.naturalWidth * c.base * c.z; c.dispH = c.img.naturalHeight * c.base * c.z;
+    clampCrop(); applyCrop();
+  };
+  const cancel = $("#cropCancel"); if (cancel) cancel.onclick = () => $("#cropModal").classList.add("hidden");
+  const ok = $("#cropOk"); if (ok) ok.onclick = () => { _profFotoTmp = cropExport(); refreshProfPhoto(); $("#cropModal").classList.add("hidden"); };
+})();
+
+(function bindNotif() {
+  const c = $("#notifClose"); if (c) c.onclick = closeNotif;
+  const v = $("#notifVer"); if (v) v.onclick = verNaLista;
+  const m = $("#notifModal"); if (m) m.onclick = (e) => { if (e.target === m) closeNotif(); };
+})();
 (function bindBell() { const b = $("#btnBell"); if (b) b.onclick = abrirAlertas; })();
 (function bindWhatsNew() {                 // liga o ícone e os botões do modal (elementos estáticos)
   const i = $("#btnWhatsNew"); if (i) i.onclick = openWhatsNew;
@@ -2875,6 +3031,7 @@ function startApp() {
   window.__started = true;
   lastSnap = JSON.stringify(DATA);
   forceAnimOnce = true;        // só a abertura tem a animação de entrada (intro); o resto é estático
+  renderAvatar();              // 👤 mostra a foto/inicial do perfil no header
   render();
   if (curTab === "resumo" && !annual) renderCharts();
   checkAndNotify(); checkVersion();

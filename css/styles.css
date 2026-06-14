@@ -141,6 +141,63 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 @keyframes bellPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(229,72,77,.55); } 50% { box-shadow: 0 0 0 6px rgba(229,72,77,0); } }
 @keyframes bellPulseWarn { 0%,100% { box-shadow: 0 0 0 0 rgba(200,134,11,.55); } 50% { box-shadow: 0 0 0 6px rgba(200,134,11,0); } }
 @media (prefers-reduced-motion: reduce) { .bell-btn:not(.hidden) { animation: none; } .bell-badge { animation: none; } }
+/* sino "visto" → para de balançar e o badge para de pulsar (mas continua aparecendo com a contagem) */
+.bell-btn.seen:not(.hidden) { animation: none; }
+.bell-btn.seen .bell-badge { animation: none; }
+
+/* 👤 avatar de perfil no canto do header */
+.avatar-btn { position: relative; width: 38px; height: 38px; flex: 0 0 auto; border: 0; padding: 0; cursor: pointer;
+  border-radius: 50%; overflow: hidden; background: rgba(255,255,255,.14);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.35), 0 2px 8px rgba(0,0,0,.25); transition: transform .12s ease; }
+.avatar-btn:active { transform: scale(.92); }
+.avatar-btn .avatar-img { position: absolute; inset: 0; background-size: cover; background-position: center; display: none; }
+.avatar-btn.has-photo .avatar-img { display: block; }
+.avatar-btn.has-photo .avatar-ini { display: none; }
+.avatar-btn .avatar-ini { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800; font-size: 16px; }
+
+/* perfil */
+.prof-card { max-width: 360px; }
+.prof-photo-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 6px 0 16px; }
+.prof-photo { position: relative; width: 104px; height: 104px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+  overflow: hidden; background: var(--card-2); box-shadow: 0 0 0 3px var(--line), 0 6px 18px rgba(0,0,0,.3); }
+.prof-photo .prof-photo-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.prof-photo.empty .prof-photo-img { background: linear-gradient(135deg, var(--green-2), var(--green)); }
+.prof-photo .prof-photo-cam { position: absolute; right: 2px; bottom: 2px; width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 15px; background: var(--accent); color: #06251a;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.prof-photo.empty::after { content: "👤"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 46px; }
+.prof-rm { background: none; border: 0; color: var(--red); font-family: var(--font); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px 8px; }
+.prof-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.prof-field span { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.prof-field input { width: 100%; box-sizing: border-box; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card-2); color: var(--ink); font-family: var(--font); font-size: 16px; }
+.prof-field input:focus { outline: none; border-color: var(--accent); }
+
+/* recorte circular da foto */
+.crop-card { max-width: 360px; }
+.crop-hint { text-align: center; color: var(--muted); font-size: 12.5px; margin: 0 0 14px; }
+.crop-stage { position: relative; width: 260px; height: 260px; max-width: 78vw; max-height: 78vw; margin: 0 auto 16px;
+  border-radius: 50%; overflow: hidden; background: #06251a; touch-action: none; cursor: grab;
+  box-shadow: 0 0 0 3px var(--accent), inset 0 0 0 9999px rgba(0,0,0,0); user-select: none; }
+.crop-stage:active { cursor: grabbing; }
+.crop-stage #cropImg { position: absolute; top: 0; left: 0; max-width: none; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.crop-zoom { width: 100%; margin: 0 0 6px; accent-color: var(--accent); }
+
+/* painel de notificações */
+.notif-card { max-width: 380px; }
+.notif-head { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 14px; }
+.notif-head h2 { margin: 0; }
+.notif-bell { font-size: 22px; }
+.notif-body { display: flex; flex-direction: column; gap: 8px; max-height: 52vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.notif-empty { text-align: center; color: var(--muted); padding: 18px 0; font-weight: 600; }
+.notif-row { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 14px; background: var(--card-2); border-left: 4px solid var(--line); }
+.notif-row.u-red { border-left-color: var(--red); }
+.notif-row.u-amber { border-left-color: #d99409; }
+.notif-row.u-green { border-left-color: var(--green); }
+.notif-row .nr-main { flex: 1 1 auto; min-width: 0; }
+.notif-row .nr-name { font-weight: 800; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif-row .nr-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
 /* bolinha de "sincronizando" no header — aparece durante o sync e some ao terminar */
 .sync-spin { width: 18px; height: 18px; border-radius: 50%; flex: 0 0 auto; box-sizing: border-box;
   border: 2.5px solid rgba(255,255,255,.28); border-top-color: #fff;

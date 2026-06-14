@@ -46,6 +46,7 @@
         <button id="btnUndo" class="icon-btn" aria-label="Desfazer" title="Desfazer (Ctrl+Z)">↩︎</button>
         <button id="btnRedo" class="icon-btn" aria-label="Refazer" title="Refazer (Ctrl+Y)">↪︎</button>
         <button id="btnWhatsNew" class="icon-btn wn-btn hidden" title="Novidades disponíveis" aria-label="Novidades">✨<span class="wn-dot" aria-hidden="true"></span></button>
+        <button id="btnProfile" class="avatar-btn" title="Meu perfil" aria-label="Meu perfil"><span class="avatar-img" aria-hidden="true"></span><span class="avatar-ini" aria-hidden="true">👤</span></button>
       </div>
     </div>
     <div class="month-wrap">
@@ -95,6 +96,46 @@
       <div id="wnBody" class="wn-body"></div>
       <div class="modal-actions">
         <button type="button" id="wnAccept" class="btn primary">Aceitar e atualizar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: notificações (sino) — área própria pra não encavalar no app -->
+  <div id="notifModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="notifTitle">
+    <div class="modal-card notif-card">
+      <button type="button" id="notifClose" class="wn-close" aria-label="Fechar">✕</button>
+      <div class="notif-head"><span class="notif-bell" aria-hidden="true">🔔</span><h2 id="notifTitle">Notificações</h2></div>
+      <div id="notifBody" class="notif-body"></div>
+      <div class="modal-actions"><button type="button" id="notifVer" class="btn primary">Ver na lista</button></div>
+    </div>
+  </div>
+
+  <!-- MODAL: perfil (nome, aniversário, foto) -->
+  <div id="profileModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="profTitle">
+    <div class="modal-card prof-card">
+      <button type="button" id="profClose" class="wn-close" aria-label="Fechar">✕</button>
+      <h2 id="profTitle" style="text-align:center">Meu perfil</h2>
+      <div class="prof-photo-wrap">
+        <button type="button" id="profPhotoBtn" class="prof-photo empty" aria-label="Trocar foto"><span class="prof-photo-img" aria-hidden="true"></span><span class="prof-photo-cam" aria-hidden="true">📷</span></button>
+        <button type="button" id="profPhotoRemove" class="prof-rm hidden">Remover foto</button>
+      </div>
+      <label class="prof-field"><span>Nome</span><input type="text" id="profNome" placeholder="Seu nome" maxlength="40" autocomplete="off"></label>
+      <label class="prof-field"><span>Aniversário</span><input type="date" id="profNasc"></label>
+      <div class="modal-actions"><button type="button" id="profSave" class="btn primary">Salvar</button></div>
+      <input type="file" id="profFile" accept="image/*" class="hidden" aria-hidden="true">
+    </div>
+  </div>
+
+  <!-- MODAL: recorte CIRCULAR da foto (arrasta pra posicionar + zoom) -->
+  <div id="cropModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
+    <div class="modal-card crop-card">
+      <h2 id="cropTitle" style="text-align:center">Ajeite a foto</h2>
+      <p class="crop-hint">Arraste para posicionar e use o controle para dar zoom</p>
+      <div class="crop-stage" id="cropStage"><img id="cropImg" alt="" draggable="false"></div>
+      <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1" class="crop-zoom" aria-label="Zoom da foto">
+      <div class="modal-actions">
+        <button type="button" id="cropCancel" class="btn ghost">Cancelar</button>
+        <button type="button" id="cropOk" class="btn primary">Usar foto</button>
       </div>
     </div>
   </div>
