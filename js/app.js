@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.78";
+const APP_VERSION = "3.11.79";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.79",
+    bullets: [
+      "Na aba de débitos agora dá pra segurar o item pra apagar (toque longo → seleção → apagar), igual em Fixas e Cartões",
+      "Dá pra apagar vários débitos de uma vez (Selecionar todos) — e o Ctrl+Z desfaz",
+      "A aba 'Cartão' virou 'Cartões'",
+    ]
+  },
   {
     version: "3.11.78",
     bullets: [
@@ -768,7 +776,7 @@ function render() {
   updateBell();                                                                                 // 🔔 alertas de contas no header
   $("#screenTitle").textContent = annual && curTab === "resumo" ? "Resumo " + (DATA.year + curYear()) : ({
     resumo: "Resumo", receitas: "Receitas", fixas: "Despesas Fixas",
-    cartao: "Cartão", diaria: "Débitos do dia a dia"
+    cartao: "Cartões", diaria: "Débitos do dia a dia"
   })[curTab];
   $("#fab").classList.toggle("hidden", curTab === "resumo" || selMode);   // sem + durante a seleção
   const view = $("#view");
@@ -1828,10 +1836,11 @@ function bindSortBar(view) {
    "Selecionar todos" no topo (+ dropdown de COMO selecionar). Barra de apagar sobe quando há seleção.
    Apagar: só este mês / deste mês em diante / escolher meses. Vale p/ receitas, fixas e cartão. */
 let selMode = false, selected = new Set(), selTab = null, selMonth = -1, selModeAt = 0;
-const SEL_TABS = ["receitas", "fixas", "cartao"];
+const SEL_TABS = ["receitas", "fixas", "cartao", "diaria"];
 
 // linhas visíveis na aba/mês atuais (espelha o filtro do render)
 function visibleRows(tab, m) {
+  if (tab === "diaria") return (DATA.diaria || []).map((l, idx) => ({ l, idx })).filter(x => x.l.mes === m);
   return (DATA[tab] || []).map((l, idx) => ({ l, idx }))
     .filter(x => (x.l.vals[m] || 0) > 0 || (x.l.sts[m] || "vazio") !== "vazio");
 }
@@ -1869,7 +1878,7 @@ function applySelectHow(how) {
   const m = curMonth;
   selected = new Set();
   visibleRows(curTab, m).forEach(x => {
-    const st = x.l.sts[m] || "vazio";
+    const st = (x.l.sts && x.l.sts[m]) || "vazio";
     const match = how === "all"
       || (how === "Ativa" && x.l.tipo === "Ativa")
       || (how === "Extra" && x.l.tipo === "Extra")
@@ -1882,8 +1891,10 @@ function selBarHTML(tab) {
   const vis = visibleRows(tab, curMonth);
   const all = vis.length && vis.every(x => selected.has(x.idx));
   const how = [["all", "Todos"]];
-  if (tab === "receitas") how.push(["Ativa", "Só recorrentes"], ["Extra", "Só extras"]);
-  how.push(["prog", "Só programados"], ["done", tab === "receitas" ? "Só recebidos" : "Só pagos"]);
+  if (tab !== "diaria") {   // débito é avulso (sem status/recorrência) → só "Todos"
+    if (tab === "receitas") how.push(["Ativa", "Só recorrentes"], ["Extra", "Só extras"]);
+    how.push(["prog", "Só programados"], ["done", tab === "receitas" ? "Só recebidos" : "Só pagos"]);
+  }
   return `<div class="sel-bar">
     <button class="sel-all" id="selAll"><span class="sel-box master${all ? " on" : ""}"></span> Selecionar todos</button>
     <select id="selHow" class="sel-how" title="Como selecionar">${how.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select>
@@ -1959,6 +1970,7 @@ function monthGridHTML() {
 }
 function openBulkDelete() {
   if (!selMode || !selected.size) return;
+  if (selTab === "diaria") return doBulkDeleteDiaria();   // débito é avulso → apaga direto (desfazível)
   const m = bulkModalEl();
   m.querySelector(".bm-title").textContent = `Apagar ${selected.size} item(ns)`;
   m.querySelector(".bm-sub").textContent = `Selecionados em ${mLong(curMonth)}.`;
@@ -1979,6 +1991,17 @@ function openBulkDelete() {
   m.classList.remove("hidden");
 }
 function closeBulkModal() { const m = document.getElementById("bulkModal"); if (m) m.classList.add("hidden"); }
+
+// Débito: cada compra vive em 1 mês só → apaga as selecionadas de vez (Ctrl+Z desfaz)
+function doBulkDeleteDiaria() {
+  const idxs = [...selected].sort((a, b) => b - a);   // de trás pra frente pra não bagunçar os índices
+  let n = 0;
+  idxs.forEach(i => { if (DATA.diaria[i]) { DATA.diaria.splice(i, 1); n++; } });
+  selMode = false; selected = new Set(); selTab = null; selMonth = -1;
+  persist();                 // salva + render + histórico (desfazível) + sync
+  updateBulkBar();
+  toast(`${n} compra(s) apagada(s) — dá pra desfazer ↩︎`);
+}
 
 function doBulkDelete(months) {
   const tab = selTab; if (!tab) return;
@@ -2058,19 +2081,26 @@ function renderDiaria(view) {
   rows.forEach(({ d, idx }) => { (cats[d.categoria || "Geral"] = cats[d.categoria || "Geral"] || []).push({ d, idx }); });
   let html = `<div class="list-header"><span class="lbl">${rows.length} compra(s) em ${mLong(m)}${receitaMes(m) > 0 ? ` · ${Math.round(total / receitaMes(m) * 100)}% da receita` : ""}</span><span class="total">${brl(total)}</span></div>`;
   if (!rows.length) { html += `<div class="list">${empty("Nenhuma compra no débito.")}</div>`; }
-  else html += sortBarHTML("diaria");
+  else html += (selMode ? selBarHTML("diaria") : sortBarHTML("diaria"));
   const getD = { val: x => Number(x.d.valor) || 0, dia: x => x.d.dia, desc: x => x.d.desc, nec: () => false };
   Object.keys(cats).sort().forEach(cat => {
     const sub = cats[cat].reduce((s, x) => s + (Number(x.d.valor) || 0), 0);
     const itens = sortRows(cats[cat], listSort.diaria, getD);
     const cobj = catList().find(x => x.nome.toLowerCase() === String(cat).toLowerCase());
     const emo = cobj ? cobj.emoji + " " : "";
-    html += `<div class="group-head">${emo}${esc(cat)} <span>${brl(sub)}</span></div><div class="list">${itens.map(({ d, idx }, gi) =>
-      `<div class="list-row" data-didx="${idx}" style="--i:${Math.min(gi, 16)}"><div class="desc"><div class="name">${esc(d.desc || "—")}</div>${(() => { const met = d.metodo === "pix" ? `<span class="met-pill pix">⚡ PIX</span>` : d.metodo === "debito" ? `<span class="met-pill debito">💳 Débito</span>` : ""; const dia = d.dia ? `dia ${d.dia}` : ""; return (met || dia) ? `<div class="sub">${[dia, met].filter(Boolean).join(" · ")}</div>` : ""; })()}</div><span class="amount">${brl(d.valor)}</span></div>`).join("")}</div>`;
+    html += `<div class="group-head">${emo}${esc(cat)} <span>${brl(sub)}</span></div><div class="list">${itens.map(({ d, idx }, gi) => {
+      const on = selected.has(idx);
+      const box = selMode ? `<span class="sel-box${on ? " on" : ""}" data-sel="${idx}"></span>` : "";
+      const met = d.metodo === "pix" ? `<span class="met-pill pix">⚡ PIX</span>` : d.metodo === "debito" ? `<span class="met-pill debito">💳 Débito</span>` : "";
+      const dia = d.dia ? `dia ${d.dia}` : "";
+      const subln = (met || dia) ? `<div class="sub">${[dia, met].filter(Boolean).join(" · ")}</div>` : "";
+      return `<div class="list-row${selMode ? " sel-mode" : ""}${on ? " sel-on" : ""}" data-idx="${idx}" style="--i:${Math.min(gi, 16)}">${box}<div class="desc"><div class="name">${esc(d.desc || "—")}</div>${subln}</div><span class="amount">${brl(d.valor)}</span></div>`;
+    }).join("")}</div>`;
   });
   view.innerHTML = html;
-  $$("[data-didx]", view).forEach(r => r.onclick = () => openDiariaModal(+r.dataset.didx));
-  bindSortBar(view);
+  bindRows(view);                                  // toque-longo → seleção (igual fixas/cartões)
+  if (selMode) bindSelBar(view); else bindSortBar(view);
+  updateBulkBar();
 }
 
 function bindRows(view) {
@@ -2096,6 +2126,7 @@ function bindRows(view) {
     r.onclick = (e) => {
       if (selMode) { e.preventDefault(); toggleSel(idx); return; }  // se o long-press já ativou a seleção
       if (e.target.dataset.toggle !== undefined) { toggleStatus(curTab, +e.target.dataset.toggle); e.stopPropagation(); return; }
+      if (curTab === "diaria") return openDiariaModal(idx);
       openEntryModal(curTab, idx);
     };
   });
