@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.72";
-const VERSION_NOTES = "🔔 Nova opção 'Aviso de vencimento' no menu: escolhe quantos dias antes avisar e aplica a TODAS as contas de uma vez (e cada conta segue editável individualmente)";
+const APP_VERSION = "3.11.73";
+const VERSION_NOTES = "🪟 Lâmina de vidro (estilo iOS): o seletor Resumo/Gráficos/Insights e a barra de abas agora deslizam de forma fluida e acompanham o arraste; ao soltar, o conteúdo entra com um esmaecer (sem piscar)";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.73",
+    bullets: [
+      "Seletor Resumo/Gráficos/Insights e a barra de abas com efeito 'lâmina de vidro' (iOS): o indicador desliza entre as opções",
+      "Dá pra arrastar de uma opção pra outra e o vidro acompanha o dedo, soltando na mais próxima",
+      "Ao soltar, o conteúdo entra com um esmaecer suave — sem piscar",
+    ]
+  },
   {
     version: "3.11.72",
     bullets: [
@@ -716,6 +724,7 @@ function render() {
   if (prevY != null && prevY > 0) window.scrollTo(0, prevY);   // restaura onde estava (a altura já está correta, render é síncrono)
   updateBulkBar();   // mostra/esconde a barra flutuante de apagar conforme a seleção
   if (typeof renderSeedBanner === "function") renderSeedBanner();   // banner "dados de exemplo" (modo Explorar)
+  if (typeof syncTabGlass === "function") syncTabGlass(true);       // mantém a lâmina de vidro na aba ativa (desliza quando troca)
 }
 
 /* ---------- Inteligência local (insights + saúde) — NADA sai do aparelho ---------- */
@@ -1356,14 +1365,104 @@ function viewToggleHTML() {
   </div>`;
 }
 const RV_ORDER = { resumo: 0, graficos: 1, insights: 2 };
-let _rvSlide = null;   // "fwd" (entra pela direita) | "back" (entra pela esquerda) | null
-function bindViewToggle() {
-  $$(".vt-btn").forEach(b => b.onclick = () => {
-    if (b.dataset.rv === "insights") localStorage.setItem("financas2026.insSeen", "1");   // viu → para de pulsar
-    if (resumoView === b.dataset.rv) return;
-    _rvSlide = (RV_ORDER[b.dataset.rv] > RV_ORDER[resumoView]) ? "fwd" : "back";          // direção da transição
-    resumoView = b.dataset.rv; forceAnimOnce = true; window.scrollTo(0, 0); render();    // forceAnim → libera a animação de entrada (cascata) nesta troca
+let _rvSlide = null;   // (legado) — a troca agora usa "esmaecer" (fadeView), não cascata
+
+/* ===== "Lâmina de vidro" (iOS): um indicador de vidro desliza entre as opções e acompanha o arraste =====
+   Opções têm largura igual (flex:1) → o vidro só translada. Persistente na tabbar (estática) e, no toggle
+   (reconstruído a cada render), recriado mas animando da posição anterior → desliza igual. Sem piscar. */
+const _glassPrev = {};   // key -> {x, ty, w, h}
+function ensureGlass(container) {
+  let g = container.querySelector(":scope > .seg-glass");
+  if (!g) { g = document.createElement("div"); g.className = "seg-glass noanim"; container.insertBefore(g, container.firstChild); }
+  return g;
+}
+function placeGlassTo(container, el, animate, key) {
+  if (!container || !el) return;
+  const g = ensureGlass(container);
+  const cr = container.getBoundingClientRect(), er = el.getBoundingClientRect();
+  if (!er.width) { setTimeout(() => placeGlassTo(container, el, animate, key), 30); return; }   // ainda sem layout → tenta de novo (setTimeout não depende de rAF)
+  const t = { x: er.left - cr.left, ty: er.top - cr.top, w: er.width, h: er.height };
+  const prev = key ? _glassPrev[key] : null;
+  // 1) define o estado FINAL na hora (sempre correto, não depende de rAF) → nunca fica preso
+  g.style.width = t.w + "px"; g.style.height = t.h + "px"; g.style.transform = `translate(${t.x}px, ${t.ty}px)`;
+  g.classList.toggle("glass-ins", el.classList.contains("vt-ins"));   // azul na opção Insights
+  // 2) se mudou de opção, toca o slide de prev→alvo (one-shot via WAAPI — robusto)
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (animate && prev && g.animate && !reduce && (Math.abs(prev.x - t.x) > 1 || Math.abs((prev.w || t.w) - t.w) > 1)) {
+    try {
+      g.animate(
+        [{ transform: `translate(${prev.x}px, ${prev.ty}px)`, width: (prev.w || t.w) + "px" },
+         { transform: `translate(${t.x}px, ${t.ty}px)`, width: t.w + "px" }],
+        { duration: 440, easing: "cubic-bezier(.34,1.3,.38,1)" }
+      );
+    } catch (e) {}
+  }
+  if (key) _glassPrev[key] = t;
+}
+function bindGlassDrag(container, optSel, commit, key) {
+  if (!container || container.dataset.glassBound) return; container.dataset.glassBound = "1";
+  const g = ensureGlass(container);
+  const opts = () => Array.prototype.slice.call(container.querySelectorAll(optSel));
+  const nearest = (x) => { let best = null, bd = Infinity; opts().forEach(o => { const r = o.getBoundingClientRect(); const d = Math.abs(x - (r.left + r.width / 2)); if (d < bd) { bd = d; best = o; } }); return best; };
+  let dragging = false, moved = false, w = 0, sx = 0;
+  container.addEventListener("pointerdown", (e) => {
+    if (!e.target.closest(optSel)) return;
+    dragging = true; moved = false; sx = e.clientX;
+    const gr = g.getBoundingClientRect(); w = gr.width || (opts()[0] ? opts()[0].getBoundingClientRect().width : 0);
+    g.classList.add("dragging");
+    try { container.setPointerCapture(e.pointerId); } catch (er) {}
   });
+  container.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    if (Math.abs(e.clientX - sx) > 4) moved = true;
+    const cr = container.getBoundingClientRect();
+    let x = e.clientX - cr.left - w / 2; x = Math.max(0, Math.min(cr.width - w, x));
+    const prev = key ? _glassPrev[key] : null, ty = prev ? prev.ty : 0, h = prev ? prev.h : g.getBoundingClientRect().height;
+    g.style.transform = `translate(${x}px, ${ty}px)`;
+    if (key) _glassPrev[key] = { x: x, ty: ty, w: w, h: h };   // guarda onde o dedo está (p/ o slide de settle sair daqui)
+    const n = nearest(e.clientX); opts().forEach(o => o.classList.toggle("glass-near", o === n));
+  });
+  const end = (e) => {
+    if (!dragging) return; dragging = false; g.classList.remove("dragging");
+    opts().forEach(o => o.classList.remove("glass-near"));
+    if (moved) {
+      const blk = (ev) => { ev.stopPropagation(); ev.preventDefault(); };   // mata o clique "fantasma" pós-arraste
+      container.addEventListener("click", blk, { capture: true, once: true });
+      setTimeout(() => { try { container.removeEventListener("click", blk, { capture: true }); } catch (er) {} }, 80);
+      const n = nearest(e.clientX != null ? e.clientX : sx); if (n) commit(n);
+    }
+  };
+  container.addEventListener("pointerup", end);
+  container.addEventListener("pointercancel", end);
+}
+// "esmaecer": traz o conteúdo novo com um fade suave, sem piscar
+function fadeView() {
+  const v = $("#view"); if (!v || !v.animate) return;
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  try { v.animate([{ opacity: 0.001 }, { opacity: 1 }], { duration: 300, easing: "cubic-bezier(.2,.7,.2,1)" }); } catch (e) {}
+}
+function bindViewToggle() {
+  const toggle = $(".view-toggle"); if (!toggle) return;
+  const commit = (b) => {
+    if (b.dataset.rv === "insights") localStorage.setItem("financas2026.insSeen", "1");
+    if (resumoView === b.dataset.rv) { placeGlassTo(toggle, b, true, "vt"); return; }   // mesma → só ajeita o vidro
+    resumoView = b.dataset.rv; suppressNextAnim = true; window.scrollTo(0, 0); render(); fadeView();   // render reconstrói o toggle → o vidro novo desliza de prev→ativo
+  };
+  $$(".vt-btn", toggle).forEach(b => b.onclick = () => commit(b));
+  bindGlassDrag(toggle, ".vt-btn", commit, "vt");
+  placeGlassTo(toggle, toggle.querySelector(".vt-btn.active") || toggle.querySelector(".vt-btn"), true, "vt");
+}
+// barra de abas (estática): mantém o vidro na aba ativa, deslizando quando troca
+function syncTabGlass(animate) {
+  const bar = $(".tabbar"); if (!bar) return;
+  placeGlassTo(bar, bar.querySelector(".tab.active") || bar.querySelector(".tab"), animate !== false, "tab");
+}
+function commitTab(t) {
+  const bar = $(".tabbar");
+  if (curTab === t.dataset.tab && !annual) { placeGlassTo(bar, t, true, "tab"); return; }
+  $$(".tab", bar).forEach(x => x.classList.remove("active")); t.classList.add("active");
+  curTab = t.dataset.tab; if (curTab !== "resumo") annual = false;
+  suppressNextAnim = true; window.scrollTo(0, 0); render(); fadeView();   // render chama syncTabGlass → vidro desliza
 }
 // classe de cascata pro painel (consome o _rvSlide uma vez)
 function rvPaneClass() {
@@ -2461,7 +2560,9 @@ function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;"
 let toastT; function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 1800); }
 
 /* ---------- Eventos ---------- */
-$$(".tab").forEach(t => t.onclick = () => { $$(".tab").forEach(x => x.classList.remove("active")); t.classList.add("active"); curTab = t.dataset.tab; if (curTab !== "resumo") annual = false; suppressNextAnim = true; window.scrollTo(0, 0); render(); });
+$$(".tab").forEach(t => t.onclick = () => commitTab(t));
+bindGlassDrag($(".tabbar"), ".tab", commitTab, "tab");
+window.addEventListener("resize", () => { syncTabGlass(false); });
 $("#fab").onclick = () => curTab === "diaria" ? openDiariaChooser() : curTab === "cartao" ? openCartaoChooser() : openEntryModal(curTab, null);
 $("#btnUndo").onclick = undo;
 { const br = $("#btnRefresh"); if (br) br.onclick = syncNow; }
