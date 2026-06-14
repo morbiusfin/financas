@@ -1,11 +1,20 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.80";
+const APP_VERSION = "3.11.81";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.81",
+    bullets: [
+      "Tela de código: assim que você digita o código certo, já entra sozinho — não precisa mais tocar em Entrar",
+      "Tela de código: ao abrir o teclado, atrás dele agora aparece só o verde (o app não vaza mais por trás)",
+      "Perfil: avatares prontos pra escolher (estilo Netflix) + importar a sua foto; quem não escolheu já ganha um avatar bonito por padrão",
+      "Perfil: campo de data alinhado, janela com altura limitada (o ✕ pra fechar fica sempre visível)",
+    ]
+  },
   {
     version: "3.11.80",
     bullets: [
@@ -2903,15 +2912,32 @@ function applyUpdate(btn) {               // "Aceitar e atualizar": aplica o SW 
 const PERFIL_KEY = "financas2026.perfil";
 function getPerfil() { try { return JSON.parse(localStorage.getItem(PERFIL_KEY) || "{}") || {}; } catch (e) { return {}; } }
 function setPerfil(p) { try { localStorage.setItem(PERFIL_KEY, JSON.stringify(p)); } catch (e) {} }
+/* ---------- Avatares predefinidos (estilo Netflix) — SVG inline, offline, sem download ---------- */
+const AVATARS = [
+  { c1: "#15c266", c2: "#0b3d2e", e: "🦊" }, { c1: "#2f7ff0", c2: "#0b2a5e", e: "🐼" },
+  { c1: "#f5a623", c2: "#9a5b00", e: "🦁" }, { c1: "#e0518a", c2: "#7a1840", e: "🐱" },
+  { c1: "#9b6cf0", c2: "#3d1f7a", e: "🐵" }, { c1: "#19c2b3", c2: "#0a4f49", e: "🐸" },
+  { c1: "#ef5350", c2: "#7a1a18", e: "🦉" }, { c1: "#7ed957", c2: "#2e6b16", e: "🐯" },
+  { c1: "#42a5f5", c2: "#123e6b", e: "🐧" }, { c1: "#ffca28", c2: "#8a6a00", e: "🐥" },
+  { c1: "#ff8a65", c2: "#8a3415", e: "🦄" }, { c1: "#26c6da", c2: "#0a4a55", e: "🐬" }
+];
+function avatarDataURI(a) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a.c1}"/><stop offset="1" stop-color="${a.c2}"/></linearGradient></defs><rect width="120" height="120" rx="60" fill="url(#g)"/><text x="60" y="62" font-size="60" text-anchor="middle" dominant-baseline="central">${a.e}</text></svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+// avatar padrão (determinístico pelo nome) p/ quem ainda não escolheu foto — nunca fica o 👤 sem graça
+function defaultAvatarFor(name) {
+  const s = (name || "").trim();
+  let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return avatarDataURI(AVATARS[h % AVATARS.length]);
+}
 function renderAvatar() {
   const b = document.getElementById("btnProfile"); if (!b) return;
   const p = getPerfil();
   const img = b.querySelector(".avatar-img"), ini = b.querySelector(".avatar-ini");
-  if (p.foto) { b.classList.add("has-photo"); if (img) img.style.backgroundImage = `url("${p.foto}")`; }
-  else {
-    b.classList.remove("has-photo"); if (img) img.style.backgroundImage = "";
-    const nm = (p.nome || "").trim(); if (ini) ini.textContent = nm ? nm[0].toUpperCase() : "👤";
-  }
+  b.classList.add("has-photo");
+  if (img) img.style.backgroundImage = `url("${p.foto || defaultAvatarFor(p.nome)}")`;   // sem foto → avatar padrão (nunca 👤 vazio)
+  if (ini) ini.textContent = "";
   b.title = p.nome ? esc(p.nome) : "Meu perfil";
 }
 let _profFotoTmp = "", _profTipo = "pessoal";
@@ -2923,6 +2949,7 @@ function openProfile() {
   _profFotoTmp = p.foto || "";
   _profTipo = p.tipo === "conjunta" ? "conjunta" : "pessoal";
   refreshProfPhoto(); refreshProfTipo();
+  const nm = $("#profNome"); if (nm) nm.oninput = () => { if (!_profFotoTmp) refreshProfPhoto(); };   // avatar padrão acompanha o nome
   m.classList.remove("hidden");
 }
 function refreshProfTipo() {
@@ -2933,9 +2960,20 @@ function refreshProfTipo() {
 function refreshProfPhoto() {
   const ph = $("#profPhotoBtn"); if (!ph) return;
   const img = ph.querySelector(".prof-photo-img");
-  if (_profFotoTmp) { ph.classList.remove("empty"); if (img) img.style.backgroundImage = `url("${_profFotoTmp}")`; }
-  else { ph.classList.add("empty"); if (img) img.style.backgroundImage = ""; }
-  $("#profPhotoRemove").classList.toggle("hidden", !_profFotoTmp);
+  const nome = ($("#profNome") && $("#profNome").value) || "";
+  const cur = _profFotoTmp || defaultAvatarFor(nome);          // sem escolha → avatar padrão (estilo Netflix)
+  ph.classList.remove("empty"); if (img) img.style.backgroundImage = `url("${cur}")`;
+  $("#profPhotoRemove").classList.toggle("hidden", !_profFotoTmp);   // "Remover" só quando há foto escolhida
+  renderAvatarPicker();
+}
+function renderAvatarPicker() {
+  const row = $("#avatarRow"); if (!row) return;
+  row.innerHTML = AVATARS.map((a, i) => {
+    const uri = avatarDataURI(a), on = _profFotoTmp === uri ? " on" : "";
+    return `<button type="button" class="av-opt${on}" data-av="${i}" style="background-image:url(&quot;${uri}&quot;)" aria-label="Avatar ${i + 1}"></button>`;
+  }).join("") + `<button type="button" class="av-opt av-import" id="avImport" aria-label="Importar foto">＋</button>`;
+  $$(".av-opt[data-av]", row).forEach(b => b.onclick = () => { _profFotoTmp = avatarDataURI(AVATARS[+b.dataset.av]); refreshProfPhoto(); });
+  const imp = $("#avImport", row); if (imp) imp.onclick = () => $("#profFile").click();
 }
 function saveProfile() {
   const p = getPerfil();
@@ -3437,21 +3475,37 @@ function showLock(env) {
   const ttl = $("#lockTitle"); if (ttl) ttl.textContent = "Digite seu código";
   const hint = $("#lockHint"); if (hint) hint.textContent = "";   // sem aviso revelando o código
   pin.value = ""; msg.textContent = ""; setTimeout(() => pin.focus(), 100);
-  const submit = async () => {
-    if (!pin.value) return;
-    if (pin.value === TEST_CODE) { playUnlock(loadTestProfile); return; }   // código reservado = modo teste (fictício)
-    msg.textContent = "verificando…";
+  let busy = false, done = false, lastTried = "", autoT = null;
+  // attempt: testa o código. showErr=true (botão/Enter) mostra "incorreto"; auto (digitando) é silencioso.
+  const attempt = async (showErr) => {
+    const v = pin.value;
+    if (!v || busy || done) return;
+    if (v === TEST_CODE) { done = true; playUnlock(loadTestProfile); return; }   // código reservado = modo teste
+    busy = true; lastTried = v;
+    if (showErr) msg.textContent = "verificando…";
     try {
-      const k = await deriveKey(pin.value, env.salt);
+      const k = await deriveKey(v, env.salt);
       const obj = await decryptEnvelope(k, env);
+      done = true;                                   // ✅ válido → entra automaticamente (sem clicar em Entrar)
       window.CRYPTO_KEY = k; DATA = migrate(obj);
       localStorage.setItem("financas2026.profile", "real");
       document.body.classList.remove("test-mode");
       playUnlock(startApp);
-    } catch (e) { msg.textContent = "código incorreto"; pin.value = ""; pin.focus(); }
+    } catch (e) {
+      if (showErr) { msg.textContent = "código incorreto"; pin.value = ""; lastTried = ""; pin.focus(); }
+      else { msg.textContent = ""; }               // digitando: não acusa erro (pode faltar dígito)
+    } finally { busy = false; }
   };
-  $("#lockBtn").onclick = submit;
-  pin.onkeydown = (e) => { if (e.key === "Enter") submit(); };
+  // VALIDADOR SIMULTÂNEO: a cada dígito, tenta sozinho (debounce). Acertou → entra na hora.
+  pin.oninput = () => {
+    if (msg.textContent === "código incorreto") msg.textContent = "";
+    clearTimeout(autoT);
+    const v = pin.value;
+    if (v.length < 4 || v === lastTried || busy || done) return;
+    autoT = setTimeout(() => attempt(false), 200);
+  };
+  $("#lockBtn").onclick = () => attempt(true);
+  pin.onkeydown = (e) => { if (e.key === "Enter") attempt(true); };
 }
 // Animação de desbloqueio: cadeado abre → a tela "abre no meio" (duas metades se separam) → cadeado esmaece pra direita.
 function playUnlock(after) {

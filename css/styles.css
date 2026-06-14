@@ -71,7 +71,12 @@ html, body { margin: 0; padding: 0; width: 100%; overflow-x: clip; }   /* clip (
    Segue o tema (claro/escuro) automaticamente. */
 html { background: var(--card); min-height: 100%; overscroll-behavior-y: none; transition: background-color .35s ease; }
 /* durante a tela de abertura, a faixa fica VERDE-ESCURA (igual o splash) em vez de branca */
-html:has(body.splash-on), html:has(body.lock-on) { background: #05110c; }
+html:has(body.splash-on) { background: #05110c; }
+/* na tela de CÓDIGO o fundo é o MESMO verde da entrada → ao abrir o teclado, atrás dele aparece
+   só o verde (nunca o app). Esconde também o conteúdo do app pra não vazar no vão do teclado (iOS). */
+html:has(body.lock-on) { background: linear-gradient(160deg, #0b3d2e 0%, #12734d 100%); }
+body.lock-on { background: linear-gradient(160deg, #0b3d2e 0%, #12734d 100%); }
+body.lock-on > *:not(#lockScreen):not(#unlockReveal):not(#splash) { visibility: hidden !important; }
 body {
   font-family: var(--font);
   /* coluna que ocupa a tela inteira → o conteúdo preenche igual em TODAS as abas
@@ -172,7 +177,10 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
   color: #fff; font-weight: 800; font-size: 16px; }
 
 /* perfil */
-.prof-card { max-width: 360px; }
+/* não ultrapassa a linha do menu de meses (topo) — cabe na tela e o ✕ fica sempre visível */
+.prof-card { max-width: 360px; max-height: calc(100dvh - 132px); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scrollbar-width: none; }
+.prof-card::-webkit-scrollbar { display: none; }
+.prof-card .wn-close { position: sticky; top: 0; float: right; margin: -6px -4px 0 0; z-index: 3; }   /* ✕ acompanha a rolagem interna */
 .prof-photo-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 8px 0 18px; }
 .prof-photo { position: relative; width: 108px; height: 108px; border: 0; padding: 0; cursor: pointer; background: none;
   overflow: visible; transition: transform .14s ease; }   /* overflow visível → a câmera NÃO é cortada */
@@ -187,9 +195,20 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
   border: 3px solid var(--card); box-shadow: 0 3px 10px rgba(0,0,0,.45); z-index: 2; }   /* destacada, com anel, fora do recorte */
 .prof-photo .prof-photo-cam svg { width: 18px; height: 18px; display: block; }   /* ícone SVG = centralizado certinho (sem o emoji torto) */
 .prof-rm { background: none; border: 0; color: var(--red); font-family: var(--font); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px 8px; }
+/* tira de avatares predefinidos (Netflix-style) + importar */
+.avatar-pick-wrap { margin: -4px 0 14px; }
+.avatar-pick-label { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 8px; }
+.avatar-row { display: flex; gap: 9px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.avatar-row::-webkit-scrollbar { display: none; }
+.av-opt { flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%; border: 2px solid transparent; padding: 0; cursor: pointer;
+  background-size: cover; background-position: center; background-color: var(--card-2); scroll-snap-align: center; transition: transform .12s ease, border-color .15s ease; }
+.av-opt:active { transform: scale(.9); }
+.av-opt.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+.av-import { display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--accent-2);
+  background: var(--card-2); border: 2px dashed var(--line); }
 .prof-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
 .prof-field span { font-size: 12.5px; font-weight: 700; color: var(--muted); text-align: left; padding-left: 13px; }   /* rótulo alinhado com o texto do campo (não centralizado solto) */
-.prof-field input { width: 100%; box-sizing: border-box; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--line);
+.prof-field input { width: 100%; box-sizing: border-box; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--line); text-align: left; -webkit-appearance: none; appearance: none;
   background: var(--card-2); color: var(--ink); font-family: var(--font); font-size: 16px; }
 .prof-field input:focus { outline: none; border-color: var(--accent); }
 .prof-conj { margin: -2px 0 12px; padding: 12px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--line); }
