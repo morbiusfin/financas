@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.76";
+const APP_VERSION = "3.11.77";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.77",
+    bullets: [
+      "Valores em R$ agora se formatam sozinhos: digite só os números e ele monta 1.234,56 (milhar com ponto, vírgula só pros centavos) — nunca precisa digitar . ou ,",
+      "Picker de emojis arrumado: as categorias não se sobrepõem mais e o nome da categoria fica alinhado à esquerda",
+      "Notificações de contas a vencer alinhadas à esquerda (nome e detalhe não ficam mais centralizados torto)",
+    ]
+  },
   {
     version: "3.11.76",
     bullets: [
@@ -465,6 +473,29 @@ let charts = {};
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const brl = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+/* ---------- Máscara de moeda (digita só números → 1.234,56 automático) ----------
+   Milhar/milhão/bilhão com ponto; vírgula só pros centavos. Nunca precisa digitar . ou , */
+const fmtMoneyBR = (n) => (Number(n) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function moneyVal(elOrStr) {
+  const s = (elOrStr && elOrStr.value !== undefined) ? elOrStr.value : (elOrStr || "");
+  const d = String(s).replace(/\D/g, "");
+  return d ? parseInt(d, 10) / 100 : 0;
+}
+function bindMoney(el) {
+  if (!el || el._money) return; el._money = true;
+  el.type = "text"; el.setAttribute("inputmode", "numeric"); el.setAttribute("autocomplete", "off");
+  if (el.value != null && el.value !== "") {            // valor inicial vem cru (ex.: "1234.56") → formata
+    const n = parseFloat(String(el.value).replace(",", "."));
+    el.value = (!isNaN(n) && n !== 0) ? fmtMoneyBR(n) : "";
+  }
+  el.addEventListener("input", () => {
+    const d = el.value.replace(/\D/g, "");
+    el.value = d ? fmtMoneyBR(parseInt(d, 10) / 100) : "";
+  });
+}
+function bindMoneyAll(scope) { $$(".money", scope || document).forEach(bindMoney); }
+
 const REAL_TODAY = new Date();
 const isMesAtual = () => DATA.year === REAL_TODAY.getFullYear() && curMonth === REAL_TODAY.getMonth();
 
@@ -1546,7 +1577,7 @@ function renderGraficos(host) {
       <p class="hint" style="text-align:left;margin:-2px 0 8px">Simule uma compra aqui que a linha aparece <b>em cima do gráfico</b> — fica preciso se dá pra comprar.</p>
       <div class="g-sim">
         <div class="field-row">
-          <label class="field" style="margin:0;flex:2"><span>🧪 Quero gastar (R$)</span><input id="gSimInput" type="number" step="0.01" inputmode="decimal" placeholder="0,00" /></label>
+          <label class="field" style="margin:0;flex:2"><span>🧪 Quero gastar (R$)</span><input id="gSimInput" class="money" placeholder="0,00" /></label>
           <label class="field" style="margin:0;flex:1"><span>Parcelas</span><select id="gSimN" class="sel">${Array.from({ length: 60 }, (_, i) => `<option value="${i + 1}"${i === 0 ? " selected" : ""}>${i + 1}×</option>`).join("")}</select></label>
           <button type="button" id="gSimClear" class="sim-clear" title="Limpar">↺</button>
         </div>
@@ -1625,8 +1656,9 @@ function makeSaldoChart(labels) {
 }
 function bindGSim() {
   const inp = $("#gSimInput"), inpN = $("#gSimN"); if (!inp) return;
-  inp.value = simBuy ? simBuy : ""; if (inpN) inpN.value = simN || 1;
-  const upd = () => { simBuy = parseFloat(inp.value) || 0; simN = Math.max(1, parseInt(inpN && inpN.value) || 1); updateGSim(); };
+  bindMoney(inp);
+  inp.value = simBuy ? fmtMoneyBR(simBuy) : ""; if (inpN) inpN.value = simN || 1;
+  const upd = () => { simBuy = moneyVal(inp); simN = Math.max(1, parseInt(inpN && inpN.value) || 1); updateGSim(); };
   inp.oninput = upd; if (inpN) inpN.oninput = upd;
   const clr = $("#gSimClear"); if (clr) clr.onclick = () => { simBuy = 0; simN = 1; inp.value = ""; if (inpN) inpN.value = "1"; updateGSim(); inp.focus(); };
   updateGSim();
@@ -2164,7 +2196,7 @@ function openCartaoModal() {
       <button type="button" class="seg-btn" data-pay="parc">Parcelado</button>
     </div>
     <div class="field-row">
-      <label class="field"><span id="f_val_lbl">Valor da compra</span><input id="f_val" type="number" step="0.01" inputmode="decimal" placeholder="0,00" required /></label>
+      <label class="field"><span id="f_val_lbl">Valor da compra</span><input id="f_val" class="money" placeholder="0,00" required /></label>
       <label class="field" id="f_n_field" style="display:none"><span>Em quantas vezes</span><select id="f_n" class="sel">${parcOpts}</select></label>
     </div>
     <label class="field"><span>Data da compra</span><input id="f_data" type="date" value="${todayISO()}" min="${DATA.year}-01-01" /></label>
@@ -2184,7 +2216,7 @@ function openCartaoModal() {
   $("#entryForm").onsubmit = (e) => {
     e.preventDefault();
     const parc = $("#f_seg .seg-btn.active").dataset.pay === "parc";
-    const valor = parseFloat($("#f_val").value) || 0;
+    const valor = moneyVal($("#f_val"));
     const n = parc ? Math.min(60, Math.max(2, parseInt($("#f_n").value) || 2)) : 1;
     const { dia, mes: base } = dateParts($("#f_data").value);
     const card = cs.find(c => c.id === $("#f_card").value) || null;
@@ -2206,7 +2238,7 @@ function openCartaoModal() {
 function updateParcelaPreview() {
   const el = $("#f_parc_prev"); if (!el) return;
   const parc = $("#f_seg .seg-btn.active") && $("#f_seg .seg-btn.active").dataset.pay === "parc";
-  const valor = parseFloat($("#f_val") && $("#f_val").value) || 0;
+  const valor = moneyVal($("#f_val"));
   const n = parc ? Math.min(60, Math.max(2, parseInt($("#f_n") && $("#f_n").value) || 2)) : 1;
   const { dia, mes: base } = dateParts($("#f_data") && $("#f_data").value);
   const cs = DATA.cartoes || [];
@@ -2238,7 +2270,7 @@ function openEntryModal(tab, idx) {
   if (isReceita) extra = `<label class="field"><span>Tipo de renda</span><select id="f_tipo"><option value="Ativa">Ativa (recorrente)</option><option value="Extra">Extra (avulsa)</option></select></label>`;
   else if (tab === "fixas") extra = `<div class="field-row">
       <label class="field"><span>Avisar (dias antes)</span><input id="f_aviso" type="number" min="0" max="15" value="${isNew || !l.aviso ? "" : l.aviso}" placeholder="ex.: 3" /></label>
-      <label class="field"><span>Meta/mês (opcional)</span><input id="f_meta" type="number" step="0.01" value="${isNew || !l.meta ? "" : l.meta}" placeholder="R$" /></label></div>` + necCheck;
+      <label class="field"><span>Meta/mês (opcional)</span><input id="f_meta" class="money" value="${isNew || !l.meta ? "" : l.meta}" placeholder="R$" /></label></div>` + necCheck;
   else if (tab === "cartao") extra = `<div class="field-row">
       <label class="field"><span>Parcela atual</span><input id="f_pa" type="number" min="1" value="${isNew || !l.parcAtual ? "" : l.parcAtual}" placeholder="--" /></label>
       <label class="field"><span>de (total)</span><input id="f_pt" type="number" min="1" value="${isNew || !l.parcTotal ? "" : l.parcTotal}" placeholder="--" /></label>
@@ -2249,7 +2281,7 @@ function openEntryModal(tab, idx) {
     <label class="field"><span>Descrição</span><input id="f_desc" type="text" value="${isNew ? "" : esc(l.desc)}" required placeholder="Ex.: ${isReceita ? "Salário" : "Aluguel"}" /></label>
     ${extra}
     ${catField}
-    <label class="field"><span id="f_valLbl">Valor (${mLong(curMonth)})</span><input id="f_val" type="number" step="0.01" inputmode="decimal" value="${isNew ? "" : (l.vals[curMonth] || "")}" placeholder="0,00" /></label>
+    <label class="field"><span id="f_valLbl">Valor (${mLong(curMonth)})</span><input id="f_val" class="money" value="${isNew ? "" : (l.vals[curMonth] || "")}" placeholder="0,00" /></label>
     <div class="field-row">
       <label class="field"><span>Mês${isNew ? " de início" : ""}</span><select id="f_mes" class="sel">${monthOptionsHTML(curMonth)}</select></label>
       <label class="field"><span>${tab === "fixas" ? "Vencimento (dia)" : "Dia"}</span><select id="f_dia" class="sel"></select></label>
@@ -2272,7 +2304,7 @@ function openEntryModal(tab, idx) {
     const bm = +$("#f_mes").value;
     fillDaySelect("f_dia", "f_mes");
     const vl = $("#f_valLbl"); if (vl) vl.textContent = "Valor (" + mLong(bm) + ")";
-    if (!isNew) { ensureLen(l, bm + 1); $("#f_val").value = l.vals[bm] || ""; $("#f_st").value = l.sts[bm] || "vazio"; }
+    if (!isNew) { ensureLen(l, bm + 1); $("#f_val").value = l.vals[bm] ? fmtMoneyBR(l.vals[bm]) : ""; $("#f_st").value = l.sts[bm] || "vazio"; }
     updateImpact(isExpenseE, oldValAt(bm));
   };
   updateImpact(isExpenseE, oldValAt(curMonth));
@@ -2281,14 +2313,14 @@ function openEntryModal(tab, idx) {
   $("#btnDelete").onclick = () => { if (confirm("Excluir este lançamento (todos os meses)?")) { DATA[tab].splice(idx, 1); persist(); closeModal(); toast("Excluído"); } };
   $("#entryForm").onsubmit = (e) => {
     e.preventDefault();
-    const val = parseFloat($("#f_val").value) || 0, st = $("#f_st").value, all = $("#f_all").checked;
+    const val = moneyVal($("#f_val")), st = $("#f_st").value, all = $("#f_all").checked;
     const bm = +$("#f_mes").value;
     let line = isNew ? { id: uid(), desc: "", vals: Array(12).fill(0), sts: Array(12).fill("vazio") } : l;
     ensureLen(line, bm + 1);
     line.desc = $("#f_desc").value.trim();
     line.dia = parseInt($("#f_dia").value) || null;
     if (isReceita) line.tipo = $("#f_tipo").value;
-    if (tab === "fixas") { line.aviso = parseInt($("#f_aviso").value) || null; line.meta = parseFloat($("#f_meta").value) || null; }
+    if (tab === "fixas") { line.aviso = parseInt($("#f_aviso").value) || null; line.meta = moneyVal($("#f_meta")) || null; }
     if (tab === "cartao") { line.parcAtual = parseInt($("#f_pa").value) || null; line.parcTotal = parseInt($("#f_pt").value) || null; line.cartao = $("#f_cartao").value.trim(); }
     if (tab === "fixas" || tab === "cartao") { const ne = $("#f_nec"); line.nec = ne ? ne.checked : (line.nec || false); const ci = $("#f_catId"); if (ci) line.catId = ci.value || null; }
     if (all) {
@@ -2309,7 +2341,7 @@ function openEntryModal(tab, idx) {
 function updateImpact(isExpense, oldVal) {
   const el = $("#f_impact"); if (!el) return;
   const fm = $("#f_mes"), m = fm ? (+fm.value) : curMonth, cur = disponivelMes(m) - despesaMes(m);
-  const novo = parseFloat($("#f_val") && $("#f_val").value) || 0;
+  const novo = moneyVal($("#f_val"));
   const delta = novo - (oldVal || 0);
   const apos = isExpense ? cur - delta : cur + delta;
   const neg = apos < 0;
@@ -2382,7 +2414,7 @@ function openDiariaModal(idx, method) {
     <div id="f_metTag" class="method-tag ${metodo}"><span class="mt-label">${metLabel(metodo)}</span><button type="button" id="f_metToggle" class="met-switch">trocar ⇄</button></div>
     <label class="field"><span>Descrição</span><input id="f_desc" type="text" value="${isNew ? "" : esc(d.desc)}" required placeholder="Ex.: Mercado" /></label>
     <label class="field"><span>Categoria</span><select id="f_catId" class="sel">${catSelectHTML(isNew ? null : entryCatId(d))}</select></label>
-    <label class="field"><span>Valor (R$)</span><input id="f_val" type="number" step="0.01" inputmode="decimal" value="${isNew ? "" : d.valor}" placeholder="0,00" required /></label>
+    <label class="field"><span>Valor (R$)</span><input id="f_val" class="money" value="${isNew ? "" : d.valor}" placeholder="0,00" required /></label>
     <div class="field-row">
       <label class="field"><span>Mês</span><select id="f_mes" class="sel">${monthOptionsHTML(mesSel)}</select></label>
       <label class="field"><span>Dia</span><select id="f_dia" class="sel"></select></label>
@@ -2400,7 +2432,7 @@ function openDiariaModal(idx, method) {
   $("#btnDelete").onclick = () => { if (confirm("Excluir esta compra?")) { DATA.diaria.splice(idx, 1); persist(); closeModal(); toast("Excluído"); } };
   $("#entryForm").onsubmit = (e) => {
     e.preventDefault();
-    const val = parseFloat($("#f_val").value) || 0, mes = +$("#f_mes").value;
+    const val = moneyVal($("#f_val")), mes = +$("#f_mes").value;
     const catId = $("#f_catId") ? ($("#f_catId").value || null) : null;
     const o = { desc: $("#f_desc").value.trim(), valor: val, dia: parseInt($("#f_dia").value) || null, catId, categoria: catId ? (catById(catId).nome) : "Geral", metodo };
     if (isNew) DATA.diaria.push({ id: uid(), mes, ...o });
@@ -2427,7 +2459,7 @@ function renderCatMgr() {
     <div class="cat-mgr-row" data-cid="${c.id}">
       <button type="button" class="cat-emoji-btn" data-emoji-for="${c.id}" aria-label="Trocar emoji">${c.emoji}</button>
       <input class="cat-name-inp" data-name-for="${c.id}" type="text" value="${esc(c.nome)}" placeholder="Nome" />
-      <div class="cat-orc"><span>R$</span><input class="cat-orc-inp" data-orc-for="${c.id}" type="number" step="0.01" inputmode="decimal" value="${orc[c.id] || ""}" placeholder="0" /></div>
+      <div class="cat-orc"><span>R$</span><input class="cat-orc-inp money" data-orc-for="${c.id}" value="${orc[c.id] || ""}" placeholder="0" /></div>
       <button type="button" class="cat-del" data-del-for="${c.id}" aria-label="Excluir">🗑</button>
     </div>`).join("");
   const tEl = $("#catMgrTotal"); if (tEl) tEl.innerHTML = catTotalHTML();
@@ -2437,11 +2469,11 @@ function renderCatMgr() {
   $$(".cat-name-inp", wrap).forEach(inp => inp.onchange = () => {
     const c = catById(inp.dataset.nameFor); if (c) { c.nome = inp.value.trim() || c.nome; persist(); }
   });
-  $$(".cat-orc-inp", wrap).forEach(inp => inp.onchange = () => {
-    const id = inp.dataset.orcFor, v = parseFloat(inp.value) || 0;
+  $$(".cat-orc-inp", wrap).forEach(inp => { bindMoney(inp); inp.onchange = () => {
+    const id = inp.dataset.orcFor, v = moneyVal(inp);
     if (v > 0) orc[id] = v; else delete orc[id];
     persist(); const tt = $("#catMgrTotal"); if (tt) tt.innerHTML = catTotalHTML();
-  });
+  }; });
   $$(".cat-del", wrap).forEach(b => b.onclick = () => {
     const id = b.dataset.delFor;
     if (!confirm("Excluir esta categoria? Os lançamentos dela ficam sem categoria.")) return;
@@ -2537,7 +2569,7 @@ function renderOrcRealChart(m) {
 }
 
 /* ---------- Infra ---------- */
-function showModal(s) { $(s).classList.remove("hidden"); }
+function showModal(s) { const el = $(s); el.classList.remove("hidden"); bindMoneyAll(el); }
 function closeModal() { $("#modal").classList.add("hidden"); }
 
 /* ---------- Trava de scroll do fundo enquanto um modal está aberto ----------
@@ -2616,7 +2648,7 @@ $("#btnCancel").onclick = closeModal;
 $("#modal").onclick = (e) => { if (e.target.id === "modal") closeModal(); };
 function openSettings() { $("#saldoInicial").value = DATA.saldoInicial || 0; renderNotifBtn(); showModal("#settingsModal"); }
 { const bs = $("#btnSettings"); if (bs) bs.onclick = openSettings; }   // botão saiu do header; fica no menu
-$("#btnCloseSettings").onclick = () => { DATA.saldoInicial = parseFloat($("#saldoInicial").value) || 0; persist(); $("#settingsModal").classList.add("hidden"); };
+$("#btnCloseSettings").onclick = () => { DATA.saldoInicial = moneyVal($("#saldoInicial")); persist(); $("#settingsModal").classList.add("hidden"); };
 $("#settingsModal").onclick = (e) => { if (e.target.id === "settingsModal") $("#settingsModal").classList.add("hidden"); };
 $("#btnExport").onclick = () => { const b = new Blob([JSON.stringify(DATA, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `financas-${DATA.year}-backup.json`; a.click(); toast("Backup exportado"); };
 $("#btnImport").onclick = () => $("#importFile").click();
@@ -3689,7 +3721,7 @@ function showFullscreenHint() {
       <p>O ícone do MorbiusFin na sua tela de início é de uma <b>versão antiga</b> e por isso deixa aquela <b>faixa no rodapé</b>. Atualizar pelo ✨ não resolve isso — precisa <b>recriar o ícone</b> (rapidinho, sem perder nada):</p>
       <ol>
         <li>Segure o ícone do app → <b>Remover</b> → Remover da Tela de Início.</li>
-        <li>Abra no <b>Safari</b>: kaickjrx.github.io/financas</li>
+        <li>Abra no <b>Safari</b>: ${(location.host + location.pathname).replace(/\/index\.html$/, "/")}</li>
         <li>Toque em <b>Compartilhar</b> ⬆️ → <b>Adicionar à Tela de Início</b>.</li>
         <li>Abra pelo <b>novo ícone</b> — a faixa some (tela cheia).</li>
       </ol>

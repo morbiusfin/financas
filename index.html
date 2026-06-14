@@ -225,7 +225,7 @@
       <h2>Configurações</h2>
       <label class="field">
         <span>Saldo inicial do ano (R$)</span>
-        <input type="number" id="saldoInicial" step="0.01" />
+        <input id="saldoInicial" class="money" placeholder="0,00" />
       </label>
       <div class="settings-buttons">
         <button class="btn ghost" id="btnExport">⬇️ Exportar backup (.json)</button>
@@ -248,7 +248,7 @@
       <p class="hint" style="margin-bottom:10px">Cole aqui o <b>link mágico</b> que o assistente te mandou. Eu extraio o resto sozinho.</p>
       <label class="field">
         <span>Link mágico (ou link que termina em /exec)</span>
-        <input type="text" id="syncLinkInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url" placeholder="https://kaickjrx.github.io/financas/#cfg=…" />
+        <input type="text" id="syncLinkInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url" placeholder="cole aqui o link de sincronização (#cfg=…)" />
       </label>
       <label class="field" id="syncTokenField" style="display:none">
         <span>Token de sincronização</span>
