@@ -1000,13 +1000,13 @@ body.kbd-open #fab { transform: translateY(160%) scale(.8); opacity: 0; pointer-
 body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: hidden; overscroll-behavior: none; }
 
 /* ===== MODAL ===== */
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: flex; align-items: flex-end; justify-content: center;
-  backdrop-filter: blur(2px); animation: fadeInUp .2s ease both;
-  touch-action: none; overscroll-behavior: none; }   /* o fundo (backdrop) NÃO rola/PTR a tela por trás (iOS) */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: flex; align-items: center; justify-content: center;
+  padding: 22px 14px; backdrop-filter: blur(2px); animation: fadeInUp .2s ease both;
+  touch-action: none; overscroll-behavior: none; }   /* TODOS os pop-ups no MEIO da tela; backdrop não rola a tela atrás (iOS) */
 .modal.hidden { display: none; }
-.modal-card { background: var(--card); color: var(--ink); width: 100%; max-width: 520px; border-radius: 22px 22px 0 0;
+.modal-card { background: var(--card); color: var(--ink); width: 100%; max-width: 440px; border-radius: 22px;
   padding: 22px 18px calc(20px + var(--safe-bottom)); max-height: 88dvh; overflow-y: auto; box-shadow: var(--shadow-lg);
-  border: 1px solid var(--line); border-bottom: 0; animation: slideUp .26s cubic-bezier(.2,.8,.2,1);
+  border: 1px solid var(--line); animation: popIn .24s cubic-bezier(.2,.8,.2,1);
   -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }   /* contain → não "prende" o scroll no body travado (iOS); pan-y → o card rola por dentro */
 /* Rodapé de ações FIXO (Cancelar/Salvar sempre visíveis): o conteúdo rola por dentro, o modal nunca
    "vaza" os botões pra fora da tela. Padrão para todas as inclusões (+) e formulários. */
@@ -1025,17 +1025,13 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .modal-card h2 { margin: 0 0 16px; font-size: 19px; font-weight: 800; letter-spacing: -.3px; }
 
-/* ===== Bottom sheet: alça (puxar) + botão ✕ + saída deslizando ===== */
-.modal:not(.center) .modal-card { position: relative; padding-top: 26px; }
-.modal:not(.center) .modal-card::before { content: ""; position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
-  width: 42px; height: 4px; border-radius: 99px; background: var(--line); }
+/* botão ✕ dos modais (todos centralizados agora — sem alça de bottom-sheet) */
+.modal-card { position: relative; }
 .modal-card .sheet-x { position: absolute; top: 14px; right: 14px; left: auto; width: 34px; height: 34px; border-radius: 50%;
   border: 1px solid var(--line); background: var(--card-2); color: var(--ink); font-size: 15px; font-weight: 700; line-height: 1;
   display: flex; align-items: center; justify-content: center; z-index: 3; cursor: pointer; }
 .modal-card .sheet-x:active { transform: scale(.9); }
-.modal:not(.center).closing { animation: fadeOut .3s ease both; }
-.modal:not(.center).closing .modal-card { animation: slideDown .3s cubic-bezier(.4,0,.6,1) both; }
-@keyframes slideDown { to { transform: translateY(100%); } }
+.modal.closing { animation: fadeOut .25s ease both; }
 @keyframes fadeOut { to { opacity: 0; } }
 
 /* ===== Entrada escalonada dos lançamentos (o "dados se montando") ===== */
