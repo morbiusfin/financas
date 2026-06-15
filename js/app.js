@@ -1,11 +1,21 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.97";
+const APP_VERSION = "3.11.98";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.98",
+    bullets: [
+      "As janelas de inclusão (+) e o perfil agora cabem certinho na tela: o conteúdo rola por dentro e os botões Cancelar/Salvar ficam sempre visíveis",
+      "Conta conjunta: a janela do perfil cresce direitinho pra mostrar tudo",
+      "Medalhas repaginadas: 10 conquistas (do Primeiro passo ao Lendário), valores mais alcançáveis, mais emojis animados e cards no mesmo tamanho/alinhados",
+      "Emoji e texto sempre alinhados nos títulos (Metas, FAQ, Tema)",
+      "Tutorial agora explica as Metas e as Medalhas",
+    ]
+  },
   {
     version: "3.11.97",
     bullets: [
@@ -1078,12 +1088,16 @@ function renderProjection(m) {
 /* 🏅 Medalhas de acúmulo (gamificação): conquistas pelo pico de saldo guardado no ano.
    Usa os emojis ANIMADOS do Noto (animEmoji cai no emoji estático se faltar o WebP). */
 const MEDALS = [
-  { v: 1000,   e: "broto",   emoji: "🌱", n: "Primeiro mil" },
-  { v: 5000,   e: "estrela", emoji: "⭐", n: "Cinco mil" },
-  { v: 10000,  e: "alvo",    emoji: "🎯", n: "Dez mil" },
-  { v: 25000,  e: "trofeu",  emoji: "🏆", n: "Vinte e cinco mil" },
-  { v: 50000,  e: "fogo",    emoji: "🔥", n: "Cinquenta mil" },
-  { v: 100000, e: "festa",   emoji: "🎉", n: "Cem mil" },
+  { v: 100,    e: "broto",    emoji: "🌱", n: "Primeiro passo" },
+  { v: 500,    e: "estrela",  emoji: "⭐", n: "Pegando o jeito" },
+  { v: 1000,   e: "alvo",     emoji: "🎯", n: "Primeiro mil" },
+  { v: 2500,   e: "fogo",     emoji: "🔥", n: "Esquentando" },
+  { v: 5000,   e: "moeda",    emoji: "🪙", n: "Cofrinho cheio" },
+  { v: 10000,  e: "trofeu",   emoji: "🏆", n: "Dez mil!" },
+  { v: 25000,  e: "diamante", emoji: "💎", n: "Reserva forte" },
+  { v: 50000,  e: "foguete",  emoji: "🚀", n: "Decolando" },
+  { v: 100000, e: "festa",    emoji: "🎉", n: "Seis dígitos" },
+  { v: 250000, e: "coroa",    emoji: "👑", n: "Lendário" },
 ];
 function peakSaldo() { const s = serieSaldo(); let mx = 0; for (let i = 0; i < s.length; i++) if (s[i] > mx) mx = s[i]; return mx; }
 function renderMedals() {
@@ -1234,7 +1248,7 @@ function openMetasModal() {
   if (!m) {
     m = document.createElement("div"); m.id = "metasModal"; m.className = "modal hidden";
     m.innerHTML = '<div class="modal-card metas-card"><button type="button" class="wn-close" id="metasClose">✕</button>'
-      + '<div class="faq-head"><span>🎯</span><h2>Minhas metas</h2></div>'
+      + '<div class="faq-head">' + animEmoji("alvo", "🎯", "fh-ic") + '<h2>Minhas metas</h2></div>'
       + '<div id="metasList"></div>'
       + '<div id="metasForm"></div></div>';
     document.body.appendChild(m);
@@ -4082,6 +4096,8 @@ const TUTORIAL = [
   ["🔔", "Contas a vencer", "O sino no topo avisa quando há conta perto de vencer ou atrasada. Toque para ver e pagar — ele para de piscar depois."],
   ["➕", "Lançar gastos e ganhos", "Nas abas de baixo (Receitas, Fixas, Cartão, Débito), use o + para adicionar. No Cartão dá pra parcelar até 60×."],
   ["🏷️", "Categorias e metas", "No menu, crie categorias com emoji e defina metas de orçamento. Verde = dentro, vermelho = estourou."],
+  ["🎯", "Metas (objetivos)", "No menu, crie metas como viagem, casa ou carro — diga quanto custa e quanto já guardou. A barrinha mostra o progresso e o emoji muda conforme o objetivo."],
+  ["🏅", "Medalhas de acúmulo", "Em Insights, você desbloqueia medalhas conforme o seu saldo guardado cresce — do Primeiro passo ao Lendário. É a forma divertida de ver sua reserva subir e se motivar a guardar mais."],
   ["💑", "Conta de casal", "No perfil, escolha Conjunta e pareie os 2 celulares por QR. O que um lança aparece no outro, sem nuvem."],
   ["❓", "Ajuda sempre à mão", "Viu um “?” numa parte do app? Toque para saber o que ela faz. E este tutorial fica no menu quando quiser rever."],
 ];

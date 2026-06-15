@@ -189,7 +189,7 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 
 /* perfil */
 /* não ultrapassa a linha do menu de meses (topo) — cabe na tela e o ✕ fica sempre visível */
-.prof-card { max-width: 360px; max-height: calc(100dvh - 132px); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scrollbar-width: none; }
+.prof-card { max-width: 360px; max-height: 92dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scrollbar-width: none; }
 .prof-card::-webkit-scrollbar { display: none; }
 .prof-card .wn-close { position: sticky; top: 0; float: right; margin: -6px -4px 0 0; z-index: 3; }   /* ✕ acompanha a rolagem interna */
 .prof-photo-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 8px 0 18px; }
@@ -393,7 +393,15 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 /* FAQ */
 .faq-card { max-width: 410px; }
 .faq-head { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 14px; }
-.faq-head span { font-size: 22px; } .faq-head h2 { margin: 0; }
+.faq-head { line-height: 1; }
+.faq-head > * { align-self: center; }
+.faq-head span { font-size: 22px; line-height: 1; display: inline-flex; align-items: center; } .faq-head h2 { margin: 0 !important; line-height: 1; }
+.faq-head .emoji-anim { width: 26px; height: 26px; }
+.faq-head > .fh-ic { width: 26px; height: 26px; flex: 0 0 auto; }
+/* qualquer cabeçalho/linha "ícone + texto": emoji animado centralizado com o texto (alinhamento padrão) */
+.meta-form-head, .meta-row { align-items: center; }
+.meta-form-head { display: flex; }
+.meta-form-head b { line-height: 1.1; }
 .faq-body { max-height: 62vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 8px; }
 .faq-item { background: var(--card-2); border: 1px solid var(--line); border-radius: 13px; padding: 0 13px; }
 .faq-item summary { cursor: pointer; font-weight: 800; font-size: 13.5px; padding: 12px 0; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -997,9 +1005,14 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
   touch-action: none; overscroll-behavior: none; }   /* o fundo (backdrop) NÃO rola/PTR a tela por trás (iOS) */
 .modal.hidden { display: none; }
 .modal-card { background: var(--card); color: var(--ink); width: 100%; max-width: 520px; border-radius: 22px 22px 0 0;
-  padding: 22px 18px calc(20px + var(--safe-bottom)); max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg);
+  padding: 22px 18px calc(20px + var(--safe-bottom)); max-height: 88dvh; overflow-y: auto; box-shadow: var(--shadow-lg);
   border: 1px solid var(--line); border-bottom: 0; animation: slideUp .26s cubic-bezier(.2,.8,.2,1);
   -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }   /* contain → não "prende" o scroll no body travado (iOS); pan-y → o card rola por dentro */
+/* Rodapé de ações FIXO (Cancelar/Salvar sempre visíveis): o conteúdo rola por dentro, o modal nunca
+   "vaza" os botões pra fora da tela. Padrão para todas as inclusões (+) e formulários. */
+.modal-card > .modal-actions { position: sticky; bottom: 0; z-index: 4; background: var(--card);
+  margin: 16px -18px calc(-20px - var(--safe-bottom)); padding: 12px 18px calc(12px + var(--safe-bottom));
+  border-top: 1px solid var(--line); }
 
 /* Modais altos (Categorias, Emoji): cabeçalho FIXO (título + ✕ sempre visíveis) e só o corpo rola */
 .modal-card.sheet-tall { display: flex; flex-direction: column; overflow: hidden; padding-top: 24px; }
@@ -1138,16 +1151,16 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
 .card-lim-foot b { color: var(--accent); }
 /* ===== Projeção do ano + Medalhas (gamificação) ===== */
 .proj-card { border: 1px solid rgba(31,217,122,.28); }
-.medals-card .medal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.medal { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 6px; border-radius: 14px;
-  background: var(--card-2); border: 1px solid var(--line); text-align: center; transition: transform .15s ease; }
+.medals-card .medal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; grid-auto-rows: 1fr; }
+.medal { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; padding: 12px 6px 11px; border-radius: 14px;
+  background: var(--card-2); border: 1px solid var(--line); text-align: center; min-height: 108px; transition: transform .15s ease; }
 .medal.got { border-color: rgba(245,166,35,.5); background: linear-gradient(160deg, rgba(245,166,35,.12), var(--card-2)); }
 .medal.locked { opacity: .55; }
 .medal.locked .md-ic { filter: grayscale(1); opacity: .65; }
-.medal .md-ic { font-size: 30px; width: 38px; height: 38px; line-height: 38px; display: inline-flex; align-items: center; justify-content: center; }
-.medal .md-ic.emoji-anim { width: 38px; height: 38px; vertical-align: middle; }
-.medal .md-n { font-size: 11.5px; font-weight: 800; color: var(--ink); line-height: 1.15; }
-.medal .md-v { font-size: 10.5px; color: var(--muted); font-weight: 600; }
+.medal .md-ic { font-size: 30px; width: 40px; height: 40px; line-height: 1; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.medal .md-ic.emoji-anim { width: 40px; height: 40px; vertical-align: middle; }
+.medal .md-n { font-size: 11.5px; font-weight: 800; color: var(--ink); line-height: 1.2; min-height: 2.4em; display: flex; align-items: center; justify-content: center; }
+.medal .md-v { font-size: 10.5px; color: var(--muted); font-weight: 600; margin-top: auto; }
 .medal-prog { margin-top: 14px; }
 .medal-prog .mp-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .medal-prog .mp-head b { color: var(--ink); }
