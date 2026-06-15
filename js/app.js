@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.17";
+const APP_VERSION = "3.13.18";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.18",
+    bullets: [
+      "Entrada do seletor do topo agora é fluida (sem piscar): o vidro verde só desliza, não aparece-e-some antes",
+    ]
+  },
   {
     version: "3.13.17",
     bullets: [
@@ -5089,31 +5095,27 @@ function tabbarEntrance() {
 function viewToggleEntrance() {
   const tg = document.querySelector(".view-toggle"); if (!tg) return;   // só existe no Resumo
   const ativa = () => tg.querySelector(".vt-btn.active") || tg.querySelector(".vt-btn");
-  // garante o vidro verde POSICIONADO na aba ativa ANTES de animar (não depende de corrida com o render)
-  try { placeGlassTo(tg, ativa(), false, "vt"); } catch (e) {}
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // rede de segurança: ao fim da entrada, o vidro fica SEMPRE no lugar e visível (mesmo se a WAAPI falhar)
-  const settle = () => {
-    tg.classList.remove("vt-enter"); tg.style.animation = "";
-    try { placeGlassTo(tg, ativa(), false, "vt"); const g = tg.querySelector(".seg-glass"); if (g) g.style.opacity = ""; } catch (e) {}
-  };
-  if (reduce) { settle(); return; }
+  const settle = () => { tg.classList.remove("vt-enter"); tg.style.animation = ""; const g = tg.querySelector(".seg-glass"); if (g) g.style.opacity = ""; };
+  // 1) ESCONDE o vidro primeiro (vt-enter → opacity:0). 2) SÓ ENTÃO posiciona — já invisível, sem flash.
   tg.classList.remove("vt-enter"); void tg.offsetWidth; tg.classList.add("vt-enter");
+  try { placeGlassTo(tg, ativa(), false, "vt"); } catch (e) {}   // posiciona o vidro JÁ oculto (sem piscar)
+  if (reduce) { settle(); return; }
   // inline !important garante o vtRise mesmo se #view estiver em no-anim no instante da abertura
   tg.style.setProperty("animation", "vtRise .5s cubic-bezier(.2,.85,.25,1) both", "important");
   setTimeout(settle, 900);
   setTimeout(() => {
     const g = tg.querySelector(".seg-glass"); if (!g || !g.animate) { settle(); return; }
     const cw = tg.getBoundingClientRect().width || 320;
-    const rest = getComputedStyle(g).transform;   // posição final (matrix) já posicionada acima
+    const rest = getComputedStyle(g).transform;   // posição final (matrix), já fixada com o vidro oculto
     try {
       const an = g.animate(
         [{ transform: "translateX(" + (cw + 40) + "px)", opacity: 0 },
          { transform: "translateX(" + (cw + 40) + "px)", opacity: 0, offset: 0.15 },
          { transform: rest, opacity: 1 }],
-        { duration: 560, easing: "cubic-bezier(.2,.85,.25,1)" }
+        { duration: 560, easing: "cubic-bezier(.2,.85,.25,1)", fill: "forwards" }
       );
-      an.onfinish = () => { const gg = tg.querySelector(".seg-glass"); if (gg) gg.style.opacity = ""; };   // termina visível
+      an.onfinish = () => { const gg = tg.querySelector(".seg-glass"); if (gg) { gg.style.opacity = ""; } try { an.cancel(); } catch (e) {} };   // solta pro estado final (inline) sem piscar
     } catch (e) { settle(); }
   }, 420);
 }
