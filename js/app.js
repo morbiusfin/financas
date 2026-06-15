@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.94";
+const APP_VERSION = "3.11.95";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.95",
+    bullets: [
+      "Corrigido o bug da abertura com senha: agora dá pra tocar e digitar o PIN normalmente (a tela de carregamento ficava por cima travando o toque)",
+      "Tela de senha 100% verde, sem aquela faixa branca embaixo — mesmo com o teclado aberto",
+      "Avatares: deixei só os que animam de verdade (tirei os 2 que não tinham animação)",
+    ]
+  },
   {
     version: "3.11.94",
     bullets: [
@@ -3273,11 +3281,11 @@ function setPerfil(p) { try { localStorage.setItem(PERFIL_KEY, JSON.stringify(p)
 /* ---------- Avatares predefinidos (estilo Netflix) — SVG inline, offline, sem download ---------- */
 /* Avatares de BICHINHOS ANIMADOS — SVG inline (anima de verdade; imagem de fundo não animaria).
    Cada animal tem movimento próprio (CSS em .animal-svg). Flat, sem gradiente (sem rebarba). */
+// só animais COM emoji animado no Noto (tigre e macaco saíram — não têm animação)
 const ANIMALS = [
   { id: "raposa", e: "🦊", bg: "#ffe0cc" }, { id: "panda", e: "🐼", bg: "#eceff3" },
   { id: "leao", e: "🦁", bg: "#ffe7b3" }, { id: "gato", e: "🐱", bg: "#ffd9e6" },
-  { id: "macaco", e: "🐵", bg: "#ecdcc6" }, { id: "sapo", e: "🐸", bg: "#d7f3dd" },
-  { id: "coruja", e: "🦉", bg: "#efe0c8" }, { id: "tigre", e: "🐯", bg: "#ffe0b0" },
+  { id: "sapo", e: "🐸", bg: "#d7f3dd" }, { id: "coruja", e: "🦉", bg: "#efe0c8" },
   { id: "pinguim", e: "🐧", bg: "#dce8f1" }, { id: "pintinho", e: "🐥", bg: "#fff3c4" },
   { id: "unicornio", e: "🦄", bg: "#f0e0ff" }, { id: "golfinho", e: "🐬", bg: "#d6f0f5" }
 ];
@@ -3981,8 +3989,10 @@ const TEST_CODE = "8040";   // código do modo teste (privado — sem dica na te
 function lockCenter() {
   const ls = document.getElementById("lockScreen"); if (!ls || ls.classList.contains("hidden")) return;
   const vv = window.visualViewport;
-  if (vv) { ls.style.top = vv.offsetTop + "px"; ls.style.height = vv.height + "px"; ls.style.bottom = "auto"; }
-  else { ls.style.top = ""; ls.style.height = ""; ls.style.bottom = ""; }
+  // O overlay fica SEMPRE em tela cheia (inset:0, verde) — encolher a altura deixava faixa branca
+  // embaixo. Quando o teclado abre, empurramos o quadro pra cima via padding-bottom = altura do teclado.
+  const kb = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+  ls.style.paddingBottom = kb ? (kb + 24) + "px" : "";
 }
 if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", lockCenter);
@@ -3990,6 +4000,10 @@ if (window.visualViewport) {
 }
 function showLock(env) {
   const ls = $("#lockScreen"); ls.classList.remove("hidden");
+  // O splash (#splash, z-2000) ficava POR CIMA do lock (z-1000) e nunca era fechado quando há PIN
+  // (boot retornava antes do startApp) → não dava pra tocar no campo. Remove o splash já aqui.
+  const sp = document.getElementById("splash"); if (sp) { try { sp.remove(); } catch (e) {} }
+  document.body.classList.remove("splash-on");
   document.body.classList.add("lock-on");                       // esconde tabbar/+ atrás do lock (sem faixa no rodapé)
   const pin = $("#lockPin"), msg = $("#lockMsg");
   const ttl = $("#lockTitle"); if (ttl) ttl.textContent = "Digite seu código";
