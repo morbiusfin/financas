@@ -79,13 +79,18 @@ input, textarea, select, [contenteditable="true"], [contenteditable=""] {
 /* iOS: um <label> (ou ancestral) com user-select:none NÃO deixa o input filho pegar foco ao tocar.
    Como .section-card é user-select:none, formulários embutidos (simulador, metas…) ficavam "mortos".
    Aqui liberamos foco/edição em QUALQUER formulário dentro de card — vale pra agora e pro futuro. */
-.section-card label, .section-card .field, .section-card .meta-form, .section-card .g-sim {
+/* libera o SUBTREE INTEIRO dos formulários embutidos — nenhum ancestral fica com user-select:none
+   entre o input e um contexto selecionável (era isso que exigia 2 toques pra focar no iOS). */
+.section-card .g-sim, .section-card .g-sim *,
+.section-card .meta-form, .section-card .meta-form *,
+.section-card .field, .section-card .field * {
   -webkit-user-select: auto; user-select: auto;
 }
 .section-card input, .section-card select, .section-card textarea {
   -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
-  touch-action: manipulation; pointer-events: auto;
+  touch-action: manipulation; pointer-events: auto; cursor: text;
 }
+.section-card select { cursor: pointer; }
 .section-card button, .section-card .meta-edit { touch-action: manipulation; pointer-events: auto; }
 html, body { margin: 0; padding: 0; width: 100%; overflow-x: clip; }   /* clip (não hidden) p/ NÃO quebrar o position:sticky do header no iOS */
 /* iOS/Android (área do home indicator + overscroll): o fundo do html é o que aparece nessa faixa.

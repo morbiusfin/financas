@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.24";
+const APP_VERSION = "3.13.25";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.25",
+    bullets: [
+      "Campos do simulador (e formulários em cards) abrem com 1 toque só e já chamam o teclado — sem precisar tocar duas vezes",
+      "Anos automáticos: o seletor mostra sempre o ano atual + 4 (5 anos) e rola sozinho a cada virada de ano — o app inteiro acompanha (meses e filtros)",
+    ]
+  },
   {
     version: "3.13.24",
     bullets: [
@@ -859,7 +866,7 @@ let history = [];
 let redoStack = [];
 let lastSnap = JSON.stringify(DATA);
 const HISTORY_MAX = 50;
-let curMonth = (new Date().getFullYear() === DATA.year) ? new Date().getMonth() : 4;
+let curMonth = (() => { const d = new Date(); return Math.max(0, d.getFullYear() - DATA.year) * 12 + d.getMonth(); })();   // abre no ano+mês atuais
 let annual = false;
 let curTab = "resumo";
 let resumoView = "resumo";   // "resumo" | "graficos" | "insights" (toggle no topo do Resumo)
@@ -908,9 +915,14 @@ function horizonLen() {
   return Math.ceil(n / 12) * 12;            // sempre anos completos: 12, 24, 36…
 }
 const yearOf  = (i) => DATA.year + Math.floor(i / 12);
-const curYear = () => Math.floor(curMonth / 12);                 // índice do ano em exibição (0=2026)
-// quantos anos o seletor oferece: os que têm dados + 1 à frente (mín. 3) — pra dar pra planejar
-function yearsCount() { return Math.max(Math.ceil(horizonLen() / 12) + 1, 3); }
+const curYear = () => Math.floor(curMonth / 12);                 // índice do ano em exibição (0=DATA.year)
+// JANELA DE ANOS rolante: sempre o ANO ATUAL (real) + 4 à frente. Auto-atualiza ao virar o ano —
+// em 2026 mostra 2026..2030; em 01/01/2027 passa a mostrar 2027..2031; e assim por diante.
+const YEAR_SPAN = 5;
+const yearMinOff = () => Math.max(0, REAL_TODAY.getFullYear() - DATA.year);   // offset do ano atual (1º da janela)
+const yearMaxOff = () => yearMinOff() + YEAR_SPAN - 1;                        // offset do último ano da janela
+// total de offsets que o app dimensiona (cobre dados + a janela toda)
+function yearsCount() { return Math.max(Math.ceil(horizonLen() / 12), yearMaxOff() + 1); }
 const mLong   = (i) => MESES[((i % 12) + 12) % 12] + (i >= 12 ? " " + yearOf(i) : "");
 const mLabel  = (i) => MESES_CURTO[((i % 12) + 12) % 12] + (i >= 12 ? "/" + String(yearOf(i)).slice(2) : "");
 const diasNoMesAbs = (i) => new Date(yearOf(i), (i % 12) + 1, 0).getDate();
@@ -1142,10 +1154,12 @@ function renderMonthBar() {
 // Seletor de ANO (validação de dados / dropdown). Ao trocar, muda o app inteiro pro ano escolhido.
 function renderYearSelect() {
   const sel = $("#yearSelect"); if (!sel) return;
-  const n = yearsCount();
-  sel.innerHTML = Array.from({ length: n }, (_, y) => `<option value="${y}" ${y === curYear() ? "selected" : ""}>${DATA.year + y}</option>`).join("");
+  const lo = yearMinOff(), hi = yearMaxOff();
+  let html = "";
+  for (let y = lo; y <= hi; y++) html += `<option value="${y}" ${y === curYear() ? "selected" : ""}>${DATA.year + y}</option>`;
+  sel.innerHTML = html;
   sel.onchange = () => {
-    const y = Math.max(0, Math.min(yearsCount() - 1, parseInt(sel.value) || 0));
+    const y = Math.max(lo, Math.min(hi, parseInt(sel.value) || lo));
     curMonth = y * 12 + (((curMonth % 12) + 12) % 12);   // mantém o mês, troca o ano
     suppressNextAnim = true; window.scrollTo(0, 0); render();
   };
@@ -1156,7 +1170,9 @@ let suppressNextAnim = false;       // (legado — mantido p/ não quebrar chama
 let forceAnimOnce = false;          // SÓ a 1ª carga (intro) anima; toda inclusão/edição/exclusão/sync/troca = estático e suave (sem piscar)
 function render() {
   invalidateSobra();   // dado pode ter mudado desde o último render → recalcula o saldo do zero (1x por render)
-  const maxM = yearsCount() * 12 - 1; if (curMonth > maxM) curMonth = maxM; if (curMonth < 0) curMonth = 0;
+  // mantém o mês visível DENTRO da janela rolante (anos antes do atual não são navegáveis)
+  const loM = yearMinOff() * 12, hiM = (yearMaxOff() + 1) * 12 - 1;
+  if (curMonth > hiM) curMonth = hiM; if (curMonth < loM) curMonth = loM;
   // sai da seleção se mudou de aba ou de mês (a seleção é por aba+mês)
   if (selMode && (curTab !== selTab || curMonth !== selMonth)) { selMode = false; selected = new Set(); selTab = null; selMonth = -1; }
   const noAnim = !forceAnimOnce; forceAnimOnce = false; suppressNextAnim = false;   // estático por padrão → nada "pisca" na mudança
@@ -1811,7 +1827,7 @@ function updateBell() {
 // Tocar no sino → ABRE o painel de notificações (área própria, não atropela o app) e marca como visto
 function abrirAlertas() {
   markExplored("alertas");
-  if (DATA.year === REAL_TODAY.getFullYear()) curMonth = REAL_TODAY.getMonth();   // garante o mês atual (onde estão os alertas)
+  curMonth = Math.max(0, REAL_TODAY.getFullYear() - DATA.year) * 12 + REAL_TODAY.getMonth();   // vai pro ano+mês atuais (onde estão os alertas)
   try { localStorage.setItem(NOTIF_SEEN_KEY, notifSignature()); } catch (e) {}    // viu → para de piscar
   renderNotifPanel();
   const m = $("#notifModal"); if (m) m.classList.remove("hidden");
@@ -3624,8 +3640,9 @@ $("#miSim").onclick = () => {
   curTab = "resumo"; resumoView = "graficos";
   $$(".tab").forEach(x => x.classList.toggle("active", x.dataset.tab === "resumo"));
   suppressNextAnim = true; window.scrollTo(0, 0); render();
-  // não para no topo: rola até o simulador, pisca a borda e foca o campo de valor
-  setTimeout(() => { focarEl("#simCard", 3200); const i = $("#gSimInput"); if (i) { try { i.focus({ preventScroll: true }); } catch (e) {} } }, 120);
+  // rola até o simulador e destaca a borda. NÃO foca o campo via JS: foco programático no iOS deixa
+  // o input "meio focado" sem teclado, e aí o 1º toque do usuário parecia não fazer nada (precisava 2).
+  setTimeout(() => { focarEl("#simCard", 3200); }, 120);
 };
 $("#miConfig").onclick = () => { closeMenu(); openSettings(); };
 { const ma = $("#miAviso"); if (ma) ma.onclick = () => { closeMenu(); openAvisoModal(); }; }
