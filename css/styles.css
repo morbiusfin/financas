@@ -974,8 +974,12 @@ select.sel { cursor: pointer; }
 #fab { transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s ease; }
 /* Pop-up aberto (scroll travado): a barra de baixo flutuante e o + SOMEM — senão ficam "ilhados"
    atrás do backdrop translúcido, com um vão escuro embaixo (parece que a base quebrou). Voltam ao fechar. */
+/* Pop-up aberto: a barra de baixo e o + SOMEM NA HORA (sem fade/sem deslizar). Assim a pílula nunca
+   "sobe" antes de sumir quando o iOS recalcula a safe-area ao travar o scroll. Voltam ao fechar. */
 body.scroll-locked .tabbar, body.scroll-locked #fab,
-body.party-on .tabbar, body.party-on #fab { opacity: 0 !important; pointer-events: none !important; }
+body.party-on .tabbar, body.party-on #fab {
+  opacity: 0 !important; visibility: hidden !important; pointer-events: none !important;
+  transition: none !important; }
 /* ===== Entrada da tab bar (ao abrir o app): pílula sobe + fade, ícones em sequência, vidro depois ===== */
 @keyframes tabbarRise { 0% { transform: translateY(130%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
 .tabbar.tb-enter { animation: tabbarRise .6s cubic-bezier(.2,.85,.25,1) both; }
