@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.27";
+const APP_VERSION = "3.13.28";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.28",
+    bullets: [
+      "CORREÇÃO DE VERDADE do simulador: o campo \"Quero gastar\" (e os campos de Metas) agora focam e abrem o teclado no 1º toque — o foco não é mais roubado ao tocar fora de um modal",
+    ]
+  },
   {
     version: "3.13.27",
     bullets: [
@@ -3552,19 +3558,26 @@ function unlockScroll() {
   dimRootBg(false);
   window.scrollTo(0, _scrollLockY);
 }
-let _slRaf = 0, _slBusy = false;
+let _slRaf = 0, _slBusy = false, _modalWasOpen = false;
 function refreshScrollLock() {
   if (_slRaf || _slBusy) return;          // guarda dupla: nem reentrante nem múltiplos rAF na fila
   _slRaf = requestAnimationFrame(() => {
     _slRaf = 0; _slBusy = true;
-    if (document.querySelector(".modal:not(.hidden)")) lockScroll();
+    const open = !!document.querySelector(".modal:not(.hidden)");
+    if (open) lockScroll();
     else {
-      // modal FECHOU: tira o foco de qualquer campo → o teclado começa a fechar de forma
-      // previsível e a tabbar reaparece ancorada (sem "levantar" com vão branco no iOS).
-      const a = document.activeElement;
-      if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.blur) a.blur();
+      // SÓ na transição aberto→fechado de um modal: tira o foco do campo → o teclado fecha
+      // previsível e a tabbar reaparece ancorada (sem "levantar" no iOS).
+      // CRÍTICO: este observer dispara a CADA mudança de classe no body (ex.: kbd-open ao
+      // focar um input fora de modal, como o simulador). Sem a guarda _modalWasOpen, o foco
+      // do simulador era roubado no 1º toque (parecia que precisava de 2 cliques). #bugfix
+      if (_modalWasOpen) {
+        const a = document.activeElement;
+        if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.blur) a.blur();
+      }
       unlockScroll();
     }
+    _modalWasOpen = open;
     _slBusy = false;
   });
 }
