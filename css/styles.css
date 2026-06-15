@@ -1410,9 +1410,6 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
 @keyframes syncPulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
 .sync-fill.indet { animation: syncPulse 1s ease-in-out infinite; }
 
-/* ===== Fundo animado: chuva de números/cifras (estilo Matrix), bem sutil ===== */
-#rain { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .5; }
-html.theme-dark #rain { opacity: .7; }
 
 /* ===== Botão atualizar girando ===== */
 @keyframes spin { to { transform: rotate(360deg); } }

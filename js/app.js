@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.15";
+const APP_VERSION = "3.13.16";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.16",
+    bullets: [
+      "Removido o efeito de fundo 'chuva de números/letras' (estilo Matrix) de todo o app — fundo limpo",
+    ]
+  },
   {
     version: "3.13.15",
     bullets: [
@@ -5137,59 +5143,7 @@ function showFullscreenHint() {
 }
 
 /* ---------- Fundo: chuva de números/cifras (estilo Matrix, sutil) ---------- */
-(function rainFX() {
-  const cv = document.getElementById("rain"); if (!cv) return;
-  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) { cv.style.display = "none"; return; }
-  const ctx = cv.getContext("2d");
-  const glyphs = "0123456789$€£¥₹₽¢₩₪₫₴₦฿₲₱".split(""); // dígitos + cifras de vários países
-  const font = 13, step = 28;                          // colunas BEM espaçadas = textura leve, não poluída
-  let W, H, cols, drops, speed;
-  function resize() {
-    W = cv.width = innerWidth; H = cv.height = innerHeight;
-    cols = Math.ceil(W / step);
-    // espalha as gotas por TODA a tela desde o 1º frame (sem "faixa subindo/entrando")
-    drops = Array(cols).fill(0).map(() => Math.random() * (H / font));
-    speed = Array(cols).fill(0).map(() => 0.30 + Math.random() * 0.45);   // quedas lentas e variadas (calmo)
-  }
-  resize(); addEventListener("resize", resize, { passive: true });
-  // paleta cacheada: recalcular matchMedia a cada frame era desperdício; atualiza só quando muda
-  let _pal = null;
-  function computePalette() {
-    const dark = document.documentElement.classList.contains("theme-dark") ||
-      (!document.documentElement.classList.contains("theme-light") && matchMedia("(prefers-color-scheme: dark)").matches);
-    // bem fraco, quase na cor do fundo; rastro curto (fade mais forte) pra não virar "barra" sólida
-    _pal = dark ? { fade: "rgba(9,18,14,0.20)", g: "rgba(95,210,160,0.16)", head: "rgba(160,255,210,0.34)" }
-                : { fade: "rgba(238,241,240,0.20)", g: "rgba(20,120,80,0.11)", head: "rgba(15,150,90,0.24)" };
-  }
-  computePalette();
-  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", computePalette); } catch (e) {}
-  const _palObs = new MutationObserver(computePalette);
-  try { _palObs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] }); } catch (e) {}
-  // rAF cancelável: enquanto a aba/app está oculto NÃO mantemos o loop vivo (economia de GPU/CPU
-  // e evita o iOS derrubar o processo por uso contínuo em background).
-  let _raf = null, last = 0;
-  function frame(t) {
-    _raf = requestAnimationFrame(frame);
-    if (document.hidden) { cancelAnimationFrame(_raf); _raf = null; return; }
-    if (t - last < 75) return; last = t;            // ~13fps → queda calma e suave
-    const c = _pal;
-    ctx.fillStyle = c.fade; ctx.fillRect(0, 0, W, H);
-    ctx.font = font + "px ui-monospace, monospace";
-    for (let i = 0; i < cols; i++) {
-      const g = glyphs[(Math.random() * glyphs.length) | 0];
-      const y = drops[i] * font;
-      ctx.fillStyle = (Math.random() < 0.02) ? c.head : c.g;
-      ctx.fillText(g, i * step, y);
-      if (y > H && Math.random() > 0.965) drops[i] = Math.random() * -10;
-      drops[i] += speed[i];
-    }
-  }
-  // (re)liga o loop ao voltar pro app; desliga ao sair (o frame já cancela quando oculto)
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && _raf === null) { last = 0; _raf = requestAnimationFrame(frame); }
-  });
-  _raf = requestAnimationFrame(frame);
-})();
+/* (removido) Efeito de "chuva" de números/cifras no fundo — o usuário pediu pra tirar de todo o app. */
 
 /* Auto-configura a sincronização a partir de um link (#cfg=base64).
    Lê do fragmento (#) — que NÃO é enviado a servidores — salva e limpa
