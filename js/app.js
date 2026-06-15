@@ -1,11 +1,20 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.12.3";
+const APP_VERSION = "3.12.4";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.12.4",
+    bullets: [
+      "Nova barra de baixo estilo iOS: uma pílula de vidro flutuante, elevada e descolada das bordas — o conteúdo passa desfocado por trás",
+      "Medalhas: agora são 120! Em saldo, lançamentos, cartões, fixas, gastos do dia, rendas, meses ativos, meses no azul e metas",
+      "As conquistadas ficam sempre na frente (ordenadas), com brilho dourado — e tirei o reflexo que passava",
+      "Textos das medalhas com mais respiro, sem colar na borda",
+    ]
+  },
   {
     version: "3.12.3",
     bullets: [
@@ -1148,51 +1157,46 @@ function medalStats() {
     insights: insSeen,
   };
 }
-const MEDALS = [
-  // 💰 Acúmulo de saldo
-  { e: "broto",    emoji: "🌱", n: "Primeiro passo", l: "Guardou R$ 100",     got: s => s.peak >= 100 },
-  { e: "estrela",  emoji: "⭐", n: "Pegando o jeito", l: "R$ 500 guardados",   got: s => s.peak >= 500 },
-  { e: "alvo",     emoji: "🎯", n: "Primeiro mil",    l: "R$ 1.000",           got: s => s.peak >= 1000 },
-  { e: "fogo",     emoji: "🔥", n: "Esquentando",     l: "R$ 2.500",           got: s => s.peak >= 2500 },
-  { e: "moeda",    emoji: "🪙", n: "Cofrinho cheio",  l: "R$ 5.000",           got: s => s.peak >= 5000 },
-  { e: "trofeu",   emoji: "🏆", n: "Dez mil!",        l: "R$ 10.000",          got: s => s.peak >= 10000 },
-  { e: "diamante", emoji: "💎", n: "Reserva forte",   l: "R$ 25.000",          got: s => s.peak >= 25000 },
-  { e: "foguete",  emoji: "🚀", n: "Decolando",       l: "R$ 50.000",          got: s => s.peak >= 50000 },
-  { e: "festa",    emoji: "🎉", n: "Seis dígitos",    l: "R$ 100.000",         got: s => s.peak >= 100000 },
-  { e: "coroa",    emoji: "👑", n: "Lendário",        l: "R$ 250.000",         got: s => s.peak >= 250000 },
-  // 📝 Organização
-  { e: "estrela",  emoji: "✨", n: "Começou!",        l: "1º lançamento",      got: s => s.totalLanc >= 1 },
-  { e: "alvo",     emoji: "🎯", n: "Engrenando",      l: "10 lançamentos",     got: s => s.totalLanc >= 10 },
-  { e: "foguete",  emoji: "🚀", n: "No controle",     l: "50 lançamentos",     got: s => s.totalLanc >= 50 },
-  { e: "coroa",    emoji: "👑", n: "Mestre do app",   l: "100 lançamentos",    got: s => s.totalLanc >= 100 },
-  // 💳 Cartões
-  { e: "dinheiroalado", emoji: "💳", n: "Primeira fatura", l: "1ª compra no cartão", got: s => s.nCartao >= 1 },
-  { e: "fogo",     emoji: "💸", n: "Cartão quente",   l: "10 compras no cartão", got: s => s.nCartao >= 10 },
-  { e: "diamante", emoji: "💎", n: "Parcelador",      l: "Parcelou em 12×+",   got: s => s.maxParc >= 12 },
-  { e: "alvo",     emoji: "🎯", n: "No limite certo", l: "Cartão com limite",  got: s => s.temLimite },
-  // 📌 Contas fixas
-  { e: "casa",     emoji: "🏠", n: "Conta na conta",  l: "1ª conta fixa",      got: s => s.nFixas >= 1 },
-  { e: "trofeu",   emoji: "🏆", n: "Tudo mapeado",    l: "5 contas fixas",     got: s => s.nFixas >= 5 },
-  // 🛒 Débitos do dia a dia
-  { e: "moeda",    emoji: "🪙", n: "Dia a dia",       l: "1º gasto do dia",    got: s => s.nDiaria >= 1 },
-  { e: "fogo",     emoji: "🔥", n: "Olho no centavo", l: "20 gastos do dia",   got: s => s.nDiaria >= 20 },
-  // 📅 Tempo de uso
-  { e: "broto",    emoji: "🌱", n: "Criando hábito",  l: "3 meses ativos",     got: s => s.mesesAtivos >= 3 },
-  { e: "estrela",  emoji: "⭐", n: "Meio ano!",       l: "6 meses ativos",     got: s => s.mesesAtivos >= 6 },
-  { e: "coroa",    emoji: "👑", n: "Um ano inteiro",  l: "12 meses ativos",    got: s => s.mesesAtivos >= 12 },
-  // 📈 Saúde financeira
-  { e: "foguete",  emoji: "🚀", n: "No azul",         l: "3 meses economizando", got: s => s.mesesEcon >= 3 },
-  { e: "diamante", emoji: "💎", n: "Disciplinado",    l: "6 meses economizando", got: s => s.mesesEcon >= 6 },
-  // 🎯 Metas
-  { e: "presente", emoji: "🎁", n: "Sonhador",        l: "Criou uma meta",     got: s => s.nMetas >= 1 },
-  { e: "festa",    emoji: "🎉", n: "Realizador",      l: "Concluiu uma meta",  got: s => s.metasFeitas >= 1 },
-  // 🔍 Exploração
-  { e: "estrela",  emoji: "💡", n: "Curioso",         l: "Abriu os Insights",  got: s => s.insights },
-  { e: "anel",     emoji: "🏷️", n: "Organizado",      l: "Definiu um orçamento", got: s => s.temOrcamento },
-];
+/* ~120 medalhas geradas por categorias (tiers). Emojis animados reusados; a CONQUISTA é o que muda.
+   O label sempre traz o critério exato (único). got(s) testa contra medalStats(). */
+const MEDALS = (function buildMedals() {
+  const E = ["broto", "estrela", "alvo", "fogo", "moeda", "trofeu", "diamante", "foguete", "festa", "coroa", "presente", "casa", "carro", "aviao", "formatura", "anel", "notebook", "dinheiroalado"];
+  const FB = { broto: "🌱", estrela: "⭐", alvo: "🎯", fogo: "🔥", moeda: "🪙", trofeu: "🏆", diamante: "💎", foguete: "🚀", festa: "🎉", coroa: "👑", presente: "🎁", casa: "🏠", carro: "🚗", aviao: "✈️", formatura: "🎓", anel: "💍", notebook: "💻", dinheiroalado: "💸" };
+  const out = []; let i = 0;
+  const cat = (metric, list, labelFn) => list.forEach(p => { const e = E[i++ % E.length]; out.push({ e: e, emoji: FB[e], n: p[1], l: labelFn(p[0]), got: s => (s[metric] || 0) >= p[0] }); });
+  const bool = (metric, n, l) => { const e = E[i++ % E.length]; out.push({ e: e, emoji: FB[e], n: n, l: l, got: s => !!s[metric] }); };
+  // 💰 Saldo guardado (pico no ano) — 24
+  cat("peak", [[100,"Primeiro passo"],[250,"Juntando moedas"],[500,"Pegando o jeito"],[750,"Quase mil"],[1000,"Primeiro mil"],[1500,"Mil e meio"],[2000,"Dois mil"],[3000,"Engrenando"],[5000,"Cofrinho cheio"],[7500,"Crescendo"],[10000,"Dez mil!"],[15000,"Quinze mil"],[20000,"Vinte mil"],[25000,"Reserva forte"],[30000,"Blindado"],[40000,"Quarenta mil"],[50000,"Meio caminho"],[75000,"Setenta e cinco"],[100000,"Seis dígitos"],[150000,"Cento e cinquenta"],[200000,"Duzentos mil"],[250000,"Quarto de milhão"],[500000,"Meio milhão"],[1000000,"Milionário!"]], brl);
+  // 📝 Lançamentos no total — 14
+  cat("totalLanc", [[1,"Começou!"],[5,"Esquentando"],[10,"Engrenando"],[25,"Constante"],[50,"No controle"],[75,"Aplicado"],[100,"Centena"],[150,"Caprichoso"],[200,"Duzentos lançamentos"],[300,"Trezentos"],[500,"Meio milhar"],[750,"Setecentos"],[1000,"Mestre do registro"],[1500,"Lenda do app"]], t => t + " lançamentos");
+  // 💳 Compras no cartão — 10
+  cat("nCartao", [[1,"Primeira fatura"],[5,"Cartão ativo"],[10,"Cartão quente"],[20,"Comprador"],[30,"Trinta compras"],[50,"Faturão"],[75,"Setenta e cinco"],[100,"Cem no cartão"],[150,"Cartão pro"],[200,"Rei do cartão"]], t => t + " compras no cartão");
+  // 💳 Parcelamentos — 8
+  cat("maxParc", [[3,"Parcelou 3×"],[6,"Parcelou 6×"],[10,"Parcelou 10×"],[12,"Um ano de parcelas"],[18,"Parcelou 18×"],[24,"Dois anos"],[36,"Três anos"],[60,"Parcela mestre"]], t => "Parcelou em " + t + "×");
+  // 📌 Contas fixas — 10
+  cat("nFixas", [[1,"1ª conta fixa"],[2,"Duas fixas"],[3,"Três fixas"],[5,"Tudo mapeado"],[7,"Sete fixas"],[10,"Dez fixas"],[12,"Organizadíssimo"],[15,"Quinze fixas"],[20,"Vinte fixas"],[25,"Mestre das fixas"]], t => t + " contas fixas");
+  // 🛒 Gastos do dia a dia — 12
+  cat("nDiaria", [[1,"1º gasto do dia"],[3,"Três gastos"],[5,"Cinco gastos"],[10,"Dez gastos"],[20,"Olho no centavo"],[30,"Trinta gastos"],[50,"Cinquenta"],[75,"Setenta e cinco"],[100,"Cem gastos"],[150,"Detalhista"],[200,"Duzentos"],[300,"Mestre do dia a dia"]], t => t + " gastos do dia");
+  // 💰 Fontes de renda — 8
+  cat("nReceitas", [[1,"1ª receita"],[2,"Duas fontes"],[3,"Três fontes"],[5,"Diversificou"],[7,"Sete fontes"],[10,"Dez fontes"],[15,"Multi-renda"],[20,"Mestre das rendas"]], t => t + " fontes de renda");
+  // 📅 Meses ativos — 12
+  cat("mesesAtivos", [[1,"Primeiro mês"],[2,"Dois meses"],[3,"Trimestre"],[4,"Quatro meses"],[5,"Cinco meses"],[6,"Meio ano"],[7,"Sete meses"],[8,"Oito meses"],[9,"Nove meses"],[10,"Dez meses"],[11,"Onze meses"],[12,"Ano completo"]], t => t + (t === 1 ? " mês ativo" : " meses ativos"));
+  // 📈 Meses economizando — 9
+  cat("mesesEcon", [[1,"No azul"],[2,"Dois no azul"],[3,"Trimestre no azul"],[4,"Quatro no azul"],[5,"Cinco no azul"],[6,"Meio ano no azul"],[8,"Oito no azul"],[10,"Dez no azul"],[12,"Ano no azul"]], t => t + (t === 1 ? " mês economizando" : " meses economizando"));
+  // 🎯 Metas criadas — 7
+  cat("nMetas", [[1,"Sonhador"],[2,"Dois sonhos"],[3,"Três metas"],[5,"Cinco metas"],[8,"Oito metas"],[10,"Dez metas"],[15,"Colecionador de sonhos"]], t => t + (t === 1 ? " meta criada" : " metas criadas"));
+  // 🏁 Metas concluídas — 6
+  cat("metasFeitas", [[1,"Realizador"],[2,"Duas conquistas"],[3,"Três realizadas"],[5,"Cinco realizadas"],[8,"Oito realizadas"],[10,"Mestre das metas"]], t => t + (t === 1 ? " meta concluída" : " metas concluídas"));
+  // 🔍 Exploração — 3
+  bool("temLimite", "No limite certo", "Cartão com limite");
+  bool("temOrcamento", "Orçado", "Definiu um orçamento");
+  bool("insights", "Curioso", "Abriu os Insights");
+  return out;
+})();
 function renderMedals() {
   const s = medalStats();
-  const rows = MEDALS.map(m => ({ m: m, got: !!m.got(s) }));
+  const rows = MEDALS.map((m, idx) => ({ m: m, got: !!m.got(s), idx: idx }));
+  rows.sort((a, b) => (b.got - a.got) || (a.idx - b.idx));   // conquistadas primeiro (ordenadas no campo)
   const earned = rows.filter(x => x.got).length, total = MEDALS.length;
   const pct = Math.round(earned / total * 100);
   const grid = rows.map(x => {
