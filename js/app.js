@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.1";
+const APP_VERSION = "3.13.2";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.2",
+    bullets: [
+      "Holofote dos botões 'Ir até' agora dura 5s (esmaece mais devagar)",
+      "Direcionamento certo: Resumo, Gráficos e Insights agora destacam o conteúdo explicado (não só o seletor) — e o botão de Gráficos abre os gráficos de verdade",
+    ]
+  },
   {
     version: "3.13.1",
     bullets: [
@@ -1700,7 +1707,7 @@ function spotlightOn(el) {
   place();
   _spotScroll = place; window.addEventListener("scroll", _spotScroll, true);   // segue o conteúdo se rolar
   setTimeout(() => sp.classList.add("fade"), 40);   // dispara o esmaecer de 3s (setTimeout não pausa com aba oculta)
-  _spotT = setTimeout(() => { window.removeEventListener("scroll", _spotScroll, true); try { sp.remove(); } catch (e) {} if (_spot === sp) _spot = null; }, 3200);
+  _spotT = setTimeout(() => { window.removeEventListener("scroll", _spotScroll, true); try { sp.remove(); } catch (e) {} if (_spot === sp) _spot = null; }, 5200);
 }
 
 /* ---------- Simulador "vale a pena comprar?" (à vista ou parcelado) ---------- */
@@ -4237,7 +4244,7 @@ document.addEventListener("click", (e) => { const b = e.target.closest && e.targ
 const FAQ = [
   { t: "📋 Resumo do mês", go: "resumo", btn: "Abrir o Resumo",
     d: "É a tela inicial. No topo aparecem as <b>contas a vencer</b> (o que está perto de vencer ou atrasado). Logo abaixo, a <b>saúde financeira</b> (quanto entra, quanto sai e quanto sobra) e o <b>caminho do dinheiro</b> do mês. Use o seletor de mês no topo para navegar entre meses e o de ano para trocar o ano." },
-  { t: "📊 Gráficos", go: "resumo", btn: "Abrir o Resumo",
+  { t: "📊 Gráficos", go: "graficos", btn: "Abrir os Gráficos",
     d: "Dentro do Resumo, toque em <b>📊 Gráficos</b> no seletor do topo. Você vê <b>Orçamento × Realizado</b> por categoria (verde = dentro da meta, vermelho = estourou), o <b>saldo acumulado</b> mês a mês e as <b>despesas e receitas</b> por mês. Toque numa barra do gráfico para ver os lançamentos daquele mês." },
   { t: "💡 Insights & Leitura do mês", go: "insights", btn: "Ver os Insights",
     d: "No Resumo, toque na opção azul <b>💡 Insights</b> no topo. A <b>leitura do mês</b> resume em linguagem simples o que está indo bem e o que pede atenção — por exemplo, categoria que estourou a meta, mês com saldo negativo ou gasto fora do padrão. Ela pisca em azul até você abrir pela primeira vez." },
@@ -4273,10 +4280,13 @@ function faqGo(action) {
     $$(".tab").forEach(x => x.classList.toggle("active", x.dataset.tab === "resumo"));
     suppressNextAnim = true; window.scrollTo(0, 0); render();
   };
+  // destaca o CONTEÚDO da view (1º card explicado), não só o seletor
+  const spotView = () => { const c = document.querySelector("#view .section-card"); if (!c) return; try { c.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} setTimeout(() => spotlightOn(c), 400); };
   setTimeout(() => {
     switch (action) {
-      case "resumo":     goResumo("resumo");   setTimeout(() => focarEl(".view-toggle"), 120); break;
-      case "insights":   goResumo("insights"); setTimeout(() => focarEl(".view-toggle"), 120); break;
+      case "resumo":     goResumo("resumo");   setTimeout(spotView, 130); break;
+      case "graficos":   goResumo("graficos"); setTimeout(spotView, 130); break;
+      case "insights":   goResumo("insights"); setTimeout(spotView, 130); break;
       case "tabs":       focarEl(".tabbar"); break;
       case "fab":        focarEl("#fab"); break;
       case "bell": {     const b = $("#btnBell"); if (b && !b.classList.contains("hidden")) focarEl("#btnBell"); else toast("O 🔔 aparece quando há conta a vencer"); break; }

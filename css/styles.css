@@ -1386,7 +1386,7 @@ html.theme-dark #rain { opacity: .7; }
 /* Holofote dos botões "Ir até": escurece tudo em volta do alvo e esvaece em ~3s (destaque) */
 .spotlight { position: fixed; z-index: 105; pointer-events: none; border-radius: 16px;
   box-shadow: 0 0 0 9999px rgba(0,0,0,.62); outline: 2px solid rgba(255,255,255,.45); outline-offset: 0;
-  transition: box-shadow 3s cubic-bezier(.22,.61,.21,1), outline-color 3s ease; will-change: box-shadow; }
+  transition: box-shadow 5s cubic-bezier(.22,.61,.21,1), outline-color 5s ease; will-change: box-shadow; }
 .spotlight.fade { box-shadow: 0 0 0 9999px rgba(0,0,0,0); outline-color: rgba(255,255,255,0); }
 @media (prefers-reduced-motion: reduce) { .spotlight { transition-duration: .8s; } }
 @keyframes focusRow { 0%,100% { background: transparent; } 35% { background: rgba(245,166,35,.18); } }
