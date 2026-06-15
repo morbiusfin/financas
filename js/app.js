@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.12.0";
+const APP_VERSION = "3.12.1";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.12.1",
+    bullets: [
+      "Modo Exploração: o menu agora mostra quanto do app você já explorou (%), e cada parte que você abre pela 1ª vez aparece com uma dica rápida do que ela faz",
+      "Toque no % pra ver tudo que já explorou e o que ainda falta",
+      "Explorou 100%? Você vira Explorador Mestre — com medalha no menu 🏅",
+    ]
+  },
   {
     version: "3.12.0",
     bullets: [
@@ -1184,6 +1192,88 @@ function renderMedals() {
     + '<div class="medal-scroll"><div class="medal-grid">' + grid + '</div></div></div>';
 }
 
+/* ===================== 🔍 Parte B: Exploração do app (gamificação) =====================
+   Cada parte do app é "explorável". Ao usar pela 1ª vez, marca como explorada, mostra um tutorial
+   contextual rápido (coach tip) e soma no % do menu. Ao chegar a 100%, vira medalha de Explorador. */
+const EXPLORE_KEY = "financas2026.explored";
+const EXPLORE = [
+  { id: "resumo",     label: "Resumo do mês",          tip: "A visão geral do mês: saúde financeira, contas a vencer e o caminho do dinheiro." },
+  { id: "graficos",   label: "Gráficos",               tip: "Orçamento × realizado, saldo acumulado e despesas/receitas por mês." },
+  { id: "insights",   label: "Insights",               tip: "Leitura do mês, projeção do ano e suas medalhas de acúmulo." },
+  { id: "receitas",   label: "Receitas",               tip: "Tudo que entra: salário e rendas extras." },
+  { id: "fixas",      label: "Contas fixas",           tip: "O que se repete todo mês: aluguel, assinaturas…" },
+  { id: "cartao",     label: "Cartões",                tip: "Compras no cartão, com parcelamento e limite de fatura." },
+  { id: "diaria",     label: "Débito do dia a dia",    tip: "Os gastos avulsos do dia a dia." },
+  { id: "add",        label: "Adicionar com o +",      tip: "O botão + cria um lançamento na aba que você está." },
+  { id: "perfil",     label: "Perfil",                 tip: "Sua foto, nome e tipo de conta (pessoal ou de casal)." },
+  { id: "metas",      label: "Metas",                  tip: "Objetivos como viagem, casa ou carro — com barra de progresso." },
+  { id: "categorias", label: "Categorias e orçamento", tip: "Crie categorias com emoji e metas de gasto por categoria." },
+  { id: "simulador",  label: "Simular gastos",         tip: "Veja se uma compra cabe (e em qual mês), antes de fazer." },
+  { id: "sync",       label: "Sincronização",          tip: "Suba e baixe seus dados da sua nuvem privada." },
+  { id: "tema",       label: "Tema",                   tip: "Claro, escuro ou automático." },
+  { id: "faq",        label: "Perguntas frequentes",   tip: "O que cada parte do app faz, com atalho pra cada uma." },
+  { id: "alertas",    label: "Sino de alertas",        tip: "Avisa quando há conta perto de vencer." },
+];
+function exploredSet() { try { return new Set(JSON.parse(localStorage.getItem(EXPLORE_KEY) || "[]")); } catch (e) { return new Set(); } }
+function explorePct() { const s = exploredSet(); let n = 0; EXPLORE.forEach(e => { if (s.has(e.id)) n++; }); return Math.round(n / EXPLORE.length * 100); }
+function markExplored(id) {
+  const s = exploredSet(); if (s.has(id)) return;
+  const e = EXPLORE.find(x => x.id === id); if (!e) return;
+  s.add(id); try { localStorage.setItem(EXPLORE_KEY, JSON.stringify(Array.from(s))); } catch (err) {}
+  coachTip(e.label, e.tip, explorePct());
+  renderExploreWidget();
+}
+let _coachT = null;
+function coachTip(label, tip, pct) {
+  let c = document.getElementById("coachTip");
+  if (!c) { c = document.createElement("div"); c.id = "coachTip"; c.className = "coach-tip"; document.body.appendChild(c); c.onclick = () => c.classList.remove("show"); }
+  const done = pct >= 100;
+  c.innerHTML = '<div class="coach-card"><div class="coach-top"><span class="coach-badge">🔍 explorou</span><b>' + esc(label) + '</b></div>'
+    + '<p>' + esc(tip) + '</p>'
+    + '<div class="coach-foot"><span>' + (done ? "🏅 100% explorado!" : "Exploração do app: <b>" + pct + "%</b>") + '</span></div>'
+    + '<div class="coach-bar"><div class="coach-fill" style="width:' + pct + '%"></div></div></div>';
+  c.classList.remove("show"); void c.offsetWidth; c.classList.add("show");
+  clearTimeout(_coachT); _coachT = setTimeout(() => c.classList.remove("show"), 3600);
+}
+function renderExploreWidget() {
+  const w = document.getElementById("exploreWidget"); if (!w) return;
+  const pct = explorePct();
+  if (pct >= 100) {
+    w.innerHTML = '<button type="button" class="explore-medal" id="exploreBtn">' + animEmoji("trofeu", "🏅", "exp-ic")
+      + '<span><b>Explorador Mestre</b><i>100% do app explorado 🎉</i></span></button>';
+  } else {
+    w.innerHTML = '<button type="button" class="explore-widget" id="exploreBtn">'
+      + '<div class="exp-head"><span>🔍 Exploração do app</span><b>' + pct + '%</b></div>'
+      + '<div class="exp-bar"><div class="exp-fill" style="width:' + pct + '%"></div></div></button>';
+  }
+  const b = document.getElementById("exploreBtn"); if (b) b.onclick = () => { closeMenu(); openExploreModal(); };
+}
+function openExploreModal() {
+  let m = document.getElementById("exploreModal");
+  if (!m) {
+    m = document.createElement("div"); m.id = "exploreModal"; m.className = "modal hidden";
+    m.innerHTML = '<div class="modal-card explore-card"><button type="button" class="wn-close" id="exploreClose">✕</button>'
+      + '<div class="faq-head"><span>🔍</span><h2>Exploração do app</h2></div>'
+      + '<div id="exploreBody"></div></div>';
+    document.body.appendChild(m);
+    m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); });
+    m.querySelector("#exploreClose").onclick = () => m.classList.add("hidden");
+  }
+  const s = exploredSet(), pct = explorePct(), falta = EXPLORE.filter(e => !s.has(e.id));
+  const lista = EXPLORE.map(e => {
+    const got = s.has(e.id);
+    return '<div class="exp-item ' + (got ? "done" : "todo") + '"><span class="exp-mark">' + (got ? "✅" : "◯") + '</span>'
+      + '<span class="exp-txt"><b>' + esc(e.label) + '</b><i>' + esc(e.tip) + '</i></span></div>';
+  }).join("");
+  const head = pct >= 100
+    ? '<p class="explore-lead">🏅 <b>Parabéns!</b> Você explorou <b>tudo</b> — virou Explorador Mestre do MorbiusFin.</p>'
+    : '<p class="explore-lead">Você já explorou <b>' + pct + '%</b> do app. Falta abrir: <b>' + esc(falta.slice(0, 3).map(f => f.label).join(", ")) + (falta.length > 3 ? "…" : "") + '</b></p>';
+  m.querySelector("#exploreBody").innerHTML = head
+    + '<div class="medal-overall" style="margin:10px 0 14px"><div class="mo-fill" style="width:' + pct + '%"></div></div>'
+    + '<div class="exp-list">' + lista + '</div>';
+  m.classList.remove("hidden");
+}
+
 /* ---------- "Leitura do mês": narrativa local (sem IA externa) — prioriza o que pede atenção
    + 1 estatística simples (cobertura e chance de fechar no positivo). NÃO repete os Insights. ---------- */
 function monthNarrative(m) {
@@ -1272,6 +1362,7 @@ function renderThemeCards() {
   $$(".th-opt", wrap).forEach(b => b.onclick = () => setTheme(b.dataset.th));
 }
 function openThemeModal() {
+  markExplored("tema");
   let m = document.getElementById("themeModal");
   if (!m) {
     m = document.createElement("div"); m.id = "themeModal"; m.className = "modal center hidden";
@@ -1305,6 +1396,7 @@ function metaEmojiFor(nome) {
 function objetivos() { return (DATA.objetivos = DATA.objetivos || []); }
 let _metaEdit = null;   // id em edição (ou null = novo)
 function openMetasModal() {
+  markExplored("metas");
   let m = document.getElementById("metasModal");
   if (!m) {
     m = document.createElement("div"); m.id = "metasModal"; m.className = "modal hidden";
@@ -1488,6 +1580,7 @@ function updateBell() {
 }
 // Tocar no sino → ABRE o painel de notificações (área própria, não atropela o app) e marca como visto
 function abrirAlertas() {
+  markExplored("alertas");
   if (DATA.year === REAL_TODAY.getFullYear()) curMonth = REAL_TODAY.getMonth();   // garante o mês atual (onde estão os alertas)
   try { localStorage.setItem(NOTIF_SEEN_KEY, notifSignature()); } catch (e) {}    // viu → para de piscar
   renderNotifPanel();
@@ -1986,7 +2079,8 @@ function bindViewToggle() {
   const commit = (b) => {
     if (b.dataset.rv === "insights") localStorage.setItem("financas2026.insSeen", "1");
     if (resumoView === b.dataset.rv) { placeGlassTo(toggle, b, true, "vt"); return; }   // mesma → só ajeita o vidro
-    resumoView = b.dataset.rv; suppressNextAnim = true; window.scrollTo(0, 0); render(); fadeView();   // render reconstrói o toggle → o vidro novo desliza de prev→ativo
+    resumoView = b.dataset.rv; markExplored(b.dataset.rv);   // exploração: Gráficos/Insights/Resumo
+    suppressNextAnim = true; window.scrollTo(0, 0); render(); fadeView();   // render reconstrói o toggle → o vidro novo desliza de prev→ativo
   };
   $$(".vt-btn", toggle).forEach(b => b.onclick = () => commit(b));
   bindGlassDrag(toggle, ".vt-btn", commit, "vt");
@@ -1998,6 +2092,7 @@ function syncTabGlass(animate) {
   placeGlassTo(bar, bar.querySelector(".tab.active") || bar.querySelector(".tab"), animate !== false, "tab");
 }
 function commitTab(t) {
+  markExplored(t.dataset.tab);                          // exploração: aba visitada
   const bar = $(".tabbar");
   if (curTab === t.dataset.tab && !annual) { placeGlassTo(bar, t, true, "tab"); return; }
   $$(".tab", bar).forEach(x => x.classList.remove("active")); t.classList.add("active");
@@ -2809,6 +2904,7 @@ function updateParcelaPreview() {
 
 /* ---------- MODAIS ---------- */
 function openEntryModal(tab, idx) {
+  if (idx == null) markExplored("add");                // exploração: usou o + (novo lançamento)
   const isNew = idx == null, l = isNew ? null : DATA[tab][idx], isReceita = tab === "receitas";
   const stOpts = isReceita ? [["recebido", "Recebido"], ["programado", "Programado"], ["vazio", "—"]]
                            : [["pago", "Pago"], ["programado", "Programado"], ["vazio", "—"]];
@@ -2995,7 +3091,7 @@ function openDiariaModal(idx, method) {
 }
 
 /* ---------- Categorias e orçamento (gerenciador no menu) ---------- */
-function openCategoriasModal() { renderCatMgr(); showModal("#catModal"); }
+function openCategoriasModal() { markExplored("categorias"); renderCatMgr(); showModal("#catModal"); }
 function catTotalHTML() {
   const orc = DATA.orcamento || {};
   const tot = catList().reduce((s, c) => s + (Number(orc[c.id]) || 0), 0);
@@ -3241,6 +3337,7 @@ $("#btnReset").onclick = () => modalConfirm("Apagar tudo e voltar aos dados de e
 function openMenu() {
   const m = $("#menuDrawer"); if (!m) return;
   const v = $("#menuVer"); if (v) v.textContent = APP_VERSION;
+  renderExploreWidget();                                                     // % de exploração no topo
   m.classList.remove("hidden");
   $$(".menu-item", m).forEach((it, i) => it.style.setProperty("--mi", i));   // entrada em sequência (stagger)
 }
@@ -3254,9 +3351,9 @@ $("#menuDrawer").onclick = (e) => { if (e.target.id === "menuDrawer") closeMenu(
 { const mp = $("#miPerfil"); if (mp) mp.onclick = () => { closeMenu(); openProfile(); }; }
 $("#miImport").onclick = () => { closeMenu(); $("#importFile").click(); };
 $("#miExport").onclick = () => { closeMenu(); $("#btnExport").click(); };
-$("#miSync").onclick = () => { closeMenu(); if (syncCfg()) pullSync(true, null, true); else configurarSync(); };
+$("#miSync").onclick = () => { closeMenu(); markExplored("sync"); if (syncCfg()) pullSync(true, null, true); else configurarSync(); };
 $("#miSim").onclick = () => {
-  closeMenu();
+  closeMenu(); markExplored("simulador");
   curTab = "resumo"; resumoView = "graficos";
   $$(".tab").forEach(x => x.classList.toggle("active", x.dataset.tab === "resumo"));
   suppressNextAnim = true; window.scrollTo(0, 0); render();
@@ -3582,6 +3679,7 @@ function renderAvatar() {
 }
 let _profFotoTmp = "", _profTipo = "pessoal";
 function openProfile() {
+  markExplored("perfil");
   const m = $("#profileModal"); if (!m) return;
   const p = getPerfil();
   $("#profNome").value = p.nome || "";
@@ -4129,6 +4227,7 @@ function faqGo(action) {
   }, 60);
 }
 function openFaq() {
+  markExplored("faq");
   let m = document.getElementById("faqModal");
   if (!m) {
     m = document.createElement("div"); m.id = "faqModal"; m.className = "modal center hidden";

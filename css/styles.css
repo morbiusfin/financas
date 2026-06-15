@@ -1164,6 +1164,37 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
 .medal .md-ic.emoji-anim { width: 38px; height: 38px; vertical-align: middle; }
 .medal .md-n { font-size: 11px; font-weight: 800; color: var(--ink); line-height: 1.18; min-height: 2.36em; display: flex; align-items: center; justify-content: center; padding: 0 1px; }
 .medal .md-v { font-size: 9.8px; color: var(--muted); font-weight: 600; line-height: 1.2; margin-top: auto; padding: 0 1px; }
+/* ===== 🔍 Exploração: widget no menu + coach tip + modal ===== */
+.explore-widget, .explore-medal { display: block; width: 100%; text-align: left; background: var(--card-2); border: 1px solid var(--line); border-radius: 14px; padding: 11px 13px; margin-bottom: 12px; cursor: pointer; color: var(--ink); font-family: var(--font); transition: transform .12s ease; }
+.explore-widget:active, .explore-medal:active { transform: scale(.985); }
+.exp-head { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; font-weight: 700; margin-bottom: 7px; }
+.exp-head b { color: var(--accent); font-size: 14px; }
+.exp-bar { height: 8px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+.exp-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--green-2), var(--green)); transition: width .6s cubic-bezier(.2,.8,.2,1); }
+.explore-medal { display: flex; align-items: center; gap: 10px; background: linear-gradient(160deg, rgba(245,166,35,.16), var(--card-2)); border-color: rgba(245,166,35,.5); }
+.explore-medal .exp-ic { width: 34px; height: 34px; flex: 0 0 auto; }
+.explore-medal span { display: flex; flex-direction: column; }
+.explore-medal b { font-size: 13.5px; } .explore-medal i { font-size: 11.5px; color: var(--muted); font-style: normal; }
+.coach-tip { position: fixed; left: 14px; right: 14px; bottom: calc(86px + var(--safe-bottom)); z-index: 1400; display: flex; justify-content: center;
+  pointer-events: none; opacity: 0; transform: translateY(14px); transition: opacity .3s ease, transform .3s ease; }
+.coach-tip.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.coach-card { width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--accent); border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow-lg); }
+.coach-top { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.coach-badge { font-size: 10px; font-weight: 800; color: #fff; background: var(--accent); border-radius: 99px; padding: 2px 8px; }
+.coach-top b { font-size: 14px; }
+.coach-card p { margin: 0 0 9px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.coach-foot { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; } .coach-foot b { color: var(--accent); }
+.coach-bar { height: 6px; border-radius: 5px; background: var(--card-2); overflow: hidden; }
+.coach-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--green-2), var(--green)); transition: width .5s ease; }
+.explore-card { max-width: 420px; }
+.explore-lead { font-size: 13px; line-height: 1.5; margin: 0; }
+.exp-list { display: flex; flex-direction: column; gap: 8px; max-height: 46vh; overflow-y: auto; scrollbar-width: none; }
+.exp-list::-webkit-scrollbar { display: none; }
+.exp-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 11px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--line); }
+.exp-item.done { border-color: rgba(31,217,122,.35); }
+.exp-item.todo { opacity: .68; }
+.exp-mark { flex: 0 0 auto; font-size: 14px; line-height: 1.4; }
+.exp-txt { display: flex; flex-direction: column; } .exp-txt b { font-size: 13px; } .exp-txt i { font-size: 11.5px; color: var(--muted); font-style: normal; line-height: 1.4; }
 /* ===== Metas (objetivos) — barra estilo Duolingo, emoji animado que se mexe ao digitar ===== */
 .metas-card { max-width: 420px; }
 .meta-emoji { width: 1.7em; height: 1.7em; }
