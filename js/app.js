@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.96";
+const APP_VERSION = "3.11.97";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.97",
+    bullets: [
+      "Nova página de Metas (menu ☰): crie objetivos como viagem, casa, carro, presente — com quanto custa e quanto já guardou",
+      "O emoji do objetivo se mexe e muda sozinho enquanto você digita o nome da meta",
+      "Barra de progresso animada (estilo Duolingo) por meta, com quanto falta — e festa quando você chega lá",
+    ]
+  },
   {
     version: "3.11.96",
     bullets: [
@@ -1201,6 +1209,100 @@ function openThemeModal() {
   }
   renderThemeCards();
   m.classList.remove("hidden");
+}
+
+/* ===================== 🎯 Metas (objetivos) — viagem, casa, carro… com emoji animado ===================== */
+// emoji do objetivo a partir do nome digitado (anima ao vivo). Usa o WebP animado quando há; senão o emoji.
+function metaEmojiFor(nome) {
+  const s = (nome || "").toLowerCase();
+  const map = [
+    [/viag|viaj|f[ée]rias|passag|trip|m[ií]lhas/, "aviao", "✈️"],
+    [/casa|ap[êe]\b|apart|im[óo]vel|reforma|lar\b|mudan/, "casa", "🏠"],
+    [/carro|moto\b|ve[íi]culo|autom|pneu/, "carro", "🚗"],
+    [/presente|anivers|natal|gift|surpresa/, "presente", "🎁"],
+    [/faculd|curso|formatur|estud|escola|p[óo]s|mba|intercamb/, "formatura", "🎓"],
+    [/casam|anel|noiv|alian/, "anel", "💍"],
+    [/note|computad|\bpc\b|celular|eletr|tech|tel[ée]fone|gadget/, "notebook", "💻"],
+  ];
+  for (let i = 0; i < map.length; i++) if (map[i][0].test(s)) return { e: map[i][1], emoji: map[i][2] };
+  return { e: "dinheiroalado", emoji: "💸" };   // padrão: "guardar dinheiro"
+}
+function objetivos() { return (DATA.objetivos = DATA.objetivos || []); }
+let _metaEdit = null;   // id em edição (ou null = novo)
+function openMetasModal() {
+  let m = document.getElementById("metasModal");
+  if (!m) {
+    m = document.createElement("div"); m.id = "metasModal"; m.className = "modal hidden";
+    m.innerHTML = '<div class="modal-card metas-card"><button type="button" class="wn-close" id="metasClose">✕</button>'
+      + '<div class="faq-head"><span>🎯</span><h2>Minhas metas</h2></div>'
+      + '<div id="metasList"></div>'
+      + '<div id="metasForm"></div></div>';
+    document.body.appendChild(m);
+    m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); });
+    m.querySelector("#metasClose").onclick = () => m.classList.add("hidden");
+  }
+  _metaEdit = null;
+  renderMetasList(); renderMetaForm();
+  m.classList.remove("hidden");
+}
+function renderMetasList() {
+  const wrap = document.getElementById("metasList"); if (!wrap) return;
+  const obs = objetivos();
+  if (!obs.length) { wrap.innerHTML = '<p class="hint" style="text-align:left;margin:0 0 6px">Nenhuma meta ainda. Crie a primeira aí embaixo 👇</p>'; return; }
+  wrap.innerHTML = obs.map(o => {
+    const alvo = Number(o.alvo) || 0, guard = Math.max(0, Number(o.guardado) || 0);
+    const pct = alvo > 0 ? Math.max(0, Math.min(100, Math.round(guard / alvo * 100))) : 0;
+    const done = alvo > 0 && guard >= alvo;
+    const falta = Math.max(0, alvo - guard);
+    return '<div class="meta-row" data-mid="' + o.id + '">'
+      + '<div class="meta-ic">' + animEmoji(o.e || metaEmojiFor(o.nome).e, o.emoji || "🎯", "meta-emoji") + '</div>'
+      + '<div class="meta-body">'
+      +   '<div class="meta-top"><span class="meta-nome">' + esc(o.nome || "Meta") + '</span><span class="meta-pct">' + (done ? "✅ concluída!" : pct + "%") + '</span></div>'
+      +   '<div class="meta-bar"><div class="meta-fill' + (done ? " done" : "") + '" style="width:' + pct + '%"></div></div>'
+      +   '<div class="meta-foot"><span>' + brl(guard) + ' de ' + brl(alvo) + '</span><span>' + (done ? "🎉 chegou lá!" : "faltam " + brl(falta)) + '</span></div>'
+      + '</div>'
+      + '<button type="button" class="meta-edit" data-edit="' + o.id + '" aria-label="Editar">✎</button>'
+      + '</div>';
+  }).join("");
+  $$(".meta-edit", wrap).forEach(b => b.onclick = () => { _metaEdit = b.dataset.edit; renderMetaForm(); });
+}
+function renderMetaForm() {
+  const wrap = document.getElementById("metasForm"); if (!wrap) return;
+  const editing = _metaEdit ? objetivos().find(o => o.id === _metaEdit) : null;
+  const nome = editing ? editing.nome : "";
+  const sug = metaEmojiFor(nome);
+  wrap.innerHTML = '<div class="meta-form">'
+    + '<div class="meta-form-head"><span class="meta-prev" id="metaPrev">' + animEmoji((editing && editing.e) || sug.e, (editing && editing.emoji) || sug.emoji, "meta-emoji") + '</span>'
+    +   '<b>' + (editing ? "Editar meta" : "Nova meta") + '</b></div>'
+    + '<label class="field"><span>O que você quer?</span><input id="metaNome" type="text" maxlength="40" value="' + esc(nome) + '" placeholder="Ex.: Viagem pro Chile" /></label>'
+    + '<div class="field-row">'
+    +   '<label class="field" style="flex:1"><span>Quanto custa (R$)</span><input id="metaAlvo" class="money" value="' + (editing && editing.alvo ? fmtMoneyBR(editing.alvo) : "") + '" placeholder="0,00" /></label>'
+    +   '<label class="field" style="flex:1"><span>Já guardei (R$)</span><input id="metaGuard" class="money" value="' + (editing && editing.guardado ? fmtMoneyBR(editing.guardado) : "") + '" placeholder="0,00" /></label>'
+    + '</div>'
+    + '<div class="meta-actions">'
+    +   (editing ? '<button type="button" class="btn danger" id="metaDel">Excluir</button>' : '')
+    +   '<button type="button" class="btn primary" id="metaSave">' + (editing ? "Salvar" : "Criar meta") + '</button>'
+    + '</div></div>';
+  bindMoneyAll(wrap);
+  const nIn = $("#metaNome", wrap), prev = $("#metaPrev", wrap);
+  if (nIn) nIn.oninput = () => { const s = metaEmojiFor(nIn.value); prev.innerHTML = animEmoji(s.e, s.emoji, "meta-emoji"); };   // emoji se mexe ao digitar
+  const sv = $("#metaSave", wrap); if (sv) sv.onclick = saveMeta;
+  const dl = $("#metaDel", wrap); if (dl) dl.onclick = () => modalConfirm("Excluir esta meta?", () => { DATA.objetivos = objetivos().filter(o => o.id !== _metaEdit); _metaEdit = null; persist(); renderMetasList(); renderMetaForm(); }, "Excluir");
+}
+function saveMeta() {
+  const nome = ($("#metaNome").value || "").trim();
+  if (!nome) { toast("Dê um nome pra meta"); return; }
+  const alvo = moneyVal($("#metaAlvo")) || 0, guard = moneyVal($("#metaGuard")) || 0;
+  if (alvo <= 0) { toast("Quanto custa essa meta?"); return; }
+  const sug = metaEmojiFor(nome);
+  if (_metaEdit) {
+    const o = objetivos().find(x => x.id === _metaEdit);
+    if (o) { o.nome = nome; o.alvo = alvo; o.guardado = guard; o.e = sug.e; o.emoji = sug.emoji; }
+  } else {
+    objetivos().push({ id: uid(), nome: nome, alvo: alvo, guardado: guard, e: sug.e, emoji: sug.emoji });
+  }
+  _metaEdit = null; persist(); renderMetasList(); renderMetaForm();
+  toast("Meta salva ✓");
 }
 
 // quebra das despesas do mês: Fixas / Cartão / Débitos, com % do total — esconde o que estiver zerado
@@ -3089,6 +3191,7 @@ $("#miSim").onclick = () => {
 $("#miConfig").onclick = () => { closeMenu(); openSettings(); };
 { const ma = $("#miAviso"); if (ma) ma.onclick = () => { closeMenu(); openAvisoModal(); }; }
 { const mc = $("#miCategorias"); if (mc) mc.onclick = () => { closeMenu(); openCategoriasModal(); }; }
+{ const mm = $("#miMetas"); if (mm) mm.onclick = () => { closeMenu(); openMetasModal(); }; }
 { const x = $("#catClose"); if (x) x.onclick = () => $("#catModal").classList.add("hidden"); }
 { const a = $("#catAdd"); if (a) a.onclick = addCategoria; }
 { const cm = $("#catModal"); if (cm) cm.onclick = (e) => { if (e.target.id === "catModal") cm.classList.add("hidden"); }; }

@@ -120,6 +120,7 @@ function migrate(d) {
   d.cartoes = d.cartoes || [];   // cartões cadastrados: { id, nome, last4, fechamento, vencimento }
   d.categorias = (d.categorias && d.categorias.length) ? d.categorias : defaultCategorias();   // categorias com emoji
   d.orcamento = d.orcamento || {};   // meta de orçamento por categoria: { catId: valor/mês }
+  d.objetivos = d.objetivos || [];   // metas de objetivo: { id, nome, emoji(e), alvo, guardado }
   (d.fixas || []).forEach(l => { if (l.aviso === undefined) l.aviso = null; if (l.meta === undefined) l.meta = null; if (l.nec === undefined) l.nec = false; if (l.catId === undefined) l.catId = null; });
   (d.cartao || []).forEach(l => { if (l.cartao === undefined) l.cartao = ""; if (l.parcAtual === undefined) l.parcAtual = null; if (l.parcTotal === undefined) l.parcTotal = null; if (l.nec === undefined) l.nec = false; if (l.catId === undefined) l.catId = null; });
   (d.diaria || []).forEach(l => { if (l.categoria === undefined) l.categoria = "Geral"; if (l.catId === undefined) l.catId = null; });

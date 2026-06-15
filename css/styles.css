@@ -1154,6 +1154,32 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
 .medal-prog .mp-bar { height: 9px; border-radius: 6px; background: var(--card-2); border: 1px solid var(--line); overflow: hidden; }
 .medal-prog .mp-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--green-2), var(--green)); transition: width .6s cubic-bezier(.2,.7,.2,1); }
 .medal-done { text-align: center; font-size: 13px; margin: 14px 0 2px; color: var(--accent); font-weight: 700; }
+/* ===== Metas (objetivos) — barra estilo Duolingo, emoji animado que se mexe ao digitar ===== */
+.metas-card { max-width: 420px; }
+.meta-emoji { width: 1.7em; height: 1.7em; }
+.meta-row { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 16px; background: var(--card-2); border: 1px solid var(--line); margin-bottom: 10px; }
+.meta-ic { flex: 0 0 auto; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+.meta-ic .meta-emoji { width: 40px; height: 40px; }
+.meta-body { flex: 1; min-width: 0; }
+.meta-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.meta-nome { font-weight: 800; font-size: 14px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta-pct { font-size: 12.5px; font-weight: 800; color: var(--accent); flex: 0 0 auto; }
+.meta-bar { height: 14px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); overflow: hidden; position: relative; }
+.meta-fill { height: 100%; border-radius: 10px; background: linear-gradient(90deg, var(--green-2), var(--green)); position: relative; overflow: hidden;
+  transition: width .7s cubic-bezier(.2,.8,.2,1); box-shadow: inset 0 2px 0 rgba(255,255,255,.25); min-width: 0; }
+.meta-fill::after { content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 35%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent); animation: shine 2.4s ease-in-out infinite; }
+.meta-fill.done { background: linear-gradient(90deg, #f5a623, #ffce4d); }
+.meta-foot { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+.meta-edit { flex: 0 0 auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; width: 34px; height: 34px; cursor: pointer; color: var(--muted); font-size: 15px; }
+.meta-edit:active { transform: scale(.92); }
+.meta-form { margin-top: 6px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.meta-form-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; }
+.meta-prev { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; font-size: 30px; }
+.meta-prev .meta-emoji { width: 40px; height: 40px; }
+.meta-actions { display: flex; gap: 10px; margin-top: 6px; }
+.meta-actions .btn { flex: 1; }
+@media (prefers-reduced-motion: reduce) { .meta-fill::after { animation: none; display: none; } }
 /* Botões das configurações: largos, centralizados, com ícone alinhado */
 .settings-buttons { display: flex; flex-direction: column; gap: 11px; margin: 10px 0 14px; }
 .settings-buttons .btn, #notifWrap .btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 15px; }
