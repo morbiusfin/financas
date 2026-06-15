@@ -206,6 +206,36 @@ main > *:nth-child(7){animation-delay:.26s} main > *:nth-child(8){animation-dela
 .av-opt.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 .av-import { display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--accent-2);
   background: var(--card-2); border: 2px dashed var(--line); }
+/* ⬆️ Voltar ao topo — aparece ao descer, some no topo (canto inferior esquerdo, não bate no +) */
+.scroll-top { position: fixed; left: 18px; bottom: calc(78px + var(--safe-bottom)); width: 46px; height: 46px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink); display: flex; align-items: center; justify-content: center; padding: 0;
+  box-shadow: 0 8px 22px rgba(0,0,0,.3); z-index: 44; cursor: pointer;
+  opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+.scroll-top svg { width: 22px; height: 22px; }
+.scroll-top.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.scroll-top:active { transform: scale(.9); }
+body.kbd-open .scroll-top, body.lock-on .scroll-top, body.splash-on .scroll-top { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .scroll-top { transition: opacity .2s ease; } }
+/* 🐾 Bichinhos animados (avatar) — SVG inline, cada um com movimento próprio */
+.animal-svg { width: 100%; height: 100%; display: block; }
+.av-opt { overflow: hidden; }
+.av-opt:not(.av-import) { background: transparent; }
+.animal-svg .ani-bob { transform-box: fill-box; transform-origin: 50% 82%; animation: aniBob 3s ease-in-out infinite; }
+.animal-svg .ani-lid { transform-box: fill-box; transform-origin: 50% 0%; animation: aniBlink 4s ease-in-out infinite; }
+.animal-svg .ani-ear { transform-box: fill-box; transform-origin: 50% 100%; animation: aniEar 4s ease-in-out infinite; }
+@keyframes aniBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes aniBlink { 0%,92%,100% { transform: scaleY(0); } 96% { transform: scaleY(1); } }
+@keyframes aniEar { 0%,86%,100% { transform: rotate(0); } 90% { transform: rotate(-7deg); } 94% { transform: rotate(5deg); } }
+.animal-svg.raposa .ani-bob { animation-duration: 2.8s; }
+.animal-svg.gato .ani-bob { animation-duration: 3.4s; }
+.animal-svg.panda .ani-bob { animation-duration: 3.1s; }
+.animal-svg.sapo .ani-bob { animation: aniHop 2.6s ease-in-out infinite; }
+@keyframes aniHop { 0%,68%,100% { transform: translateY(0); } 82% { transform: translateY(-6px); } }
+.animal-svg.coruja .ani-bob { animation: aniTilt 3.6s ease-in-out infinite; }
+@keyframes aniTilt { 0%,100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.animal-svg.pinguim .ani-bob { animation: aniWaddle 2.4s ease-in-out infinite; }
+@keyframes aniWaddle { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) { .animal-svg .ani-bob, .animal-svg .ani-lid, .animal-svg .ani-ear { animation: none; } }
 /* 🔒 Oferta de senha no 1º acesso (onboarding) */
 .onb-pin { display: flex; gap: 10px; margin: 10px 0; }
 .onb-pin input { flex: 1; min-width: 0; text-align: center; letter-spacing: 6px; font-size: 20px; padding: 12px; border-radius: 12px;

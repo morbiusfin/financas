@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.88";
+const APP_VERSION = "3.11.89";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.89",
+    bullets: [
+      "Avatares novos: bichinhos animados (raposa, gato, panda, sapo, coruja, pinguim) — cada um se mexe de um jeito (pisca, mexe a orelha, pula, balança)",
+      "Os bichinhos se mexem também na foto do perfil e no avatar do cabeçalho",
+      "Novo botão de voltar ao topo: aparece quando você desce a tela e some quando volta pro topo",
+    ]
+  },
   {
     version: "3.11.88",
     bullets: [
@@ -3050,31 +3058,84 @@ const PERFIL_KEY = "financas2026.perfil";
 function getPerfil() { try { return JSON.parse(localStorage.getItem(PERFIL_KEY) || "{}") || {}; } catch (e) { return {}; } }
 function setPerfil(p) { try { localStorage.setItem(PERFIL_KEY, JSON.stringify(p)); } catch (e) {} }
 /* ---------- Avatares predefinidos (estilo Netflix) — SVG inline, offline, sem download ---------- */
-const AVATARS = [
-  { c1: "#15c266", c2: "#0b3d2e", e: "🦊" }, { c1: "#2f7ff0", c2: "#0b2a5e", e: "🐼" },
-  { c1: "#f5a623", c2: "#9a5b00", e: "🦁" }, { c1: "#e0518a", c2: "#7a1840", e: "🐱" },
-  { c1: "#9b6cf0", c2: "#3d1f7a", e: "🐵" }, { c1: "#19c2b3", c2: "#0a4f49", e: "🐸" },
-  { c1: "#ef5350", c2: "#7a1a18", e: "🦉" }, { c1: "#7ed957", c2: "#2e6b16", e: "🐯" },
-  { c1: "#42a5f5", c2: "#123e6b", e: "🐧" }, { c1: "#ffca28", c2: "#8a6a00", e: "🐥" },
-  { c1: "#ff8a65", c2: "#8a3415", e: "🦄" }, { c1: "#26c6da", c2: "#0a4a55", e: "🐬" }
-];
-function avatarDataURI(a) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a.c1}"/><stop offset="1" stop-color="${a.c2}"/></linearGradient></defs><rect width="120" height="120" rx="60" fill="url(#g)"/><text x="60" y="62" font-size="60" text-anchor="middle" dominant-baseline="central">${a.e}</text></svg>`;
-  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+/* Avatares de BICHINHOS ANIMADOS — SVG inline (anima de verdade; imagem de fundo não animaria).
+   Cada animal tem movimento próprio (CSS em .animal-svg). Flat, sem gradiente (sem rebarba). */
+const ANIMALS = ["raposa", "gato", "panda", "sapo", "coruja", "pinguim"];
+const ANIMAL_PARTS = {
+  raposa: '<circle cx="50" cy="52" r="48" fill="#ffe3d0"/><g class="ani-bob">'
+    + '<path class="ani-ear" d="M33 35 L28 10 L52 27 Z" fill="#ef7d3e"/><path d="M35 29 L33 16 L46 25 Z" fill="#ffd0b0"/>'
+    + '<path class="ani-ear" d="M67 35 L72 10 L48 27 Z" fill="#ef7d3e"/><path d="M65 29 L67 16 L54 25 Z" fill="#ffd0b0"/>'
+    + '<circle cx="50" cy="55" r="27" fill="#f59055"/><path d="M33 59 Q50 80 67 59 Q67 74 50 78 Q33 74 33 59 Z" fill="#fff7f1"/>'
+    + '<circle cx="40" cy="53" r="4.2" fill="#2a1c14"/><circle cx="60" cy="53" r="4.2" fill="#2a1c14"/>'
+    + '<circle cx="41.3" cy="51.7" r="1.3" fill="#fff"/><circle cx="61.3" cy="51.7" r="1.3" fill="#fff"/>'
+    + '<rect class="ani-lid" x="34" y="49" width="32" height="8.5" rx="4" fill="#f59055"/><circle cx="50" cy="63" r="3" fill="#2a1c14"/></g>',
+  gato: '<circle cx="50" cy="52" r="48" fill="#e7ecf2"/><g class="ani-bob">'
+    + '<path class="ani-ear" d="M34 34 L29 12 L52 28 Z" fill="#9aa7b3"/><path d="M36 29 L34 18 L46 27 Z" fill="#ffc2cf"/>'
+    + '<path class="ani-ear" d="M66 34 L71 12 L48 28 Z" fill="#9aa7b3"/><path d="M64 29 L66 18 L54 27 Z" fill="#ffc2cf"/>'
+    + '<circle cx="50" cy="55" r="27" fill="#aeb9c4"/>'
+    + '<circle cx="40" cy="53" r="4.2" fill="#23303a"/><circle cx="60" cy="53" r="4.2" fill="#23303a"/>'
+    + '<circle cx="41.3" cy="51.7" r="1.3" fill="#fff"/><circle cx="61.3" cy="51.7" r="1.3" fill="#fff"/>'
+    + '<rect class="ani-lid" x="34" y="49" width="32" height="8.5" rx="4" fill="#aeb9c4"/>'
+    + '<path d="M50 60 l-4 4 4 3 4-3 Z" fill="#ff9bb0"/>'
+    + '<path d="M56 62 q11 -2 17 -5 M56 66 q11 1 17 0" stroke="#7f8b97" stroke-width="1.4" fill="none" stroke-linecap="round"/>'
+    + '<path d="M44 62 q-11 -2 -17 -5 M44 66 q-11 1 -17 0" stroke="#7f8b97" stroke-width="1.4" fill="none" stroke-linecap="round"/></g>',
+  panda: '<circle cx="50" cy="52" r="48" fill="#eceff3"/><g class="ani-bob">'
+    + '<circle class="ani-ear" cx="30" cy="30" r="11" fill="#23303a"/><circle class="ani-ear" cx="70" cy="30" r="11" fill="#23303a"/>'
+    + '<circle cx="50" cy="55" r="28" fill="#fbfdff"/>'
+    + '<ellipse cx="40" cy="53" rx="8" ry="11" fill="#23303a" transform="rotate(-12 40 53)"/>'
+    + '<ellipse cx="60" cy="53" rx="8" ry="11" fill="#23303a" transform="rotate(12 60 53)"/>'
+    + '<circle cx="40" cy="52" r="3" fill="#fff"/><circle cx="60" cy="52" r="3" fill="#fff"/>'
+    + '<rect class="ani-lid" x="30" y="46" width="40" height="9" rx="4.5" fill="#fbfdff"/>'
+    + '<ellipse cx="50" cy="66" rx="4.5" ry="3.2" fill="#23303a"/></g>',
+  sapo: '<circle cx="50" cy="52" r="48" fill="#d7f3dd"/><g class="ani-bob">'
+    + '<circle cx="50" cy="60" r="28" fill="#67c272"/>'
+    + '<circle cx="36" cy="34" r="12" fill="#67c272"/><circle cx="64" cy="34" r="12" fill="#67c272"/>'
+    + '<circle cx="36" cy="33" r="8" fill="#fff"/><circle cx="64" cy="33" r="8" fill="#fff"/>'
+    + '<circle cx="37" cy="34" r="4" fill="#1c3a22"/><circle cx="63" cy="34" r="4" fill="#1c3a22"/>'
+    + '<circle cx="38.3" cy="32.7" r="1.3" fill="#fff"/><circle cx="64.3" cy="32.7" r="1.3" fill="#fff"/>'
+    + '<rect class="ani-lid" x="26" y="26" width="20" height="9" rx="4.5" fill="#67c272"/>'
+    + '<rect class="ani-lid" x="54" y="26" width="20" height="9" rx="4.5" fill="#67c272"/>'
+    + '<path d="M34 64 Q50 80 66 64" stroke="#1c3a22" stroke-width="3" fill="none" stroke-linecap="round"/>'
+    + '<circle cx="45" cy="56" r="1.5" fill="#2f6b3c"/><circle cx="55" cy="56" r="1.5" fill="#2f6b3c"/></g>',
+  coruja: '<circle cx="50" cy="52" r="48" fill="#f0e7d6"/><g class="ani-bob">'
+    + '<path class="ani-ear" d="M34 34 L28 16 L46 30 Z" fill="#9c6f43"/><path class="ani-ear" d="M66 34 L72 16 L54 30 Z" fill="#9c6f43"/>'
+    + '<circle cx="50" cy="55" r="28" fill="#b98a5a"/>'
+    + '<circle cx="40" cy="53" r="11" fill="#f6efe2"/><circle cx="60" cy="53" r="11" fill="#f6efe2"/>'
+    + '<circle cx="40" cy="53" r="5" fill="#2a1c10"/><circle cx="60" cy="53" r="5" fill="#2a1c10"/>'
+    + '<circle cx="41.6" cy="51.4" r="1.6" fill="#fff"/><circle cx="61.6" cy="51.4" r="1.6" fill="#fff"/>'
+    + '<rect class="ani-lid" x="29" y="46" width="42" height="10" rx="5" fill="#b98a5a"/>'
+    + '<path d="M50 58 l-5 6 5 4 5-4 Z" fill="#f5a623"/></g>',
+  pinguim: '<circle cx="50" cy="52" r="48" fill="#dce8f1"/><g class="ani-bob">'
+    + '<path d="M50 24 C68 24 76 42 76 58 C76 76 64 86 50 86 C36 86 24 76 24 58 C24 42 32 24 50 24 Z" fill="#2b3742"/>'
+    + '<path d="M50 36 C62 36 69 48 69 60 C69 74 60 80 50 80 C40 80 31 74 31 60 C31 48 38 36 50 36 Z" fill="#f4f8fb"/>'
+    + '<circle cx="42" cy="52" r="4" fill="#23303a"/><circle cx="58" cy="52" r="4" fill="#23303a"/>'
+    + '<circle cx="43.2" cy="50.8" r="1.2" fill="#fff"/><circle cx="59.2" cy="50.8" r="1.2" fill="#fff"/>'
+    + '<rect class="ani-lid" x="36" y="48" width="28" height="8.5" rx="4" fill="#f4f8fb"/>'
+    + '<path d="M50 58 l-5 6 5 4 5-4 Z" fill="#f5a623"/></g>'
+};
+function animalSVG(id) {
+  const parts = ANIMAL_PARTS[id] || ANIMAL_PARTS.gato;
+  return '<svg class="animal-svg ' + id + '" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' + parts + '</svg>';
 }
-// avatar padrão (determinístico pelo nome) p/ quem ainda não escolheu foto — nunca fica o 👤 sem graça
-function defaultAvatarFor(name) {
+const isAnimalAvatar = (f) => typeof f === "string" && f.indexOf("av:") === 0;
+function defaultAnimal(name) {
   const s = (name || "").trim();
   let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-  return avatarDataURI(AVATARS[h % AVATARS.length]);
+  return ANIMALS[h % ANIMALS.length];
+}
+// preenche um elemento redondo com o avatar: SVG animado (bichinho) ou imagem (foto importada)
+function setAvatarInto(el, foto, nome) {
+  if (!el) return;
+  if (isAnimalAvatar(foto)) { el.style.backgroundImage = ""; el.innerHTML = animalSVG(foto.slice(3)); }
+  else if (foto) { el.innerHTML = ""; el.style.backgroundImage = 'url("' + foto + '")'; }   // foto importada
+  else { el.style.backgroundImage = ""; el.innerHTML = animalSVG(defaultAnimal(nome)); }     // sem foto → bichinho padrão
 }
 function renderAvatar() {
   const b = document.getElementById("btnProfile"); if (!b) return;
   const p = getPerfil();
-  const img = b.querySelector(".avatar-img"), ini = b.querySelector(".avatar-ini");
   b.classList.add("has-photo");
-  if (img) img.style.backgroundImage = `url("${p.foto || defaultAvatarFor(p.nome)}")`;   // sem foto → avatar padrão (nunca 👤 vazio)
-  if (ini) ini.textContent = "";
+  setAvatarInto(b.querySelector(".avatar-img"), p.foto, p.nome);
+  const ini = b.querySelector(".avatar-ini"); if (ini) ini.textContent = "";
   b.title = p.nome ? esc(p.nome) : "Meu perfil";
 }
 let _profFotoTmp = "", _profTipo = "pessoal";
@@ -3099,18 +3160,18 @@ function refreshProfPhoto() {
   const ph = $("#profPhotoBtn"); if (!ph) return;
   const img = ph.querySelector(".prof-photo-img");
   const nome = ($("#profNome") && $("#profNome").value) || "";
-  const cur = _profFotoTmp || defaultAvatarFor(nome);          // sem escolha → avatar padrão (estilo Netflix)
-  ph.classList.remove("empty"); if (img) img.style.backgroundImage = `url("${cur}")`;
+  ph.classList.remove("empty");
+  setAvatarInto(img, _profFotoTmp, nome);                            // bichinho animado ou foto importada
   $("#profPhotoRemove").classList.toggle("hidden", !_profFotoTmp);   // "Remover" só quando há foto escolhida
   renderAvatarPicker();
 }
 function renderAvatarPicker() {
   const row = $("#avatarRow"); if (!row) return;
-  row.innerHTML = AVATARS.map((a, i) => {
-    const uri = avatarDataURI(a), on = _profFotoTmp === uri ? " on" : "";
-    return `<button type="button" class="av-opt${on}" data-av="${i}" style="background-image:url(&quot;${uri}&quot;)" aria-label="Avatar ${i + 1}"></button>`;
-  }).join("") + `<button type="button" class="av-opt av-import" id="avImport" aria-label="Importar foto">＋</button>`;
-  $$(".av-opt[data-av]", row).forEach(b => b.onclick = () => { _profFotoTmp = avatarDataURI(AVATARS[+b.dataset.av]); refreshProfPhoto(); });
+  row.innerHTML = ANIMALS.map(id => {
+    const on = _profFotoTmp === ("av:" + id) ? " on" : "";
+    return '<button type="button" class="av-opt' + on + '" data-an="' + id + '" aria-label="Avatar ' + id + '">' + animalSVG(id) + '</button>';
+  }).join("") + '<button type="button" class="av-opt av-import" id="avImport" aria-label="Importar foto">＋</button>';
+  $$(".av-opt[data-an]", row).forEach(b => b.onclick = () => { _profFotoTmp = "av:" + b.dataset.an; refreshProfPhoto(); });
   const imp = $("#avImport", row); if (imp) imp.onclick = () => $("#profFile").click();
 }
 function saveProfile() {
@@ -4439,6 +4500,16 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       }, 250);
     }
   });
+})();
+
+/* ⬆️ Botão "voltar ao topo": aparece ao descer (>320px), some perto do topo */
+(function scrollTopBtn() {
+  const btn = document.getElementById("scrollTop"); if (!btn) return;
+  const onScroll = () => btn.classList.toggle("show", (window.scrollY || window.pageYOffset || 0) > 320);
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  btn.onclick = () => { try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { window.scrollTo(0, 0); } };
+  onScroll();
 })();
 
 boot();
