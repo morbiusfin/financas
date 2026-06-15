@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.12.7";
+const APP_VERSION = "3.13.0";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.0",
+    bullets: [
+      "Botões 'Ir até' (Perguntas frequentes e menu): ao levar você até a parte explicada, tudo em volta escurece e o destaque volta ao normal suavemente em ~3s",
+      "Sino de alertas e ✨ de novidades: agora a atenção fica no emoji animado — sem a forma/botão ficar balançando",
+    ]
+  },
   {
     version: "3.12.7",
     bullets: [
@@ -1671,8 +1678,23 @@ function focarEl(sel, dur) {
   const el = $(sel); if (!el) return;
   // scrollIntoView funciona tanto na página quanto dentro de modal/drawer com scroll próprio
   try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) { scrollToEl(sel); }
-  el.classList.remove("focus-pulse"); void el.offsetWidth; el.classList.add("focus-pulse");
-  setTimeout(() => el.classList.remove("focus-pulse"), dur || 3200);
+  setTimeout(() => spotlightOn(el), 430);   // depois da rolagem assentar: holofote no alvo
+}
+/* Holofote: escurece TUDO em volta do alvo e vai voltando ao normal em ~3s. Acompanha o scroll. */
+let _spot = null, _spotScroll = null, _spotT = null;
+function spotlightOn(el) {
+  if (!el || !el.isConnected) return;
+  if (_spot) { try { _spot.remove(); } catch (e) {} window.removeEventListener("scroll", _spotScroll, true); clearTimeout(_spotT); }
+  const sp = document.createElement("div"); sp.className = "spotlight"; document.body.appendChild(sp); _spot = sp;
+  const pad = 8, place = () => {
+    const r = el.getBoundingClientRect();
+    sp.style.left = (r.left - pad) + "px"; sp.style.top = (r.top - pad) + "px";
+    sp.style.width = (r.width + pad * 2) + "px"; sp.style.height = (r.height + pad * 2) + "px";
+  };
+  place();
+  _spotScroll = place; window.addEventListener("scroll", _spotScroll, true);   // segue o conteúdo se rolar
+  setTimeout(() => sp.classList.add("fade"), 40);   // dispara o esmaecer de 3s (setTimeout não pausa com aba oculta)
+  _spotT = setTimeout(() => { window.removeEventListener("scroll", _spotScroll, true); try { sp.remove(); } catch (e) {} if (_spot === sp) _spot = null; }, 3200);
 }
 
 /* ---------- Simulador "vale a pena comprar?" (à vista ou parcelado) ---------- */
