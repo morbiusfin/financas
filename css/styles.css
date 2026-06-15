@@ -961,8 +961,11 @@ select.sel { cursor: pointer; }
   -webkit-backdrop-filter: blur(22px) saturate(1.8); backdrop-filter: blur(22px) saturate(1.8);
   box-shadow: 0 14px 38px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.16);
   transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform; backface-visibility: hidden;
-  transition: background-color .35s ease, box-shadow .35s ease; }
+  transition: background-color .35s ease, box-shadow .35s ease, opacity .2s ease; }
 #fab { transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s ease; }
+/* Pop-up aberto (scroll travado): a barra de baixo flutuante e o + SOMEM — senão ficam "ilhados"
+   atrás do backdrop translúcido, com um vão escuro embaixo (parece que a base quebrou). Voltam ao fechar. */
+body.scroll-locked .tabbar, body.scroll-locked #fab { opacity: 0 !important; pointer-events: none !important; }
 /* ===== Entrada da tab bar (ao abrir o app): pílula sobe + fade, ícones em sequência, vidro depois ===== */
 @keyframes tabbarRise { 0% { transform: translateY(130%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
 .tabbar.tb-enter { animation: tabbarRise .6s cubic-bezier(.2,.85,.25,1) both; }
