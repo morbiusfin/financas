@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.5";
+const APP_VERSION = "3.13.6";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.6",
+    bullets: [
+      "Perguntas frequentes: depois que o atalho 'Ir até' direciona e o holofote esmaece, o FAQ volta sozinho na MESMA pergunta — você continua de onde parou (vale para Resumo, Gráficos, Insights, abas, + e sino)",
+    ]
+  },
   {
     version: "3.13.5",
     bullets: [
@@ -4300,8 +4306,26 @@ const FAQ = [
   { t: "🌗 Tema", go: "tema", btn: "Abrir Aparência",
     d: "No menu ☰ → <b>Tema</b>: alterne entre <b>Claro</b>, <b>Escuro</b> e <b>Automático</b> (segue o sistema). A troca é suave, sem piscar a tela." },
 ];
+let _faqReturnT = null, _faqReturnIdx = 0;
 function faqGo(action) {
-  const faqM = document.getElementById("faqModal"); if (faqM) faqM.classList.add("hidden");
+  const faqM = document.getElementById("faqModal");
+  // lembra qual pergunta estava aberta → ao voltar, o FAQ reabre exatamente onde o usuário parou
+  _faqReturnIdx = 0;
+  if (faqM) {
+    const items = Array.prototype.slice.call(faqM.querySelectorAll(".faq-item"));
+    const oi = items.findIndex(d => d.open); if (oi >= 0) _faqReturnIdx = oi;
+    faqM.classList.add("hidden");
+  }
+  clearTimeout(_faqReturnT);
+  // Deep-links que só DESTACAM algo na tela principal (não abrem outro modal): depois que o holofote
+  // esmaece, o FAQ volta sozinho pra mesma pergunta, pro usuário continuar lendo de onde estava.
+  const voltaFaq = ["resumo", "graficos", "insights", "tabs", "fab", "bell"].indexOf(action) >= 0;
+  if (voltaFaq) {
+    _faqReturnT = setTimeout(() => {
+      if (document.querySelector(".modal:not(.hidden)")) return;   // abriu outra coisa no meio → não interrompe
+      openFaq(_faqReturnIdx);
+    }, 5700);   // ~holofote (5s) + folga
+  }
   const goResumo = (view) => {
     curTab = "resumo"; resumoView = view;
     $$(".tab").forEach(x => x.classList.toggle("active", x.dataset.tab === "resumo"));
@@ -4328,8 +4352,10 @@ function faqGo(action) {
     }
   }, 60);
 }
-function openFaq() {
+function openFaq(keepIdx) {
   markExplored("faq");
+  clearTimeout(_faqReturnT);   // reabriu manualmente → cancela qualquer retorno agendado
+  const openI = (typeof keepIdx === "number" && keepIdx >= 0) ? keepIdx : 0;
   let m = document.getElementById("faqModal");
   if (!m) {
     m = document.createElement("div"); m.id = "faqModal"; m.className = "modal center hidden";
@@ -4344,12 +4370,17 @@ function openFaq() {
     });
   }
   m.querySelector("#faqBody").innerHTML = FAQ.map((q, i) =>
-    `<details class="faq-item"${i === 0 ? " open" : ""}><summary>${q.t}</summary>`
+    `<details class="faq-item"${i === openI ? " open" : ""}><summary>${q.t}</summary>`
     + `<div class="faq-content"><p>${q.d}</p>`
     + `<button type="button" class="faq-go" data-go="${q.go}">➜ ${q.btn}</button>`
     + `</div></details>`
   ).join("");
   m.classList.remove("hidden");
+  // se voltou pra uma pergunta lá embaixo, rola até ela dentro do FAQ
+  if (openI > 0) {
+    const d = m.querySelectorAll(".faq-item")[openI];
+    if (d) setTimeout(() => { try { d.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} }, 90);
+  }
 }
 
 const TUTORIAL = [
