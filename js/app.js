@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.84";
+const APP_VERSION = "3.11.85";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.85",
+    bullets: [
+      "Projeto migrado para a conta MorbiusFin: produção em morbiusfin.github.io e ambiente de teste separado",
+      "O painel admin agora reconhece os ambientes novos (PRODUÇÃO no domínio morbiusfin.github.io, TESTE no /financas)",
+    ]
+  },
   {
     version: "3.11.84",
     bullets: [
@@ -2793,9 +2800,11 @@ function setAdmin(on) { if (on) localStorage.setItem("financas2026.admin", "1");
 function revealAdmin() { const mi = $("#miAdmin"); if (mi) mi.classList.toggle("hidden", !isAdmin()); }
 // Detecta o ambiente pela URL: produção (/MorbiusFin), teste (/financas) ou local
 function envInfo() {
+  const host = (location.hostname || "").toLowerCase();
   const p = (location.pathname || "").toLowerCase();
+  if (/financas/.test(p)) return { tag: "TESTE", cls: "env-test", desc: "ambiente de teste (morbiusfin/financas)" };
+  if (host === "morbiusfin.github.io") return { tag: "PRODUÇÃO", cls: "env-prod", desc: "app dos usuários (morbiusfin.github.io)" };
   if (/morbiusfin/.test(p)) return { tag: "PRODUÇÃO", cls: "env-prod", desc: "app dos usuários (MorbiusFin)" };
-  if (/financas/.test(p)) return { tag: "TESTE", cls: "env-test", desc: "ambiente de teste (Kaick)" };
   return { tag: "LOCAL", cls: "env-local", desc: "rodando no seu computador" };
 }
 // Entrada secreta: segurar o rodapé "MorbiusFin · vX" abre o gate do admin
