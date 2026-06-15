@@ -1,11 +1,22 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.13";
+const APP_VERSION = "3.13.14";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.14",
+    bullets: [
+      "Correções da auditoria: títulos certos ('Nova receita', 'Nova despesa fixa') e nunca mais 'Novo undefined'",
+      "O botão + não cobre mais o valor do último item da lista",
+      "Botão 'voltar ao topo' foi pro canto (não tapa mais o conteúdo do meio)",
+      "Títulos longos do topo (ex.: 'Débitos do dia a dia') cabem inteiros, sem '...'",
+      "Campo de valor em Categorias mais largo (cabe R$ 1.500,00 sem espremer) e contraste do Insights reforçado",
+      "Atalhos do FAQ não reabrem mais por cima quando você navega ou abre outra coisa no meio",
+    ]
+  },
   {
     version: "3.13.13",
     bullets: [
@@ -2279,6 +2290,7 @@ function syncTabGlass(animate) {
   placeGlassTo(bar, bar.querySelector(".tab.active") || bar.querySelector(".tab"), animate !== false, "tab");
 }
 function commitTab(t) {
+  clearTimeout(_faqReturnT);                            // navegou de aba → cancela o "voltar pro FAQ" pendente
   markExplored(t.dataset.tab);                          // exploração: aba visitada
   const bar = $(".tabbar");
   if (curTab === t.dataset.tab && !annual) { placeGlassTo(bar, t, true, "tab"); return; }
@@ -3095,7 +3107,9 @@ function openEntryModal(tab, idx) {
   const isNew = idx == null, l = isNew ? null : DATA[tab][idx], isReceita = tab === "receitas";
   const stOpts = isReceita ? [["recebido", "Recebido"], ["programado", "Programado"], ["vazio", "—"]]
                            : [["pago", "Pago"], ["programado", "Programado"], ["vazio", "—"]];
-  $("#modalTitle").textContent = (isNew ? "Novo " : "Editar ") + ({ receitas: "receita", fixas: "despesa fixa", cartao: "item do cartão" })[tab];
+  $("#modalTitle").textContent = isNew
+    ? ({ receitas: "Nova receita", fixas: "Nova despesa fixa", cartao: "Novo item do cartão", diaria: "Nova compra no débito" }[tab] || "Novo lançamento")
+    : ({ receitas: "Editar receita", fixas: "Editar despesa fixa", cartao: "Editar item do cartão", diaria: "Editar compra no débito" }[tab] || "Editar lançamento");
   let extra = "";
   const necCheck = `<label class="field row-check nec-check"><input id="f_nec" type="checkbox" ${(!isNew && l && l.nec) ? "checked" : ""}/><span>🔒 Necessário — não posso deixar de pagar</span></label>`;
   if (isReceita) extra = `<label class="field"><span>Tipo de renda</span><select id="f_tipo"><option value="Ativa">Ativa (recorrente)</option><option value="Extra">Extra (avulsa)</option></select></label>`;
@@ -3439,6 +3453,7 @@ function lockScroll() {
   _scrollLockY = window.scrollY || window.pageYOffset || 0;
   document.body.style.top = `-${_scrollLockY}px`;
   document.body.classList.add("scroll-locked");
+  clearTimeout(_faqReturnT);             // abriu um pop-up → não deixa o FAQ voltar por cima depois
   dimRootBg(true);                       // faixa do home indicator escura (sem branco) atrás do pop-up
 }
 function unlockScroll() {
