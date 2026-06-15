@@ -87,9 +87,9 @@ html:has(body.splash-on) { background: #05110c; }
    só o verde (nunca o app). Esconde também o conteúdo do app pra não vazar no vão do teclado (iOS). */
 html:has(body.lock-on) { background: linear-gradient(160deg, #0b3d2e 0%, #12734d 100%); }
 body.lock-on { background: linear-gradient(160deg, #0b3d2e 0%, #12734d 100%); }
-/* com um pop-up aberto (scroll travado): a faixa do home indicator passa a usar o fundo do APP
-   (não a cor da tabbar) → sob o escurecido do modal ela some, sem aquela banda mais clara embaixo. */
-html:has(body.scroll-locked) { background: var(--bg); }
+/* com um pop-up aberto (scroll travado): o html usa a MESMA cor base do corpo (--card) — assim a
+   área do home indicator atrás do modal fica igual ao resto, sem faixa/quebra mais escura embaixo. */
+html:has(body.scroll-locked) { background: var(--card); }
 body.lock-on > *:not(#lockScreen):not(#unlockReveal):not(#splash) { visibility: hidden !important; }
 body {
   font-family: var(--font);
