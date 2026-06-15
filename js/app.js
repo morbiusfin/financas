@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.21";
+const APP_VERSION = "3.13.22";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.22",
+    bullets: [
+      "Perfil: o campo Data de nascimento agora mostra 'Sua data' quando vazio (não fica mais em branco) — ao tocar, abre o calendário normalmente",
+    ]
+  },
   {
     version: "3.13.21",
     bullets: [
@@ -3931,7 +3937,12 @@ function openProfile() {
   const m = $("#profileModal"); if (!m) return;
   const p = getPerfil();
   $("#profNome").value = p.nome || "";
-  $("#profNasc").value = p.nasc || "";
+  const nasc = $("#profNasc");
+  if (nasc) {
+    nasc.value = p.nasc || "";
+    const tgEmpty = () => nasc.classList.toggle("is-empty", !nasc.value);   // vazio → mostra placeholder "Sua data"
+    tgEmpty(); nasc.oninput = tgEmpty; nasc.onchange = tgEmpty;
+  }
   _profFotoTmp = p.foto || "";
   _profTipo = p.tipo === "conjunta" ? "conjunta" : "pessoal";
   refreshProfPhoto(); refreshProfTipo();
