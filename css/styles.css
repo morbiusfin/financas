@@ -1101,6 +1101,23 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
 .confirm-actions { display: flex; gap: 10px; }
 .confirm-actions .btn { flex: 1; }
 .confirm-actions .btn.danger { background: var(--red); color: #fff; box-shadow: 0 6px 16px rgba(229,72,77,.3); }
+/* nota do fluxo de caixa no drill do gráfico de saldo */
+.det-flux { margin: 8px 2px 0; font-size: 12px; line-height: 1.45; }
+/* ===== Seletor de tema (cards visuais, cores reais do app) ===== */
+.theme-card { max-width: 380px; }
+.theme-cards { display: flex; gap: 10px; }
+.th-opt { flex: 1; background: 0; border: 0; padding: 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.th-prev { width: 100%; aspect-ratio: 9/16; border-radius: 14px; border: 2.5px solid var(--line); overflow: hidden; position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,.16); transition: border-color .18s ease, transform .12s ease; }
+.th-opt.on .th-prev { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(31,217,122,.22), 0 6px 16px rgba(11,61,46,.25); }
+.th-opt:active .th-prev { transform: scale(.97); }
+.th-prev .th-top { height: 26%; background: linear-gradient(135deg, var(--green-2), var(--green)); }
+.th-prev .th-card { position: absolute; left: 12%; right: 12%; top: 36%; padding: 9px 8px 10px; border-radius: 8px; border: 1px solid; }
+.th-prev .th-card i { display: block; height: 4px; border-radius: 3px; margin-bottom: 5px; }
+.th-prev .th-card i:first-child { width: 70%; } .th-prev .th-card i:nth-child(2) { width: 45%; }
+.th-prev .th-card b { display: block; height: 9px; width: 55%; border-radius: 4px; margin-top: 6px; background: var(--accent); }
+.th-name { font-size: 13px; font-weight: 700; color: var(--muted); }
+.th-opt.on .th-name { color: var(--accent); }
 /* Botões das configurações: largos, centralizados, com ícone alinhado */
 .settings-buttons { display: flex; flex-direction: column; gap: 11px; margin: 10px 0 14px; }
 .settings-buttons .btn, #notifWrap .btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 15px; }

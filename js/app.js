@@ -1,11 +1,20 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.11.91";
+const APP_VERSION = "3.11.92";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.11.92",
+    bullets: [
+      "Aparência: escolha o tema em cards visuais (Claro, Escuro, Sistema) com preview nas cores do app",
+      "Corrigido o seletor das opções (Resumo/Gráficos/Insights e a barra de baixo): não entra mais 'pequeno' ao abrir — fica no tamanho certo, dá pra clicar e arrastar",
+      "Saldo do mês agora faz sentido: mostra Saldo anterior + Receitas − Despesas = Saldo do mês (o que sobrou antes ajuda a pagar este mês)",
+      "Tela de boas-vindas: troquei aquele 'B' num círculo pelo ícone do app",
+    ]
+  },
   {
     version: "3.11.91",
     bullets: [
@@ -1059,6 +1068,48 @@ function cycleTheme() {
   applyTheme(); render(); renderNotifBtn();
   toast("Tema: " + themeLabel());
 }
+function setTheme(t) {
+  localStorage.setItem(THEME_KEY, t);
+  applyTheme(); render(); renderNotifBtn();
+  renderThemeCards();   // atualiza a seleção (borda) sem fechar
+}
+// mini-mockup do app pra cada tema (cabeçalho verde + linhas + pílula de saldo) — nas cores reais
+function themePreview(kind) {
+  const dark = kind === "dark", split = kind === "auto";
+  const page = dark ? "#0f1714" : "#eef1f0";
+  const card = dark ? "#1b2420" : "#ffffff";
+  const line = dark ? "#33403a" : "#d7ded9";
+  let bg = page;
+  if (split) bg = "linear-gradient(135deg, #eef1f0 0 49.5%, #0f1714 50.5% 100%)";
+  return '<div class="th-prev" style="background:' + bg + '">'
+    + '<div class="th-top"></div>'
+    + '<div class="th-card" style="background:' + card + ';border-color:' + line + '"><i style="background:' + line + '"></i><i style="background:' + line + '"></i><b></b></div>'
+    + '</div>';
+}
+function renderThemeCards() {
+  const wrap = document.getElementById("themeCards"); if (!wrap) return;
+  const cur = curTheme();
+  const opts = [{ id: "light", n: "Claro" }, { id: "dark", n: "Escuro" }, { id: "auto", n: "Sistema" }];
+  wrap.innerHTML = opts.map(o =>
+    '<button type="button" class="th-opt' + (cur === o.id ? " on" : "") + '" data-th="' + o.id + '">'
+    + themePreview(o.id) + '<span class="th-name">' + o.n + '</span></button>'
+  ).join("");
+  $$(".th-opt", wrap).forEach(b => b.onclick = () => setTheme(b.dataset.th));
+}
+function openThemeModal() {
+  let m = document.getElementById("themeModal");
+  if (!m) {
+    m = document.createElement("div"); m.id = "themeModal"; m.className = "modal center hidden";
+    m.innerHTML = '<div class="modal-card theme-card"><button type="button" class="wn-close" id="themeClose">✕</button>'
+      + '<div class="faq-head"><span>🌗</span><h2>Aparência</h2></div>'
+      + '<div class="theme-cards" id="themeCards"></div></div>';
+    document.body.appendChild(m);
+    m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); });
+    m.querySelector("#themeClose").onclick = () => m.classList.add("hidden");
+  }
+  renderThemeCards();
+  m.classList.remove("hidden");
+}
 
 // quebra das despesas do mês: Fixas / Cartão / Débitos, com % do total — esconde o que estiver zerado
 function despBreakdownHTML(m, desp) {
@@ -1581,12 +1632,14 @@ function ensureGlass(container) {
 function placeGlassTo(container, el, animate, key, _try) {
   if (!container || !el || !el.isConnected) return;          // elemento já saiu do DOM → não insiste
   const g = ensureGlass(container);
-  const cr = container.getBoundingClientRect(), er = el.getBoundingClientRect();
-  if (!er.width) {
-    const t = (_try || 0) + 1; if (t > 8) return;            // sem layout após ~240ms → desiste (sem fila infinita)
-    setTimeout(() => placeGlassTo(container, el, animate, key, t), 30); return;
+  // IMPORTANTE: usar offsetLeft/Width (layout) e NÃO getBoundingClientRect — o rect inclui o
+  // transform da animação de entrada do #view (scale), o que media o botão MENOR → o vidro
+  // "entrava pequeno" no abrir do app. offset* ignora transforms → tamanho estável e correto.
+  if (!el.offsetWidth) {
+    const tn = (_try || 0) + 1; if (tn > 8) return;          // sem layout após ~240ms → desiste (sem fila infinita)
+    setTimeout(() => placeGlassTo(container, el, animate, key, tn), 30); return;
   }
-  const t = { x: er.left - cr.left, ty: er.top - cr.top, w: er.width, h: er.height };
+  const t = { x: el.offsetLeft, ty: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
   const prev = key ? _glassPrev[key] : null;
   // 1) define o estado FINAL na hora (sempre correto, não depende de rAF) → nunca fica preso
   g.style.width = t.w + "px"; g.style.height = t.h + "px"; g.style.transform = `translate(${t.x}px, ${t.ty}px)`;
@@ -1852,14 +1905,21 @@ function drillRec(i) {
 }
 function drillSaldo(i) {
   gSelMonth = i; const m = curYear() * 12 + i, el = $("#detSaldo"); if (!el) return;
-  const r = receitaMes(m), d = despesaMes(m), liq = r - d, acc = sobraMes(m);
+  // cascata de caixa (igual ao Resumo): o saldo que sobrou do mês anterior ENTRA aqui e ajuda a
+  // pagar as despesas deste mês. Por isso o "Saldo do mês" pode ser positivo mesmo gastando mais
+  // do que entrou no próprio mês. O fluxo puro (entrou−saiu) vai como nota, sem assustar.
+  const sIni = saldoInicialMes(m), r = receitaMes(m), d = despesaMes(m), acc = sobraMes(m), liq = r - d;
+  const fluxoNota = liq < 0
+    ? `Neste mês você gastou ${brl(-liq)} a mais do que entrou — mas o saldo anterior cobre.`
+    : `Neste mês entrou ${brl(liq)} a mais do que saiu.`;
   el.innerHTML = `<div class="det-head">${mLong(m)}</div>
     <div class="det-kpis">
-      <div class="dk"><span>Receitas</span><b class="pos">${brl(r)}</b></div>
-      <div class="dk"><span>Despesas</span><b class="neg">${brl(d)}</b></div>
-      <div class="dk"><span>Sobrou no mês</span><b class="${liq >= 0 ? "pos" : "neg"}">${brl(liq)}</b></div>
-      <div class="dk big"><span>Saldo acumulado</span><b class="${acc >= 0 ? "pos" : "neg"}">${brl(acc)}</b></div>
-    </div>`;
+      <div class="dk"><span>Saldo anterior</span><b class="${sIni >= 0 ? "pos" : "neg"}">${brl(sIni)}</b></div>
+      <div class="dk"><span>+ Receitas</span><b class="pos">${brl(r)}</b></div>
+      <div class="dk"><span>− Despesas</span><b class="neg">${brl(d)}</b></div>
+      <div class="dk big"><span>= Saldo do mês</span><b class="${acc >= 0 ? "pos" : "neg"}">${brl(acc)}</b></div>
+    </div>
+    <p class="det-flux hint">${fluxoNota}</p>`;
   if (charts.gSaldo) { try { charts.gSaldo.data.datasets[0].pointRadius = serieSaldo().map((_, k) => k === i ? 6 : 3); charts.gSaldo.update("none"); } catch (e) {} }
   animDetail("#detSaldo");
 }
@@ -2897,7 +2957,7 @@ $("#miConfig").onclick = () => { closeMenu(); openSettings(); };
 { const x = $("#emojiClose"); if (x) x.onclick = () => $("#emojiModal").classList.add("hidden"); }
 { const em = $("#emojiModal"); if (em) em.onclick = (e) => { if (e.target.id === "emojiModal") em.classList.add("hidden"); }; }
 $("#miAcesso").onclick = () => { closeMenu(); openAccessModal(); };   // dados reais (PIN) e modo teste (0000)
-$("#miTema").onclick = () => { cycleTheme(); };
+$("#miTema").onclick = () => { closeMenu(); openThemeModal(); };
 $("#miZero").onclick = () => { closeMenu(); wipeToZero(_onbHide, _onbHide); };
 const _te = $("#testExit"); if (_te) _te.onclick = exitTestMode;
 
@@ -3709,9 +3769,9 @@ const FAQ = [
     d: "No menu ☰. Opcional: sobe e baixa seus dados de uma <b>nuvem privada sua</b> (você configura o endereço e o token). Serve pra ter os dados em mais de um aparelho. Sem configurar, tudo continua só no seu celular." },
   { t: "⬆️⬇️ Importar e Exportar (backup)", go: "backup", btn: "Mostrar no menu",
     d: "No menu ☰. <b>Exportar</b> salva <u>tudo</u> num arquivo <code>.json</code> — faça isso de vez em quando como backup. <b>Importar</b> recupera de um arquivo desses (ao trocar de celular, por exemplo). Atenção: importar substitui os dados atuais pelos do arquivo." },
-  { t: "🔒 Conta e acesso (PIN)", go: "tema", btn: "Abrir o menu",
+  { t: "🔒 Conta e acesso (PIN)", go: "acesso", btn: "Abrir Conta e acesso",
     d: "No menu ☰ → <b>Conta e acesso</b>. Você pode proteger o app com um <b>PIN de 4 dígitos</b> (com a animação do cadeado ao abrir). Se não criar senha, o app abre direto. Tem também o modo teste com dados fictícios, que nunca toca nos seus dados reais." },
-  { t: "🌗 Tema", go: "tema", btn: "Abrir o menu",
+  { t: "🌗 Tema", go: "tema", btn: "Abrir Aparência",
     d: "No menu ☰ → <b>Tema</b>: alterne entre <b>Claro</b>, <b>Escuro</b> e <b>Automático</b> (segue o sistema). A troca é suave, sem piscar a tela." },
 ];
 function faqGo(action) {
@@ -3734,7 +3794,8 @@ function faqGo(action) {
       case "sim":        { const h = $("#miSim"); if (h && h.onclick) h.onclick(); break; }
       case "sync":       if (syncCfg()) pullSync(true, null, true); else configurarSync(); break;
       case "backup":     openMenu(); setTimeout(() => focarEl("#miImport"), 380); break;
-      case "tema":       openMenu(); setTimeout(() => focarEl("#miTema"), 380); break;
+      case "acesso":     openAccessModal(); break;
+      case "tema":       openThemeModal(); break;
     }
   }, 60);
 }
@@ -4422,7 +4483,7 @@ function applyConfigLink() {
 }
 /* ===== Onboarding de 1ª abertura (spec_onboarding) — boas-vindas + zero/exemplos + mini-tour ===== */
 let onbStep = 0;
-const ONB_COIN = '<svg class="onb-logo" width="60" height="60" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28" fill="#f5a623"/><circle cx="32" cy="32" r="28" fill="none" stroke="#b9760a" stroke-width="2"/><text x="32" y="43" text-anchor="middle" font-size="32" font-weight="800" fill="#7a4d06" font-family="system-ui,sans-serif">B</text></svg>';
+const ONB_COIN = '<img class="onb-logo" src="icons/icon-192.png" width="66" height="66" alt="MorbiusFin" style="border-radius:18px;box-shadow:0 8px 22px rgba(11,61,46,.28)" />';
 function onbStepIcon(kind) {
   const w = (inner) => '<svg class="onb-step-ic" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
   if (kind === "plus") return w('<circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>');
