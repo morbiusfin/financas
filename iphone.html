@@ -43,6 +43,11 @@
   <h1>MorbiusFin — formatos de celular</h1>
   <p class="sub">Todos os aparelhos lado a lado, com tamanho e áreas seguras reais. É aqui que dá pra ver se o app acompanha cada tela.</p>
   <div class="bar">
+    <label>App:</label>
+    <select id="appenv" onchange="buildAll()">
+      <option value="dev" selected>Dev (financas)</option>
+      <option value="prod">Produção (morbiusfin.github.io)</option>
+    </select>
     <label>Tema:</label>
     <select id="theme" onchange="buildAll()">
       <option value="">do sistema</option>
@@ -73,7 +78,9 @@
     let demoMode = true;
     function appSrc(d) {
       const t = document.getElementById("theme").value;
-      return `index.html?frame=1&st=${d.st}&sb=${d.sb}${t ? "&theme=" + t : ""}${demoMode ? "&demo=1" : ""}&_=${Date.now()}`;
+      const env = document.getElementById("appenv").value;
+      const base = env === "prod" ? "/index.html" : "index.html";   // prod = raiz morbiusfin.github.io (mesma origem); dev = relativo (financas)
+      return `${base}?frame=1&st=${d.st}&sb=${d.sb}${t ? "&theme=" + t : ""}${demoMode ? "&demo=1" : ""}&_=${Date.now()}`;
     }
     function updateDemoBtn() {
       const b = document.getElementById("btnDemo"), n = document.getElementById("demoNote");
