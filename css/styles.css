@@ -540,10 +540,10 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 
 /* ===== Onboarding (1ª abertura) ===== */
 .onb { position: fixed; inset: 0; z-index: 110; background: rgba(0,0,0,.5); backdrop-filter: blur(2px);
-  display: flex; align-items: flex-end; justify-content: center; animation: fadeInUp .2s ease both; }
+  display: flex; align-items: center; justify-content: center; padding: 22px 14px; animation: fadeInUp .2s ease both; }
 .onb.hidden { display: none; }
-.onb-card { background: var(--card); color: var(--ink); width: 100%; max-width: 520px; border-radius: 22px 22px 0 0;
-  padding: 24px 18px calc(22px + var(--safe-bottom)); box-shadow: var(--shadow-lg); border: 1px solid var(--line); border-bottom: 0; }
+.onb-card { background: var(--card); color: var(--ink); width: 100%; max-width: 400px; border-radius: 22px;
+  padding: 24px 18px; box-shadow: var(--shadow-lg); border: 1px solid var(--line); max-height: 88dvh; overflow-y: auto; }
 .onb-logo { display: block; margin: 2px auto 12px; }
 .onb-card h2 { font-size: 23px; font-weight: 800; letter-spacing: -.4px; margin: 0 0 6px; text-align: center; }
 .onb-sub { font-size: 14.5px; color: var(--muted); line-height: 1.5; text-align: center; margin: 0 0 16px; }
