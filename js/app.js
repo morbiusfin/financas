@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.37";
+const APP_VERSION = "3.13.38";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.38",
+    bullets: [
+      "Título do topo com efeito máquina de escrever: digita o nome da página, apaga e digita a saudação (Bom dia, Nome) com o emoji-gif — em loop, bem rápido",
+    ]
+  },
   {
     version: "3.13.37",
     bullets: [
@@ -1277,28 +1283,65 @@ function scheduleGreeting() {
   localStorage.setItem(GREET_LAST_KEY, _hojeStr());               // marca que já saudou hoje
   setTimeout(showGreeting, 380);                                  // deixa a revelação assentar
 }
-// ----- Título do cabeçalho alternando: nome da página ⇄ saudação (Bom dia, Nome 🌅) -----
-let _pageTitle = "Resumo", _titleShowGreet = false, _titleTimer = null, _titleEmoji = "";
-function applyScreenTitle() {
-  const el = $("#screenTitle"); if (!el) return;
+// ----- Título do cabeçalho: efeito MÁQUINA DE ESCREVER alternando nome da página ⇄ saudação -----
+// Digita o nome da página → apaga da direita p/ esquerda → digita a saudação + emoji-gif → repete.
+// Cancelamento por token (_twToken) garante que render()/troca de aba nunca encavalem 2 animações.
+let _pageTitle = "Resumo", _titleShowGreet = false, _twTimer = null, _twToken = 0, _titleEmoji = "";
+function titleParts() {
   if (_titleShowGreet && greetEnabled()) {
     const p = greetPeriodo(new Date().getHours()), nome = primeiroNome();
     if (!_titleEmoji) _titleEmoji = p.pool[Math.floor(Math.random() * p.pool.length)];
-    el.innerHTML = esc(nome ? `${p.txt}, ${nome}` : `${p.txt}!`) + " " + animEmoji(_titleEmoji, "", "title-emoji");
-  } else {
-    el.textContent = _pageTitle;
+    return { text: nome ? `${p.txt}, ${nome}` : `${p.txt}!`, emoji: _titleEmoji };
   }
+  return { text: _pageTitle, emoji: "" };
 }
-function startTitleRotator() {
-  clearInterval(_titleTimer);
-  _titleTimer = setInterval(() => {
-    if (document.visibilityState !== "visible") return;
-    if (document.querySelector(".modal:not(.hidden)")) return;   // não troca o título com modal aberto
-    _titleShowGreet = !_titleShowGreet;
-    if (_titleShowGreet) _titleEmoji = "";                        // sorteia um novo emoji a cada vez que mostra a saudação
-    applyScreenTitle();
-  }, 5000);                                                      // alterna a cada 5s
+function titleDom() {
+  const el = $("#screenTitle"); if (!el) return null;
+  if (!el.querySelector(".tw-text")) el.innerHTML = '<span class="tw-text"></span><span class="tw-emo"></span>';
+  return el;
 }
+// SET INSTANTÂNEO (render/troca de aba/toggle) — cancela qualquer digitação em curso e reprograma o loop
+function applyScreenTitle() {
+  _twToken++; clearTimeout(_twTimer);
+  const el = titleDom(); if (!el) return;
+  el.classList.remove("typing");
+  const t = titleParts();
+  el.querySelector(".tw-text").textContent = t.text;
+  el.querySelector(".tw-emo").innerHTML = t.emoji ? (" " + animEmoji(t.emoji, "", "title-emoji")) : "";
+  scheduleTitleTick();
+}
+function scheduleTitleTick() { clearTimeout(_twTimer); _twTimer = setTimeout(titleTick, 2600); }   // segura ~2,6s e troca
+function titleTick() {
+  if (document.visibilityState !== "visible" || document.querySelector(".modal:not(.hidden)")) { scheduleTitleTick(); return; }
+  _titleShowGreet = !_titleShowGreet;
+  if (_titleShowGreet) _titleEmoji = "";                          // novo emoji a cada saudação
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) { applyScreenTitle(); return; }                     // sem digitação no modo reduzido
+  twTransition(titleParts(), scheduleTitleTick);
+}
+function twTransition(target, done) {
+  const el = titleDom(); if (!el) { if (done) done(); return; }
+  const myToken = ++_twToken;
+  const txtEl = el.querySelector(".tw-text"), emoEl = el.querySelector(".tw-emo");
+  el.classList.add("typing"); emoEl.innerHTML = "";              // some o emoji ao começar a apagar
+  let cur = txtEl.textContent, i = 0;
+  const type = () => {
+    if (myToken !== _twToken) return;
+    if (i < target.text.length) { i++; txtEl.textContent = target.text.slice(0, i); _twTimer = setTimeout(type, 40); }
+    else {
+      if (target.emoji) emoEl.innerHTML = " " + animEmoji(target.emoji, "", "title-emoji");
+      el.classList.remove("typing");
+      if (done) done();
+    }
+  };
+  const del = () => {
+    if (myToken !== _twToken) return;
+    if (cur.length > 0) { cur = cur.slice(0, -1); txtEl.textContent = cur; _twTimer = setTimeout(del, 26); }
+    else type();
+  };
+  del();
+}
+function startTitleRotator() { applyScreenTitle(); }   // (re)inicia o loop limpo
 function pedirNotificacao() {
   if (!("Notification" in window)) {
     // iPhone no Safari sem instalar cai aqui — Apple bloqueia notificação de site não instalado.

@@ -571,6 +571,11 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .app-header .icon-btn { width: 44px; height: 44px; font-size: 16px; }
 /* emoji animado dentro do título (saudação alternando com o nome da página) */
 .app-header h1 .title-emoji { width: 22px; height: 22px; vertical-align: -5px; margin-left: 3px; }
+.app-header h1 .tw-text, .app-header h1 .tw-emo { display: inline; }
+/* cursor piscando (efeito máquina de escrever) — só enquanto digita/apaga */
+.app-header h1.typing .tw-text::after { content: "|"; margin-left: 1px; font-weight: 400; opacity: .9; animation: twCaret .6s steps(1) infinite; }
+@keyframes twCaret { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .app-header h1.typing .tw-text::after { animation: none; } }
 .app-header .header-actions { gap: 5px; }
 .menu-btn { font-size: 18px; flex: 0 0 auto; }
 .menu-drawer { position: fixed; inset: 0; z-index: 115; background: rgba(0,0,0,.5); backdrop-filter: blur(2px); display: flex; }
