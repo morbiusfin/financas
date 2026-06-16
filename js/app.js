@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.44";
+const APP_VERSION = "3.13.45";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.45",
+    bullets: [
+      "Novo \"Tutorial detalhado\" no menu (abaixo do Tutorial rápido): manual completo do app — cada tela, botão e gráfico explicado",
+      "Sair do app mais suave: a saída escurece e a tela de entrada aparece esmaecendo — sem pisca-pisca (não recarrega mais a página)",
+      "Bichinho da saída centralizado num círculo perfeito",
+    ]
+  },
   {
     version: "3.13.44",
     bullets: [
@@ -4021,8 +4029,16 @@ function logoutSequence() {
   const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)].id;
   ov.innerHTML = '<div class="lf-avatar">' + animalSVG(animal) + '</div>';
   document.body.appendChild(ov);
-  requestAnimationFrame(() => ov.classList.add("go"));
-  setTimeout(() => { try { location.reload(); } catch (e) { location.href = location.pathname; } }, 1700);
+  document.body.classList.remove("scroll-locked"); document.body.style.top = "";
+  requestAnimationFrame(() => ov.classList.add("go"));            // fade-in verde + bichinho
+  setTimeout(() => ov.classList.add("dark"), 1150);               // SAÍDA escurece (verde→fundo, bichinho some)
+  setTimeout(() => {
+    window.CRYPTO_KEY = null;                                     // logout de verdade (some a chave da memória)
+    window.__greeted = false;
+    showWelcome();                                                // ENTRADA clareia (welcome aparece esmaecendo)
+    ov.classList.add("fade-out");                                 // overlay some revelando a tela de entrada
+    setTimeout(() => { try { ov.remove(); } catch (e) {} }, 540);
+  }, 1550);
 }
 // Tela de entrada (após sair): foto/bichinho da conta + ENTRAR (pede PIN se houver) + criar nova conta
 function showWelcome() {
@@ -4994,6 +5010,50 @@ function openFaq(keepIdx) {
   }
 }
 
+/* Tutorial DETALHADO (manual completo) — accordion estilo FAQ, aberto pelo menu */
+const MANUAL = [
+  ["👋 Bem-vindo", "O MorbiusFin é o seu controle financeiro pessoal no celular, e funciona <b>sem internet</b>. Tudo fica salvo só no seu aparelho — os dados são seus."],
+  ["🚀 Abrindo o app", "Ao abrir aparece a saudação (<b>Bom dia/tarde/noite</b>) com seu nome e um emoji — toque no botão ou espere o contador zerar. Logo depois, se houver conta perto de vencer, o aviso aparece sozinho."],
+  ["🧭 Cabeçalho", "No topo: <b>☰</b> abre o menu; o <b>sino</b> pisca quando há conta a vencer (toque, veja e marque paga); o <b>✨</b> aparece quando há atualização; o <b>avatar</b> à direita abre seu perfil. O título alterna entre o nome da página e a saudação."],
+  ["📅 Mês e ano", "Logo abaixo do topo há o seletor de ano e os meses em botões deslizantes. Toque num mês para ver aquele período — tudo muda junto (resumo, listas, gráficos)."],
+  ["🔀 As 4 visões do Resumo", "No topo do Resumo há 4 botões: <b>Resumo</b> (visão geral), <b>Gráficos</b>, <b>Insights</b> (leitura e dicas) e <b>Metas</b>. Toque no <b>?</b> ao lado de cada título para uma explicação rápida."],
+  ["📋 Resumo do mês", "Mostra o caminho do dinheiro: saldo que sobrou + receitas = disponível; menos as despesas = sobra. Tem ainda <b>Previsto × Realizado</b> (quanto já foi pago/recebido) e a <b>composição das despesas</b> (Fixas/Cartão/Débito)."],
+  ["💪 Saúde financeira", "Um medidor de 0 a 100: quanto mais você guarda do que recebe, maior a nota. Faixas: Crítica, Atenção, Boa e Ótima. Abaixo mostra o quanto você guardou (ou o quanto ficou no vermelho)."],
+  ["📊 Gráficos", "Em <b>Gráficos</b> você vê: <b>Orçamento × Realizado</b> por categoria (verde = dentro, vermelho = estourou), o <b>saldo acumulado</b> no ano, e <b>despesas/receitas por mês</b>. Toque numa barra para ver os lançamentos daquele mês."],
+  ["🧪 Simulador de gastos", "Dentro de Gráficos: digite um valor e as parcelas e o app desenha uma linha tracejada mostrando como o saldo ficaria <b>se</b> você comprasse. Um veredito diz se cabe ou em qual mês aperta. O ↺ limpa."],
+  ["💡 Insights", "Uma leitura do mês feita pelo próprio app (sem internet): o que foi bem ou mal, dicas (taxa de poupança, maior gasto a revisar, comparação com o mês anterior) e uma projeção de como você fecha o mês."],
+  ["🏅 Medalhas", "No Insights há uma grade de conquistas: as coloridas você já ganhou, as cinzas estão travadas. Vêm de saldo, nº de lançamentos, meses economizando, metas criadas e mais. Uma barra mostra o total conquistado."],
+  ["🎯 Metas", "Crie objetivos (viagem, casa, carro…): nome, quanto custa e quanto já guardou. A barra mostra o progresso e o <b>emoji muda sozinho</b> conforme o nome. Ao atingir 100%, vira concluída com confete. Edite no ✎ e exclua dentro da edição."],
+  ["💰 Receitas", "Tudo que entra (salário, extras). Cada item tem valor, dia e situação (Recebido/Programado). Ao adicionar escolha <b>Ativa</b> (recorrente, ex.: salário) ou <b>Extra</b> (avulsa, ex.: freela)."],
+  ["📌 Fixas", "Contas que se repetem (aluguel, assinaturas). Pode definir dia de vencimento, aviso, meta de gasto e marcar <b>Necessário</b>. Marque <b>Repetir nos próximos meses</b> e o app preenche os meses sozinho."],
+  ["💳 Cartões", "Compras no cartão. No topo aparecem seus cartões (limite usado/disponível, fechamento, vencimento). No +, escolha <b>à vista</b> ou <b>parcelado até 60×</b> — o app distribui cada parcela no mês certo pelo fechamento."],
+  ["🛒 Débito (dia a dia)", "Gastos avulsos (mercado, farmácia, combustível) com categoria e método (PIX/Débito), agrupados por categoria. Diferente das Fixas, não repetem — cada gasto é lançado na hora."],
+  ["➕ Adicionar, editar, apagar", "O <b>+</b> verde abre o lançamento na aba atual. Toque num item para <b>editar</b>; <b>toque longo</b> para entrar na seleção e apagar vários. O <b>↩︎</b> no topo desfaz. Dica: <b>centavos automáticos</b> — digitar 1000 vira R$ 10,00."],
+  ["🟢 Badge de status", "Em Receitas, Fixas e Cartões, o badge ao lado do valor mostra <b>Pago/Recebido</b> (verde) ou <b>Programado</b> (âmbar). Toque direto no badge para alternar sem abrir a edição."],
+  ["☰ Menu", "Reúne tudo: Editar perfil, Tutorial, Manual, Conta e acesso (PIN), Backup e sincronização, Categorias, Metas, Simular, Configurações, Aviso de vencimento, Tema, Começar do zero e Sair do app. No topo, a barra de <b>Exploração do app</b> mostra quanto você já usou."],
+  ["👤 Perfil & conta conjunta", "Toque no avatar pra trocar foto/bichinho, nome e tipo de conta. Em <b>Conjunta</b>, gere um convite (link/QR) e compartilhe com seu par — os dois aparelhos ficam sincronizados, o que um lança aparece no outro."],
+  ["☁️ Backup e seus dados", "Seus dados ficam <b>só no seu celular</b>. Faça backup de vez em quando: menu → Backup e sincronização → Exportar (gera um .json). Ao trocar de celular, exporte no antigo e importe no novo. Sincronizar na nuvem é opcional."],
+  ["🔒 PIN, recuperação e segurança", "Em Conta e acesso você cria um <b>PIN de 4 dígitos</b> que criptografa os dados. Ao criar, dá pra cadastrar uma <b>pergunta de recuperação</b> (múltipla escolha). Esqueceu o código? Toque em \"Esqueci meu código\" e responda — errar demais bloqueia por tempo crescente."],
+  ["🌗 Tema & 🧪 Modo teste", "Em Tema, alterne entre Claro, Escuro e Automático (segue o celular). Em Conta e acesso há o <b>Modo teste</b>: dados fictícios pra explorar sem mexer nos reais (com selo laranja). Volte aos reais no mesmo lugar."],
+  ["🚪 Sair e voltar", "<b>Sair do app</b> fecha com uma animação e volta pra tela de entrada — seus dados ficam intactos (sair ≠ apagar). Na entrada, toque em <b>Entrar</b> (pede o PIN, se houver) ou em <b>Criar uma nova conta</b> pra começar do zero (só apaga após confirmar)."],
+];
+function openManual() {
+  let m = document.getElementById("manualModal");
+  if (!m) {
+    m = document.createElement("div"); m.id = "manualModal"; m.className = "modal center hidden";
+    m.innerHTML = '<div class="modal-card sheet-tall"><div class="sheet-head"><h2>📖 Tutorial detalhado</h2><button type="button" class="sheet-x" id="manClose" aria-label="Fechar">✕</button></div>'
+      + '<p class="hint" style="text-align:left;margin:0 0 10px">Manual completo do app — toque em cada item pra abrir.</p>'
+      + '<div class="modal-scroll faq-body" id="manBody"></div></div>';
+    document.body.appendChild(m);
+    m.querySelector("#manClose").onclick = () => m.classList.add("hidden");
+    m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); });
+    m.querySelector("#manBody").innerHTML = MANUAL.map(s =>
+      '<details class="faq-item"><summary>' + esc(s[0]) + '</summary><p>' + s[1] + '</p></details>'
+    ).join("");
+  }
+  showModal("#manualModal");
+}
+
 const TUTORIAL = [
   ["👋", "Bem-vindo ao MorbiusFin", "Seu controle financeiro do mês, simples e no celular. Vou te mostrar o essencial em alguns passos — pode pular quando quiser.", "aceno"],
   ["📋", "Resumo do mês", "Aqui você vê o caminho do seu dinheiro: o que entrou, o que saiu e o que sobra. No topo dá pra trocar para Gráficos e Insights.", "grafico"],
@@ -5030,6 +5090,7 @@ function openTutorial() { _tutI = 0; ensureTutModal(); renderTut(); document.get
 function closeTut() { const m = document.getElementById("tutModal"); if (m) m.classList.add("hidden"); try { localStorage.setItem("financas2026.tutDone", "1"); } catch (e) {} }
 (function bindHelpMenu() {
   const mt = $("#miTutorial"); if (mt) mt.onclick = () => { closeMenu(); openTutorial(); };
+  const mn = $("#miManual"); if (mn) mn.onclick = () => { closeMenu(); openManual(); };
   const mf = $("#miFaq"); if (mf) mf.onclick = () => { closeMenu(); openFaq(); };
 })();
 (function bindWhatsNew() {                 // liga o ícone e os botões do modal (elementos estáticos)
