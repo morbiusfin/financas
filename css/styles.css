@@ -569,6 +569,8 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .header-left { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1 1 auto; }   /* título manda no espaço → menos "..." */
 /* botões do cabeçalho um pouco menores → sobra largura pro título (ex.: "Débitos do dia a dia") */
 .app-header .icon-btn { width: 44px; height: 44px; font-size: 16px; }
+/* emoji animado dentro do título (saudação alternando com o nome da página) */
+.app-header h1 .title-emoji { width: 22px; height: 22px; vertical-align: -5px; margin-left: 3px; }
 .app-header .header-actions { gap: 5px; }
 .menu-btn { font-size: 18px; flex: 0 0 auto; }
 .menu-drawer { position: fixed; inset: 0; z-index: 115; background: rgba(0,0,0,.5); backdrop-filter: blur(2px); display: flex; }
@@ -1337,8 +1339,10 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
   background: rgba(255,255,255,.16); position: relative; transition: background .2s ease; }
 .set-toggle .switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
   border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.35); transition: transform .2s cubic-bezier(.34,1.4,.4,1); }
-.set-toggle input.switch:checked ~ .switch-track { background: var(--accent); }
-.set-toggle input.switch:checked ~ .switch-track::after { transform: translateX(20px); }
+.set-toggle input.switch:checked ~ .switch-track,
+.set-toggle.on .switch-track { background: var(--accent); }
+.set-toggle input.switch:checked ~ .switch-track::after,
+.set-toggle.on .switch-track::after { transform: translateX(20px); }
 .set-toggle input.switch:focus-visible ~ .switch-track { box-shadow: 0 0 0 4px var(--ring); }
 .set-toggle:active .switch-track::after { width: 26px; }
 .meta-form-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; }

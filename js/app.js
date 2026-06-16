@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.35";
+const APP_VERSION = "3.13.36";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.36",
+    bullets: [
+      "Chave da Saudação nas Configurações agora liga/desliga de verdade (corrigido) e ficou mais limpa (sem o subtítulo)",
+      "Título do topo alterna sozinho entre o nome da página e a saudação (ex.: Bom dia, Kaick 🌅) conforme a hora",
+    ]
+  },
   {
     version: "3.13.35",
     bullets: [
@@ -1263,6 +1270,28 @@ function scheduleGreeting() {
   localStorage.setItem(GREET_LAST_KEY, _hojeStr());               // marca que já saudou hoje
   setTimeout(showGreeting, 380);                                  // deixa a revelação assentar
 }
+// ----- Título do cabeçalho alternando: nome da página ⇄ saudação (Bom dia, Nome 🌅) -----
+let _pageTitle = "Resumo", _titleShowGreet = false, _titleTimer = null, _titleEmoji = "";
+function applyScreenTitle() {
+  const el = $("#screenTitle"); if (!el) return;
+  if (_titleShowGreet && greetEnabled()) {
+    const p = greetPeriodo(new Date().getHours()), nome = primeiroNome();
+    if (!_titleEmoji) _titleEmoji = p.pool[Math.floor(Math.random() * p.pool.length)];
+    el.innerHTML = esc(nome ? `${p.txt}, ${nome}` : `${p.txt}!`) + " " + animEmoji(_titleEmoji, "", "title-emoji");
+  } else {
+    el.textContent = _pageTitle;
+  }
+}
+function startTitleRotator() {
+  clearInterval(_titleTimer);
+  _titleTimer = setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    if (document.querySelector(".modal:not(.hidden)")) return;   // não troca o título com modal aberto
+    _titleShowGreet = !_titleShowGreet;
+    if (_titleShowGreet) _titleEmoji = "";                        // sorteia um novo emoji a cada vez que mostra a saudação
+    applyScreenTitle();
+  }, 5000);                                                      // alterna a cada 5s
+}
 function pedirNotificacao() {
   if (!("Notification" in window)) {
     // iPhone no Safari sem instalar cai aqui — Apple bloqueia notificação de site não instalado.
@@ -1326,10 +1355,11 @@ function render() {
   const ub = $("#btnUndo"); if (ub) { ub.style.display = history.length ? "" : "none"; }       // ↩︎ só aparece se há o que desfazer
   const rb = $("#btnRedo"); if (rb) { rb.style.display = redoStack.length ? "" : "none"; }      // ↪︎ só aparece se há o que refazer
   updateBell();                                                                                 // 🔔 alertas de contas no header
-  $("#screenTitle").textContent = annual && curTab === "resumo" ? "Resumo " + (DATA.year + curYear()) : ({
+  _pageTitle = annual && curTab === "resumo" ? "Resumo " + (DATA.year + curYear()) : ({
     resumo: "Resumo", receitas: "Receitas", fixas: "Despesas Fixas",
     cartao: "Cartões", diaria: "Débitos do dia a dia"
   })[curTab];
+  applyScreenTitle();
   $("#fab").classList.toggle("hidden", curTab === "resumo" || selMode);   // sem + durante a seleção
   const view = $("#view");
   view.classList.toggle("no-anim", noAnim);
@@ -3766,7 +3796,17 @@ $("#modal").onclick = (e) => { if (e.target.id === "modal") closeModal(); };
 function openSettings() {
   $("#saldoInicial").value = DATA.saldoInicial || 0;
   const sg = $("#setGreet");
-  if (sg) { sg.checked = greetEnabled(); sg.onchange = () => { localStorage.setItem(GREET_OFF_KEY, sg.checked ? "0" : "1"); toast(sg.checked ? "Saudação ligada 👋" : "Saudação desligada"); }; }
+  if (sg) {
+    const row = sg.closest(".set-toggle");
+    const apply = () => { if (row) row.classList.toggle("on", sg.checked); };   // visual dirigido por classe (robusto)
+    sg.checked = greetEnabled(); apply();
+    sg.onchange = () => {
+      localStorage.setItem(GREET_OFF_KEY, sg.checked ? "0" : "1");
+      apply();
+      applyScreenTitle();                                                       // reflete na rotação do título na hora
+      toast(sg.checked ? "Saudação ligada 👋" : "Saudação desligada");
+    };
+  }
   renderNotifBtn(); showModal("#settingsModal");
 }
 { const bs = $("#btnSettings"); if (bs) bs.onclick = openSettings; }   // botão saiu do header; fica no menu
@@ -5247,6 +5287,7 @@ function startApp() {
   render();
   if (curTab === "resumo" && !annual) renderCharts();
   checkAndNotify(); checkVersion();
+  startTitleRotator();                  // título alterna entre o nome da página e a saudação (Bom dia, Nome 🌅)
   setTimeout(checkFullscreen, 3200);   // detecta install antigo (sem tela cheia → faixa no rodapé) e orienta a reinstalar
   setTimeout(cpCheckHashPair, 600);    // se abriu por um link de convite (#pair=…), já entra no pareamento do casal
   const t0 = Date.now();
