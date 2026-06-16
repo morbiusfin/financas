@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.55";
+const APP_VERSION = "3.13.56";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.56",
+    bullets: [
+      "Tutorial detalhado atualizado: como apagar lançamentos agora usa a 🗑️ que aparece no lugar do +",
+    ],
+  },
   {
     version: "3.13.55",
     bullets: [
@@ -5332,7 +5338,7 @@ const MANUAL = [
   ["📌 Fixas", "As contas que voltam todo mês: aluguel, assinaturas e afins. Dá pra definir o dia do vencimento, o aviso, uma meta de gasto e marcar como <b>Necessário</b>. Marcou <b>Repetir nos próximos meses</b>? Ele já preenche os meses seguintes pra você."],
   ["💳 Cartões", "As compras no cartão. No topo aparecem seus cartões com limite usado e disponível, fechamento e vencimento. No +, escolha <b>à vista</b> ou <b>parcelado em até 60×</b>, e ele coloca cada parcela no mês certo conforme a data de fechamento."],
   ["🛒 Débito (dia a dia)", "Os gastos do dia a dia: mercado, farmácia, gasolina. Cada um com categoria e método (PIX ou Débito), tudo agrupado por categoria. Diferente das Fixas, eles não se repetem; cada gasto entra na hora que acontece."],
-  ["➕ Adicionar, editar, apagar", "O <b>+</b> verde abre um novo lançamento na aba em que você está. Toque num item pra <b>editar</b>, ou segure o dedo nele pra entrar no modo de seleção e apagar vários de uma vez. O <b>↩︎</b> lá em cima desfaz. Uma mão na roda: os <b>centavos são automáticos</b>, então digitar 1000 vira R$ 10,00."],
+  ["➕ Adicionar, editar, apagar", "O <b>+</b> verde abre um novo lançamento na aba em que você está. Toque num item pra <b>editar</b>. Pra apagar, segure o dedo num item: ele entra no modo de seleção, e aí o <b>+</b> vira uma <b>🗑️ vermelha</b> no mesmo canto — marque os que quiser e toque na lixeira. Cancelou ou apagou? O <b>+</b> volta. O <b>↩︎</b> lá em cima desfaz. Uma mão na roda: os <b>centavos são automáticos</b>, então digitar 1000 vira R$ 10,00."],
   ["🟢 Badge de status", "Em Receitas, Fixas e Cartões, aquele selinho do lado do valor mostra se está <b>Pago/Recebido</b> (verde) ou <b>Programado</b> (âmbar). Toque direto nele pra alternar, sem precisar abrir a edição."],
   ["☰ Menu", "Aqui mora tudo: editar perfil, os tutoriais, conta e acesso (o PIN), backup e sincronização, categorias, metas, configurações, aviso de vencimento, tema, começar do zero e sair do app. Lá em cima, a barra de <b>Exploração do app</b> mostra o quanto você já passeou por ele."],
   ["👤 Perfil & conta conjunta", "Toque no avatar pra trocar a foto ou o bichinho, mudar o nome e o tipo de conta. Na opção <b>Conjunta</b>, você gera um convite (link ou QR) e manda pro seu par. Os dois celulares ficam sincronizados: o que um lança, aparece no do outro."],
