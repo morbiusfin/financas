@@ -1103,12 +1103,16 @@ body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: 
 /* Rodapé de ações FIXO (Cancelar/Salvar sempre visíveis): o conteúdo rola por dentro, o modal nunca
    "vaza" os botões pra fora da tela. Padrão para todas as inclusões (+) e formulários. */
 .modal-card > .modal-actions { position: sticky; bottom: 0; z-index: 4; background: var(--card);
-  margin: 16px -18px -22px; padding: 14px 18px 0; }   /* rodapé flush no fim do card (sem vão) */
+  margin: 16px -18px -22px; padding: 14px 18px 0; }   /* rodapé flush no fim do card */
 /* dissolve o conteúdo que rola por baixo ANTES de chegar nos botões — sem "vazar" atrás do botão.
    Faixa alta (52px): a base fica SÓLIDA (cor do card) e some pra cima, ocultando o "travessão" de
    informações que aparecia atrás dos botões fixos. Vale p/ todo modal com rodapé fixo. */
-.modal-card:not(.alert-card):not(.greet-card) > .modal-actions::before { content: ""; position: absolute; left: 0; right: 0; top: -52px; height: 52px;
-  background: linear-gradient(to top, var(--card) 0, var(--card) 45%, transparent 100%); pointer-events: none; }
+.modal-card:not(.alert-card):not(.greet-card) > .modal-actions::before { content: ""; position: absolute; left: 0; right: 0; top: -30px; height: 30px;
+  background: linear-gradient(to top, var(--card) 0, var(--card) 55%, transparent 100%); pointer-events: none; }
+/* tampa SÓLIDA abaixo do rodapé: cobre os ~22px de padding do card onde o conteúdo vazava ABAIXO do botão
+   (sticky bottom:0 + margin-bottom negativa deixam essa faixa sem fundo). */
+.modal-card:not(.alert-card):not(.greet-card) > .modal-actions::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 26px;
+  background: var(--card); pointer-events: none; }
 
 /* Modais altos (Categorias, Emoji): cabeçalho FIXO (título + ✕ sempre visíveis) e só o corpo rola */
 .modal-card.sheet-tall { display: flex; flex-direction: column; overflow: hidden; padding-top: 24px; }
