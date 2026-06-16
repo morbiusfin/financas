@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.57";
+const APP_VERSION = "3.13.58";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.58",
+    bullets: [
+      "Remover a proteção (PIN) agora pede o código atual — e só remove se ele bater",
+      "Versão pública sem modo teste: nenhuma opção de entrar em teste aparece na produção (continua tudo no link de testes)",
+      "Pinguim animado no aviso de “adicionar à tela de início” 🐧",
+    ],
+  },
   {
     version: "3.13.57",
     bullets: [
@@ -4506,6 +4514,16 @@ function urlB64ToU8(b64) { const pad = "=".repeat((4 - b64.length % 4) % 4); con
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const isAndroid = () => /android/i.test(navigator.userAgent || "");
 const isStandalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+// Site de desenvolvimento (.../financas) ou local/preview → TODAS as opções (inclui modo teste).
+// Produção = raiz morbiusfin.github.io (sem /financas) → SEM nenhuma entrada de modo teste.
+function isDevSite() {
+  try {
+    const h = location.hostname || "", p = location.pathname || "";
+    if (/localhost|127\.0\.0\.1|0\.0\.0\.0|\.local$/.test(h)) return true;   // preview/local
+    return /\/financas(\/|$)/.test(p);                                       // .../financas = dev
+  } catch (e) { return true; }
+}
+const isProd = () => !isDevSite();
 // navegador do celular (pra dar o passo a passo certo de "adicionar à tela de início")
 function mobileBrowser() {
   const ua = navigator.userAgent || "";
@@ -4556,7 +4574,7 @@ function openInstallGuide() {
     m = document.createElement("div"); m.id = "installModal"; m.className = "modal center hidden";
     m.innerHTML = `<div class="modal-card ig-card">
       <button type="button" class="wn-close" id="igClose" aria-label="Fechar">✕</button>
-      <div class="ig-head"><div class="ig-emoji">🐧</div><h2>Deixe o MorbiusFin na tela de início</h2>
+      <div class="ig-head"><div class="ig-emoji">${animEmoji("pinguim", "🐧", "ig-emoji-img")}</div><h2>Deixe o MorbiusFin na tela de início</h2>
         <p class="hint" style="margin:2px 0 0">Assim ele abre como um app de verdade, em tela cheia e offline.</p></div>
       <div class="ig-tabs" role="tablist">
         <button type="button" class="ig-tab" data-os="ios">🍏 iPhone</button>
@@ -5572,14 +5590,31 @@ async function definirPin() {
   saveData(DATA);
   toast("App protegido com PIN 🔒"); renderNotifBtn();
 }
-function removerPin() {
+// confere se o PIN digitado bate com o que protege os dados (round-trip: cifra com a chave atual,
+// re-deriva a chave do PIN digitado usando o MESMO salt e tenta decifrar — só bate se for o mesmo PIN).
+async function pinMatches(entered) {
+  if (!window.CRYPTO_KEY || !window.CRYPTO_KEY.salt) return false;
+  try {
+    const probe = await encryptEnvelope(window.CRYPTO_KEY, { ok: 1 });
+    const k = await deriveKey(String(entered), window.CRYPTO_KEY.salt);
+    await decryptEnvelope(k, probe);   // joga erro se a chave (PIN) for diferente
+    return true;
+  } catch (e) { return false; }
+}
+// Remover a proteção SÓ depois de digitar o PIN atual e ele BATER.
+async function removePinFlow(after) {
   if (!window.CRYPTO_KEY) { toast("Não há PIN definido"); return; }
-  modalConfirm("Remover o PIN? Os dados ficarão sem criptografia neste aparelho.", () => {
+  const v = prompt("Para remover a proteção, digite seu PIN atual:");
+  if (v == null) return;                                  // cancelou
+  if (!(await pinMatches(v))) { toast("Código incorreto — proteção mantida 🔒"); return; }
+  modalConfirm("PIN conferido. Remover a proteção? Os dados ficarão sem criptografia neste aparelho.", () => {
     window.CRYPTO_KEY = null;
     localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
-    toast("PIN removido"); renderNotifBtn();
+    toast("Proteção removida"); renderNotifBtn();
+    if (typeof after === "function") after();
   }, "Remover PIN");
 }
+function removerPin() { removePinFlow(); }
 /* ---------- Recuperação por pergunta secreta (múltipla escolha) + bloqueio exponencial ---------- */
 const REC_KEY = "financas2026.rec";
 const REC_LOCK_KEY = "financas2026.recLock";
@@ -5787,7 +5822,7 @@ function showLock(env) {
   const attempt = async (showErr) => {
     const v = pin.value;
     if (!v || busy || done) return;
-    if (v === TEST_CODE) { done = true; playUnlock(loadTestProfile); return; }   // código reservado = modo teste
+    if (!isProd() && v === TEST_CODE) { done = true; playUnlock(loadTestProfile); return; }   // código reservado = modo teste (NÃO existe na produção)
     busy = true; lastTried = v;
     if (showErr) msg.textContent = "verificando…";
     try {
@@ -5901,10 +5936,12 @@ function openAccessModal() {
         + '<div class="field-row"><label class="field"><span>PIN (4 dígitos)</span><input id="accPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" /></label>'
         + '<label class="field"><span>Repita</span><input id="accPin2" type="password" inputmode="numeric" maxlength="4" placeholder="••••" /></label></div>'
         + '<button class="btn primary" id="accProtect">Proteger (com backup antes)</button>';
-    html += '<hr style="border:0;border-top:1px solid var(--line);margin:16px 0" />'
-      + '<p class="acc-status">Só quer testar sem mexer no real? Entre no <b>modo teste</b> (dados fictícios, separados).</p>'
-      + '<button class="btn ghost" id="accEnterTest">Entrar no modo teste</button>'
-      + '<p class="hint" style="margin-top:12px">📱 <b>Face ID</b> chega em seguida (precisa ser testado no seu iPhone). Por enquanto o acesso é por PIN.</p>';
+    html += '<hr style="border:0;border-top:1px solid var(--line);margin:16px 0" />';
+    if (!isProd()) {   // modo teste só fora da produção (na produção não há NENHUMA entrada de teste)
+      html += '<p class="acc-status">Só quer testar sem mexer no real? Entre no <b>modo teste</b> (dados fictícios, separados).</p>'
+        + '<button class="btn ghost" id="accEnterTest">Entrar no modo teste</button>';
+    }
+    html += '<p class="hint" style="margin-top:12px">📱 <b>Face ID</b> chega em seguida (precisa ser testado no seu iPhone). Por enquanto o acesso é por PIN.</p>';
   }
   body.innerHTML = html;
   m.classList.remove("hidden");
@@ -5912,7 +5949,7 @@ function openAccessModal() {
   const et = body.querySelector("#accEnterTest"); if (et) et.onclick = () => { m.classList.add("hidden"); loadTestProfile(); };
   const pr = body.querySelector("#accProtect"); if (pr) pr.onclick = protectWithPin;
   const rm = body.querySelector("#accRemove");
-  if (rm) rm.onclick = () => modalConfirm("Remover o PIN? Os dados reais ficarão sem criptografia neste aparelho.", () => { window.CRYPTO_KEY = null; localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); toast("Proteção removida"); openAccessModal(); }, "Remover PIN");
+  if (rm) rm.onclick = () => removePinFlow(() => openAccessModal());   // pede o PIN atual e só remove se bater
 }
 function autoBackup() {
   try {
@@ -6498,8 +6535,9 @@ function enterDemo() {
 async function boot() {
   applyTheme();
   applyConfigLink();
-  if (/[?&]demo=1\b/.test(location.search)) { enterDemo(); return; }   // veio de iphone.html com "dados fictícios"
-  if (localStorage.getItem("financas2026.profile") === "test") { loadTestProfile(); return; }  // estava em teste
+  if (!isProd() && /[?&]demo=1\b/.test(location.search)) { enterDemo(); return; }   // demo só fora da produção
+  if (!isProd() && localStorage.getItem("financas2026.profile") === "test") { loadTestProfile(); return; }  // teste só fora da produção
+  if (isProd() && localStorage.getItem("financas2026.profile") === "test") { try { localStorage.setItem("financas2026.profile", "real"); } catch (e) {} document.body.classList.remove("test-mode"); }  // se sobrou perfil de teste (localStorage é compartilhado com o /financas), na produção volta pro real
   if (localStorage.getItem(LOGGED_OUT_KEY) === "1") { showWelcome(); return; }   // saiu do app → tela de entrada
   resumeBoot();
 }

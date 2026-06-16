@@ -786,6 +786,7 @@ body:has(#fab:not(.hidden)) main { padding-bottom: 178px; }   /* o + flutua até
 .ig-card { position: relative; text-align: center; max-width: 400px; }
 .ig-head { margin-bottom: 14px; }
 .ig-emoji { font-size: 46px; line-height: 1; margin-bottom: 6px; animation: igBob 2.4s ease-in-out infinite; }
+.ig-emoji .ig-emoji-img { width: 56px; height: 56px; display: inline-block; vertical-align: middle; }
 @keyframes igBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 .ig-card h2 { font-size: 20px; font-weight: 800; letter-spacing: -.3px; margin: 0; }
 .ig-tabs { display: flex; gap: 8px; background: var(--card-2); border: 1px solid var(--line); border-radius: 14px; padding: 4px; margin-bottom: 14px; }
