@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.47";
+const APP_VERSION = "3.13.48";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.48",
+    bullets: [
+      "Barra de baixo (Resumo/Receitas/Fixas/Cartões/Débito) não sobe mais ao salvar ou cancelar um lançamento — fica fixa em todas as abas",
+      "Tela de entrada com o nome MorbiusFin no topo e o aviso de direitos autorais embaixo",
+    ]
+  },
   {
     version: "3.13.47",
     bullets: [
@@ -4063,7 +4070,8 @@ function showWelcome() {
   const p = getPerfil();
   let w = document.getElementById("welcomeScreen");
   if (!w) { w = document.createElement("div"); w.id = "welcomeScreen"; w.className = "welcome-screen"; document.body.appendChild(w); }
-  w.innerHTML = '<div class="wel-inner">'
+  w.innerHTML = '<div class="wel-brand">MorbiusFin</div>'
+    + '<div class="wel-inner">'
     + '<div class="wel-avatar" id="welAvatar" aria-hidden="true"></div>'
     + '<div class="wel-name">' + (p.nome ? esc(p.nome) : "Bem-vindo de volta") + '</div>'
     + '<div class="wel-sub">Sua conta neste aparelho</div>'
@@ -4071,7 +4079,8 @@ function showWelcome() {
     + '<div class="wel-sep"><span>ou</span></div>'
     + '<button type="button" class="btn ghost wel-new" id="welNew">Criar uma nova conta</button>'
     + '<p class="wel-newhint">Começa do zero. Seus dados atuais só são apagados se você confirmar.</p>'
-    + '</div>';
+    + '</div>'
+    + '<div class="wel-copy">© ' + new Date().getFullYear() + ' MorbiusFin · Todos os direitos reservados.<br>Feito com carinho para suas finanças.</div>';
   setAvatarInto(w.querySelector("#welAvatar"), p.foto, p.nome);
   w.classList.remove("hidden"); requestAnimationFrame(() => w.classList.add("show"));
   const leave = (after) => { w.classList.remove("show"); document.body.classList.remove("welcome-on"); setTimeout(() => { try { w.remove(); } catch (e) {} after(); }, 300); };
@@ -6156,9 +6165,11 @@ function refreshInPlace() {
   function settle() {
     clearTimeout(settleT);
     settleT = setTimeout(() => {
-      const open = gap() > 120;
-      setKbd(open);
-      if (!open) { reanchor(); requestAnimationFrame(reanchor); }
+      if (gap() > 120) { setKbd(true); return; }            // ainda aberto → mantém escondida
+      // FECHANDO: reancora a viewport ENQUANTO a tabbar ainda está oculta (kbd-open), e só
+      // REVELA num frame seguinte → a pílula aparece já na posição certa (não "sobe" e corrige).
+      reanchor();
+      requestAnimationFrame(() => { reanchor(); requestAnimationFrame(() => setKbd(false)); });
     }, 140);
   }
 

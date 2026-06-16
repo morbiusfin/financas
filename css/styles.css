@@ -617,6 +617,10 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .wel-sep::before, .wel-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .wel-new { width: 100%; }
 .wel-newhint { font-size: 11.5px; color: var(--muted); margin: 8px 0 0; line-height: 1.45; }
+.wel-brand { position: absolute; top: calc(30px + var(--safe-top)); left: 0; right: 0; text-align: center;
+  font-size: 19px; font-weight: 800; letter-spacing: -.3px; color: var(--accent); }
+.wel-copy { position: absolute; bottom: calc(20px + var(--safe-bottom)); left: 0; right: 0; text-align: center;
+  font-size: 11px; color: var(--muted); line-height: 1.5; padding: 0 24px; }
 
 /* ===== Recuperação por pergunta secreta ===== */
 .lock-forgot { display: block; width: 100%; margin: 12px auto 0; background: none; border: 0; color: rgba(255,255,255,.82); font: inherit; font-size: 13px; font-weight: 700; text-decoration: underline; cursor: pointer; }
