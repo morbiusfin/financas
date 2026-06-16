@@ -645,6 +645,10 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .menu-panel { width: 86%; max-width: 350px; height: 100%; background: var(--card); border-right: 1px solid var(--line);
   box-shadow: 8px 0 40px rgba(0,0,0,.4); padding: calc(14px + var(--safe-top)) 15px calc(18px + var(--safe-bottom)); overflow-y: auto;
   display: flex; flex-direction: column; gap: 9px; animation: drawerIn .26s cubic-bezier(.2,.9,.2,1.05) both; }
+/* fade no rodapé do menu: dá a dica de que há mais itens abaixo (ex.: Sair do app) sem empurrar nada */
+.menu-panel::after { content: ""; position: sticky; bottom: calc(-1 * (18px + var(--safe-bottom))); left: 0; right: 0;
+  flex: 0 0 auto; height: 26px; margin-top: -26px; pointer-events: none;
+  background: linear-gradient(to top, var(--card), transparent); }
 @keyframes drawerIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 .menu-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 12px; margin-bottom: 2px; }
 .menu-head span { font-size: 20px; font-weight: 800; color: var(--ink); letter-spacing: -.3px; }

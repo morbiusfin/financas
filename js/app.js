@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.54";
+const APP_VERSION = "3.13.55";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.55",
+    bullets: [
+      "Gráfico do cartão mais preciso: parcelamento que passa do ano agora conta o total certo (ex.: 12× termina em Set/27, não “12 de 12 neste ano”)",
+      "Cobranças mensais (assinaturas) aparecem como “recorrente” na lista, sem confundir com parcelamento",
+      "FAQ do Simulador atualizado (fica nos Gráficos, não no menu) e um fade no rodapé do menu pra mostrar que há mais itens abaixo",
+    ],
+  },
   {
     version: "3.13.54",
     bullets: [
@@ -2979,6 +2987,20 @@ function purchaseMonths(l) {
   for (let m = 0; m < len; m++) if ((Number(l.vals[m]) || 0) > 0) out.push(m);
   return out;
 }
+// classifica a compra: parcelada (parcTotal>1) × recorrente (vários meses, sem parcTotal) × à vista.
+// `span` = meses a mostrar na linha do tempo; `N` = total de parcelas/meses (usa parcTotal quando há,
+// mesmo que a última caia no ano seguinte). Robusto a dados onde nem todo mês está preenchido.
+function purchaseInfo(l) {
+  const filled = purchaseMonths(l);
+  const parcela = filled.length ? (Number(l.vals[filled[0]]) || 0) : 0;
+  const isParc = !!(l.parcTotal && l.parcTotal > 1);
+  const isRec = !isParc && filled.length > 1;            // mensal/recorrente (assinatura, fatura)
+  const start = filled.length ? filled[0] : curMonth;
+  const N = isParc ? Math.max(l.parcTotal, filled.length) : filled.length;
+  const span = isParc ? Array.from({ length: N }, (_, k) => start + k) : filled;
+  const total = isParc ? parcela * N : filled.reduce((s, m) => s + (Number(l.vals[m]) || 0), 0);
+  return { filled, parcela, isParc, isRec, N, start, span, total };
+}
 // série de 12 meses (ano atual): total gasto no cartão (filtrado)
 function serieCartao(filt) {
   const b = curYear() * 12;
@@ -3038,9 +3060,10 @@ function makeCardChart() {
   });
 }
 function makeCardDrillChart(cv, l) {
-  const months = purchaseMonths(l), n = months.length, now = realMesAbs();
+  const info = purchaseInfo(l), months = info.span, n = info.N, now = realMesAbs();
   const labels = months.map(m => mLabel(m));
-  const data = months.map(m => Number(l.vals[m]) || 0);
+  // mostra a parcela em cada mês do período; se algum mês veio sem valor (dado antigo), cai no valor da parcela
+  const data = months.map(m => Number(l.vals[m]) || (info.isParc ? info.parcela : 0));
   const colors = months.map(m => {
     const st = l.sts[m] || "vazio";
     if (st === "pago") return "#15c266";                 // paga (verde)
@@ -3048,14 +3071,15 @@ function makeCardDrillChart(cv, l) {
     if (m < now) return "#e5484d";                       // venceu e não marcou paga (vermelho)
     return GC_PURPLE;                                    // futura (roxo)
   });
+  const unit = info.isRec ? "Mês" : "Parcela";
   charts.gCard = new Chart(cv, {
     type: "bar",
-    data: { labels, datasets: [{ label: "parcela", data, backgroundColor: colors, borderRadius: 5 }] },
+    data: { labels, datasets: [{ label: unit, data, backgroundColor: colors, borderRadius: 5 }] },
     options: {
       responsive: true, maintainAspectRatio: false, layout: { padding: { top: 18, bottom: 4 } },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { title: items => labels[items[0].dataIndex], label: c => `Parcela ${c.dataIndex + 1}/${n}: ${brl(c.raw)}` } },
+        tooltip: { callbacks: { title: items => labels[items[0].dataIndex], label: c => `${unit} ${c.dataIndex + 1}/${n}: ${brl(c.raw)}` } },
         valueLabels: { on: n <= 14 }                     // muitas parcelas → só tooltip (não polui)
       },
       scales: { y: { display: false, grace: "18%" }, x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true } } }
@@ -3089,10 +3113,9 @@ function cardListHTML(items, selId) {
 function renderCardList() {
   const el = $("#gCardList"); if (!el) return;
   const items = (DATA.cartao || []).filter(l => cardMatch(l, gCardFilt)).map(l => {
-    const months = purchaseMonths(l), n = months.length;
-    const parcela = n ? (Number(l.vals[months[0]]) || 0) : 0;
-    const total = months.reduce((s, m) => s + (Number(l.vals[m]) || 0), 0);
-    return { id: l.id, desc: l.desc, val: total, n, parcela, nec: l.nec, cat: n > 1 ? `${n}× de ${brl(parcela)}` : "à vista" };
+    const info = purchaseInfo(l);
+    const cat = info.isRec ? "recorrente" : info.isParc ? `${info.N}× de ${brl(info.parcela)}` : "à vista";
+    return { id: l.id, desc: l.desc, val: info.total, nec: l.nec, cat };
   }).filter(x => x.val > 0).sort((a, b) => b.val - a.val);
   el.innerHTML = cardListHTML(items, gCardSel);
   el.querySelectorAll(".det-row[data-cid]").forEach(r => r.onclick = () => selectCardPurchase(r.dataset.cid));
@@ -3110,29 +3133,33 @@ function renderCardIntel() {
   }
   animDetail("#gCardIntel");
 }
-// leitura inteligente de UMA compra: quantas parcelas faltam, quanto falta, quando termina
+// leitura inteligente de UMA compra: parcelas que faltam, quanto falta, quando termina
+// (parcelada) · meses já pagos (recorrente) · paga/a pagar (à vista).
 function cardDrillIntel(l) {
-  const months = purchaseMonths(l), n = months.length;
-  if (!n) return "";
-  const parcela = Number(l.vals[months[0]]) || 0;
-  const total = months.reduce((s, m) => s + (Number(l.vals[m]) || 0), 0);
-  const pagas = months.filter(m => (l.sts[m] || "") === "pago").length;
-  const faltam = n - pagas, restante = total - parcela * pagas;
-  const fim = months[n - 1], ini = months[0], pct = Math.round(pagas / n * 100);
-  const prox = months.find(m => (l.sts[m] || "") !== "pago");
-  let body;
-  if (n <= 1) {
-    body = pagas >= 1
-      ? `Compra à vista de <b>${brl(total)}</b> — já está paga. ✅`
-      : `Compra à vista de <b>${brl(total)}</b>, na fatura de <b>${mLabel(ini)}</b> — ainda a pagar.`;
-  } else if (faltam === 0) {
-    body = `🎉 <b>Quitada!</b> As <b>${n}</b> parcelas de ${brl(parcela)} já foram pagas. A última caiu em <b>${mLabel(fim)}</b>.`;
-  } else {
+  const info = purchaseInfo(l), span = info.span, N = info.N;
+  if (!info.filled.length) return "";
+  const parcela = info.parcela, now = realMesAbs();
+  const pagas = span.filter(m => (l.sts[m] || "") === "pago").length;
+  const faltam = N - pagas, restante = parcela * faltam;
+  const fim = span[span.length - 1], ini = span[0], pct = N ? Math.round(pagas / N * 100) : 0;
+  const prox = span.find(m => (l.sts[m] || "") !== "pago");
+  let body, progLabel = `${pagas}/${N} pagas`;
+  if (info.isRec) {                                         // recorrente / mensal (assinatura, fatura)
     const proxTxt = prox != null ? ` A próxima cai em <b>${mLabel(prox)}</b>.` : "";
-    body = `Faltam <b>${faltam}</b> de <b>${n}</b> parcelas — mais <b>${brl(restante)}</b> (${faltam}× de ${brl(parcela)}).${proxTxt} Termina em <b>${mLabel(fim)}</b>.`;
+    body = `Cobrança recorrente de <b>${brl(parcela)}/mês</b>. Esse ano você já pagou <b>${pagas}</b> de <b>${N}</b> ${N === 1 ? "mês" : "meses"}.${proxTxt}`;
+    progLabel = `${pagas}/${N} meses`;
+  } else if (N <= 1) {                                      // à vista
+    body = pagas >= 1
+      ? `Compra à vista de <b>${brl(info.total)}</b> — já está paga. ✅`
+      : `Compra à vista de <b>${brl(info.total)}</b>, na fatura de <b>${mLabel(ini)}</b> — ainda a pagar.`;
+  } else if (faltam === 0) {                                // parcelada quitada
+    body = `🎉 <b>Quitada!</b> As <b>${N}</b> parcelas de ${brl(parcela)} já foram pagas. A última caiu em <b>${mLabel(fim)}</b>.`;
+  } else {                                                  // parcelada em aberto
+    const proxTxt = prox != null ? ` A próxima cai em <b>${mLabel(prox)}</b>.` : "";
+    body = `Faltam <b>${faltam}</b> de <b>${N}</b> parcelas — mais <b>${brl(restante)}</b> (${faltam}× de ${brl(parcela)}).${proxTxt} Termina em <b>${mLabel(fim)}</b>.`;
   }
-  const progRow = n > 1
-    ? `<div class="gc-prog-row"><span>${pagas}/${n} pagas</span><div class="det-bar gc-prog"><div class="det-fill" style="width:${pct}%;background:#15c266"></div></div><span>${pct}%</span></div>`
+  const progRow = N > 1
+    ? `<div class="gc-prog-row"><span>${progLabel}</span><div class="det-bar gc-prog"><div class="det-fill" style="width:${pct}%;background:#15c266"></div></div><span>${pct}%</span></div>`
     : "";
   return `<div class="ins-card gc-intel-card">
     <div class="ins-title"><span>💳 ${esc(l.desc || "Compra")}</span><button type="button" id="gcBack" class="gc-back">← ver todos</button></div>
@@ -3151,8 +3178,8 @@ function cardOverviewIntel() {
   const compromisso = abertos.reduce((s, l) => s + purchaseMonths(l).filter(m => m >= now && (l.sts[m] || "") !== "pago").reduce((a, m) => a + (Number(l.vals[m]) || 0), 0), 0);
   const narr = `No cartão você tem <b>${brl(anoTot)}</b> no ano (~${brl(media)}/mês), com pico em <b>${MESES_CURTO[maxI]}</b>. ` +
     (abertos.length
-      ? `Há <b>${abertos.length}</b> parcelamento(s) em aberto somando <b>${brl(compromisso)}</b> ainda a pagar. Toque numa compra pra ver as parcelas. 👇`
-      : `Nenhum parcelamento em aberto daqui pra frente. 👏`);
+      ? `Há <b>${abertos.length}</b> compromisso(s) em aberto somando <b>${brl(compromisso)}</b> ainda a pagar daqui pra frente. Toque numa compra pra ver as parcelas. 👇`
+      : `Nada em aberto daqui pra frente. 👏`);
   return `<div class="ins-card"><div class="ins-title">🤖 Resumo do cartão</div><div class="ins-narr">${narr}</div></div>`;
 }
 
@@ -5195,7 +5222,7 @@ const FAQ = [
   { t: "🏷️ Categorias e orçamento", go: "categorias", btn: "Abrir Categorias",
     d: "No menu ☰. Crie categorias com <b>emoji</b> e defina uma <b>meta de gasto</b> (orçamento) para cada uma. Nos Gráficos, o <b>Orçamento × Realizado</b> mostra em verde quando você está dentro da meta e em vermelho quando estourou — fica fácil ver onde está gastando demais." },
   { t: "🧪 Simular gastos", go: "sim", btn: "Abrir o simulador",
-    d: "No menu ☰. Antes de comprar, digite o valor e o número de parcelas: o app desenha a compra <b>em cima do gráfico de saldo</b> e te diz se você termina o mês no positivo ou no vermelho. Serve pra responder “vale a pena?” sem arriscar." },
+    d: "Fica nos <b>Gráficos</b> (no card do Saldo acumulado). Antes de comprar, digite o valor, o número de parcelas e o mês: o app desenha a compra <b>em cima do gráfico de saldo</b> e te diz se você termina o mês no positivo ou no vermelho. Serve pra responder “vale a pena?” sem arriscar." },
   { t: "🔄 Sincronização (nuvem privada)", go: "sync", btn: "Abrir Sincronização",
     d: "No menu ☰. Opcional: sobe e baixa seus dados de uma <b>nuvem privada sua</b> (você configura o endereço e o token). Serve pra ter os dados em mais de um aparelho. Sem configurar, tudo continua só no seu celular." },
   { t: "⬆️⬇️ Importar e Exportar (backup)", go: "backup", btn: "Mostrar no menu",
