@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.45";
+const APP_VERSION = "3.13.46";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.46",
+    bullets: [
+      "Recuperação mais simples: você escreve só a pergunta e UMA resposta (uma palavra, ou uma data dd/mm/aaaa). O app cria as 4 opções erradas sozinho, combinando com a sua pergunta (pet, cidade, time, cor, nome, data…)",
+    ]
+  },
   {
     version: "3.13.45",
     bullets: [
@@ -5156,17 +5162,72 @@ function recLockSave(s) { localStorage.setItem(REC_LOCK_KEY, JSON.stringify(s));
 function recLockReset() { localStorage.removeItem(REC_LOCK_KEY); }
 
 // SETUP da recuperação (chamado após criar o PIN) — opcional, pode pular
+// é uma palavra só? (sem espaços) OU uma data dd/mm/aaaa
+const _isDate = (s) => /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(s.trim());
+const _isOneWord = (s) => { const t = s.trim(); return t.length > 0 && !/\s/.test(t) && (t.length <= 24); };
+// "Inteligência" offline: a partir da PERGUNTA + resposta certa, cria 4 opções falsas plausíveis.
+const DECOY = {
+  pet: ["Rex", "Thor", "Mel", "Luna", "Bidu", "Nina", "Toby", "Pingo", "Amora", "Frajola", "Belinha", "Cacau", "Zeus", "Bob"],
+  nome: ["Maria", "João", "Ana", "Pedro", "Lucas", "Carla", "Bruno", "Júlia", "Rafael", "Beatriz", "Tiago", "Camila", "Felipe", "Sofia"],
+  cidade: ["Recife", "Salvador", "Curitiba", "Fortaleza", "Manaus", "Belém", "Natal", "Goiânia", "Santos", "Campinas", "Sorocaba", "Niterói"],
+  cor: ["Azul", "Verde", "Vermelho", "Amarelo", "Preto", "Branco", "Roxo", "Rosa", "Laranja", "Cinza", "Marrom", "Lilás"],
+  time: ["Flamengo", "Corinthians", "Palmeiras", "Santos", "Grêmio", "Cruzeiro", "Vasco", "Bahia", "Sport", "Fluminense", "Internacional", "Botafogo"],
+  comida: ["Pizza", "Lasanha", "Feijoada", "Sushi", "Hambúrguer", "Strogonoff", "Macarrão", "Tapioca", "Açaí", "Coxinha", "Pastel", "Risoto"],
+  marca: ["Honda", "Toyota", "Fiat", "Ford", "Chevrolet", "Volkswagen", "Hyundai", "Renault", "Jeep", "Nissan", "Peugeot", "Kia"],
+  generico: ["Sol", "Lua", "Mar", "Estrela", "Flor", "Trovão", "Pedra", "Vento", "Fogo", "Neve", "Trevo", "Aurora", "Ônix", "Brisa"]
+};
+function _decoyCat(q) {
+  const s = q.toLowerCase();
+  if (/\b(pet|cachorr|c[ãa]o|gat[oa]|bicho|animal|mascote)\b/.test(s)) return "pet";
+  if (/\b(cidade|nasc|mora|morou|natal cidade)\b/.test(s)) return "cidade";
+  if (/\b(cor|colorid)\b/.test(s)) return "cor";
+  if (/\b(time|futebol|clube|torce)\b/.test(s)) return "time";
+  if (/\b(comida|prato|lanche|come|culin)\b/.test(s)) return "comida";
+  if (/\b(carro|marca|moto|ve[íi]culo)\b/.test(s)) return "marca";
+  if (/\b(nome|m[ãa]e|pai|av[óô]|filh|professor|amig|irm|padrinho|madrinha|crush|namorad)\b/.test(s)) return "nome";
+  return null;
+}
+function _fakeDates(a) {
+  const m = a.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/); if (!m) return [];
+  let d = +m[1], mo = +m[2], y = +m[3]; const yl = m[3].length;
+  const pad = (n) => String(n).padStart(2, "0");
+  const fmt = (dd, mm, yy) => pad(dd) + "/" + pad(mm) + "/" + (yl <= 2 ? pad(yy % 100) : yy);
+  const variants = [
+    [((d % 28) + 3), mo, y], [d, ((mo % 12) + 1), y], [d, mo, y + (y > 1000 ? 2 : 2)],
+    [((d % 28) + 7), ((mo % 12) + 2), y], [d, mo, y - (y > 1000 ? 3 : 3)], [((d % 28) + 11), mo, y]
+  ];
+  const out = []; const seen = new Set([a.trim()]);
+  for (const v of variants) { const f = fmt(((v[0] - 1) % 28) + 1, ((v[1] - 1) % 12) + 1, v[2]); if (!seen.has(f)) { seen.add(f); out.push(f); } if (out.length >= 4) break; }
+  return out;
+}
+function _fakeNumbers(a) {
+  const n = parseInt(a, 10); const offs = [1, -1, 2, -2, 3, -3, 5, -5]; const out = []; const seen = new Set([a.trim()]);
+  for (const o of offs) { const v = String(n + o); if (n + o >= 0 && !seen.has(v)) { seen.add(v); out.push(v); } if (out.length >= 4) break; }
+  return out;
+}
+// gera 4 opções FALSAS plausíveis (offline) a partir da pergunta + resposta certa
+function genDecoys(question, answer) {
+  const a = answer.trim();
+  let pool;
+  if (_isDate(a)) { const d = _fakeDates(a); if (d.length >= 4) return d; pool = []; }
+  else if (/^\d+$/.test(a)) { const n = _fakeNumbers(a); if (n.length >= 4) return n; pool = []; }
+  else { const cat = _decoyCat(question); pool = (cat ? DECOY[cat] : DECOY.generico).slice(); }
+  // tira a resposta certa (e variações de caixa) e embaralha
+  let opts = _shuffle(pool.filter(w => w.toLowerCase() !== a.toLowerCase()));
+  // completa com o pool genérico se faltar
+  if (opts.length < 4) { const extra = _shuffle(DECOY.generico.filter(w => w.toLowerCase() !== a.toLowerCase() && !opts.includes(w))); opts = opts.concat(extra); }
+  return opts.slice(0, 4);
+}
 function openRecoverySetup(pin) {
   let m = document.getElementById("recSetupModal");
   if (!m) {
     m = document.createElement("div"); m.id = "recSetupModal"; m.className = "modal center hidden";
     m.innerHTML = '<div class="modal-card"><button type="button" class="sheet-x" id="recSetClose" aria-label="Fechar">✕</button>'
       + '<h2 style="text-align:center">🔑 Recuperação</h2>'
-      + '<p class="hint" style="text-align:left;margin:-6px 0 12px">Se esquecer o PIN, você responde a uma pergunta sua. Escreva a pergunta, a resposta <b>certa</b> e 4 <b>erradas</b> (parecidas, pra ninguém adivinhar).</p>'
-      + '<label class="field"><span>Pergunta</span><input id="recQ" type="text" maxlength="80" placeholder="Ex.: Nome do meu primeiro pet?"></label>'
-      + '<label class="field"><span>✅ Resposta CERTA</span><input id="recA0" type="text" maxlength="40" placeholder="a verdadeira"></label>'
-      + '<div class="field-row"><label class="field"><span>Errada 1</span><input id="recA1" type="text" maxlength="40"></label><label class="field"><span>Errada 2</span><input id="recA2" type="text" maxlength="40"></label></div>'
-      + '<div class="field-row"><label class="field"><span>Errada 3</span><input id="recA3" type="text" maxlength="40"></label><label class="field"><span>Errada 4</span><input id="recA4" type="text" maxlength="40"></label></div>'
+      + '<p class="hint" style="text-align:left;margin:-6px 0 12px">Se esquecer o PIN, você responde a uma pergunta sua. Escreva a pergunta e <b>só a resposta certa</b> — o app cria as opções erradas sozinho.</p>'
+      + '<label class="field"><span>Pergunta (qualquer uma)</span><input id="recQ" type="text" maxlength="80" placeholder="Ex.: Nome do meu primeiro pet?"></label>'
+      + '<label class="field"><span>✅ Resposta</span><input id="recA0" type="text" maxlength="24" autocapitalize="off" placeholder="Ex.: Rex"></label>'
+      + '<div class="rec-onehint">⚠️ Apenas <b>UMA palavra</b> (nome, palavra ou uma data <b>dd/mm/aaaa</b>). Sem espaços.</div>'
       + '<div class="modal-actions"><button type="button" class="btn ghost" id="recSkip">Agora não</button><button type="button" class="btn primary" id="recSave">Salvar</button></div></div>';
     document.body.appendChild(m);
     const close = () => m.classList.add("hidden");
@@ -5178,12 +5239,12 @@ function openRecoverySetup(pin) {
   m.querySelector("#recSave").onclick = async () => {
     const q = m.querySelector("#recQ").value.trim();
     const a0 = m.querySelector("#recA0").value.trim();
-    const ws = [1, 2, 3, 4].map(i => m.querySelector("#recA" + i).value.trim());
     if (!q) { toast("Escreva a pergunta"); return; }
-    if (!a0) { toast("Escreva a resposta certa"); return; }
-    if (ws.some(w => !w)) { toast("Preencha as 4 respostas erradas"); return; }
-    if (new Set([a0].concat(ws).map(s => s.toLowerCase())).size < 5) { toast("As 5 respostas devem ser diferentes"); return; }
-    try { await saveRecovery(q, a0, ws, pin); recLockReset(); m.classList.add("hidden"); toast("Recuperação ativada 🔑"); }
+    if (!a0) { toast("Escreva a resposta"); return; }
+    if (!_isOneWord(a0) && !_isDate(a0)) { toast("A resposta deve ser UMA palavra só (ou uma data dd/mm/aaaa)"); return; }
+    const decoys = genDecoys(q, a0);
+    if (decoys.length < 4) { toast("Não consegui gerar as opções — tente outra resposta"); return; }
+    try { await saveRecovery(q, a0, decoys, pin); recLockReset(); m.classList.add("hidden"); toast("Recuperação ativada 🔑"); }
     catch (e) { toast("Não consegui salvar a recuperação"); }
   };
   showModal("#recSetupModal");

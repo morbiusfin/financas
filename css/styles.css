@@ -626,6 +626,8 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .rec-msg { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 22px; margin-top: 10px; font-size: 13px; font-weight: 700; color: #ff6b6b; text-align: center; }
 .rec-msg .rec-msg-emoji, .rec-msg .emoji-anim { width: 22px; height: 22px; }
 .rec-count { font-size: 40px; font-weight: 800; letter-spacing: -.5px; text-align: center; color: var(--ink); margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.rec-onehint { font-size: 12px; color: var(--muted); background: var(--card-2); border: 1px solid var(--line); border-radius: 11px; padding: 9px 12px; margin: -4px 0 4px; line-height: 1.45; }
+.rec-onehint b { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { .rec-opts.shake { animation: none; } }
 .app-header .header-actions { gap: 5px; }
 .menu-btn { font-size: 18px; flex: 0 0 auto; }
