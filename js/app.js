@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.46";
+const APP_VERSION = "3.13.47";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.47",
+    bullets: [
+      "Sair do app: a saída (círculo + bichinho) termina primeiro e só então a tela de entrada aparece esmaecendo — sem encavalar",
+      "Emoji-gif perfeitamente centralizado no círculo (saída e entrada); avatar da entrada maior e centralizado",
+    ]
+  },
   {
     version: "3.13.46",
     bullets: [
@@ -4036,15 +4043,17 @@ function logoutSequence() {
   ov.innerHTML = '<div class="lf-avatar">' + animalSVG(animal) + '</div>';
   document.body.appendChild(ov);
   document.body.classList.remove("scroll-locked"); document.body.style.top = "";
-  requestAnimationFrame(() => ov.classList.add("go"));            // fade-in verde + bichinho
-  setTimeout(() => ov.classList.add("dark"), 1150);               // SAÍDA escurece (verde→fundo, bichinho some)
+  requestAnimationFrame(() => ov.classList.add("go"));            // 1) fade-in verde + bichinho (pop)
+  // 2) SAÍDA: bichinho some + verde escurece p/ o fundo — TERMINA antes da entrada (sem encavalar)
+  setTimeout(() => ov.classList.add("dark"), 1350);
+  // 3) ENTRADA: só depois da saída concluída, o welcome aparece esmaecendo (overlay some por cima dele)
   setTimeout(() => {
     window.CRYPTO_KEY = null;                                     // logout de verdade (some a chave da memória)
     window.__greeted = false;
-    showWelcome();                                                // ENTRADA clareia (welcome aparece esmaecendo)
-    ov.classList.add("fade-out");                                 // overlay some revelando a tela de entrada
-    setTimeout(() => { try { ov.remove(); } catch (e) {} }, 540);
-  }, 1550);
+    showWelcome();
+    ov.classList.add("fade-out");
+    setTimeout(() => { try { ov.remove(); } catch (e) {} }, 560);
+  }, 2050);
 }
 // Tela de entrada (após sair): foto/bichinho da conta + ENTRAR (pede PIN se houver) + criar nova conta
 function showWelcome() {

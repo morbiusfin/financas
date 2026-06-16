@@ -604,10 +604,12 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
   opacity: 0; transition: opacity .45s ease; }
 .welcome-screen.show { opacity: 1; }
 .wel-inner { width: 100%; max-width: 340px; text-align: center; display: flex; flex-direction: column; align-items: center; }
-.wel-avatar { width: 124px; height: 124px; aspect-ratio: 1; border-radius: 50%; overflow: hidden; margin-bottom: 16px; flex: 0 0 auto;
+.wel-avatar { width: 148px; height: 148px; aspect-ratio: 1; border-radius: 50%; overflow: hidden; margin-bottom: 18px; flex: 0 0 auto;
   background-size: cover; background-position: center;   /* foto importada */
   box-shadow: 0 0 0 4px rgba(33,194,102,.30), 0 14px 40px rgba(0,0,0,.4); }
-.wel-avatar .animal-anim, .wel-avatar .animal-svg { width: 100%; height: 100%; display: block; }   /* o emoji fica 84% centrado (padrão .animal-anim) */
+/* emoji-gif PERFEITAMENTE centrado no círculo (entrada e saída) */
+.wel-avatar .animal-anim, .wel-avatar .animal-svg, .lf-avatar .animal-anim, .lf-avatar .animal-svg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.wel-avatar .animal-anim .emoji-anim, .lf-avatar .animal-anim .emoji-anim { width: 86%; height: 86%; object-fit: contain; margin: 0; display: block; }
 .wel-name { font-size: 22px; font-weight: 800; letter-spacing: -.4px; color: var(--ink); }
 .wel-sub { font-size: 13px; color: var(--muted); margin: 2px 0 24px; }
 .wel-enter { width: 100%; padding: 15px; border-radius: 16px; font-weight: 800; font-size: 16px; box-shadow: 0 14px 30px rgba(11,61,46,.4); }
