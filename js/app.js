@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.33";
+const APP_VERSION = "3.13.34";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.34",
+    bullets: [
+      "Saudação agora aparece só 1× por dia (não repete a cada vez que você abre) — e segue podendo ser desligada nas Configurações",
+      "Dica nos campos de valor: \"centavos automáticos\" (digite 1000 e vira R$ 10,00)",
+      "Listas vazias mais simpáticas: emoji animado + um empurrãozinho pra adicionar o primeiro lançamento",
+    ]
+  },
   {
     version: "3.13.33",
     bullets: [
@@ -1230,16 +1238,20 @@ function closeGreeting() {
   }, 620);                                                        // = duração do greetUp
 }
 const GREET_OFF_KEY = "financas2026.greetOff";
+const GREET_LAST_KEY = "financas2026.greetLast";
 function greetEnabled() { return localStorage.getItem(GREET_OFF_KEY) !== "1"; }   // padrão: ligada
+const _hojeStr = () => { const d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); };
 // chamada ao terminar a abertura (sem senha = finishOpening; com senha = fim da cortina playUnlock)
 function scheduleGreeting() {
   if (window.__greeted) return; window.__greeted = true;
   const onb = document.getElementById("onboarding");
-  // saudação desligada nas Configurações, ou onboarding/pareamento mandando → pula a saudação
-  if (!greetEnabled() || window.__pairing || (onb && !onb.classList.contains("hidden"))) {
+  // pula a saudação se: desligada nas Configurações, onboarding/pareamento mandando, ou JÁ saudou hoje (1x/dia)
+  if (!greetEnabled() || window.__pairing || (onb && !onb.classList.contains("hidden"))
+      || localStorage.getItem(GREET_LAST_KEY) === _hojeStr()) {
     setTimeout(firePendingBill, 5000);
     return;
   }
+  localStorage.setItem(GREET_LAST_KEY, _hojeStr());               // marca que já saudou hoje
   setTimeout(showGreeting, 380);                                  // deixa a revelação assentar
 }
 function pedirNotificacao() {
@@ -1805,6 +1817,7 @@ function renderMetaForm() {
     +   '<label class="field" style="flex:1"><span>Quanto custa (R$)</span><input id="metaAlvo" class="money" value="' + (editing && editing.alvo ? fmtMoneyBR(editing.alvo) : "") + '" placeholder="0,00" /></label>'
     +   '<label class="field" style="flex:1"><span>Já guardei (R$)</span><input id="metaGuard" class="money" value="' + (editing && editing.guardado ? fmtMoneyBR(editing.guardado) : "") + '" placeholder="0,00" /></label>'
     + '</div>'
+    + '<p class="money-tip">💡 Centavos automáticos: digite <b>1000</b> e vira <b>R$ 10,00</b></p>'
     + '<div class="meta-actions">'
     +   (editing ? '<button type="button" class="btn danger" id="metaDel">Excluir</button>' : '')
     +   '<button type="button" class="btn primary" id="metaSave">' + (editing ? "Salvar" : "Criar meta") + '</button>'
@@ -3115,7 +3128,7 @@ function toggleStatus(tab, idx) {
   persist(); toast(l.sts[m] === done ? "✅ " + done : "⏳ programado");
 }
 
-const empty = (msg) => `<div class="empty">${msg || "Nada lançado neste mês."}<br>Toque em + para adicionar.</div>`;
+const empty = (msg) => `<div class="empty empty-rich">${animEmoji("aceno", "👋", "empty-emoji")}<div class="empty-txt">${msg || "Nada lançado neste mês."}<br><span>Toque no + para adicionar o primeiro 👇</span></div></div>`;
 
 /* ---------- Cartões cadastrados (fechamento/vencimento) ---------- */
 function cardLabel(c) { return c ? (esc(c.nome || "Cartão") + (c.last4 ? ` •••• ${esc(c.last4)}` : "")) : ""; }
@@ -3241,6 +3254,7 @@ function openCartaoModal() {
       <label class="field"><span id="f_val_lbl">Valor da compra</span><input id="f_val" class="money" placeholder="0,00" required /></label>
       <label class="field" id="f_n_field" style="display:none"><span>Em quantas vezes</span><select id="f_n" class="sel">${parcOpts}</select></label>
     </div>
+    <p class="money-tip">💡 Centavos automáticos: digite <b>1000</b> e vira <b>R$ 10,00</b></p>
     <label class="field"><span>Data da compra</span><input id="f_data" type="date" value="${todayISO()}" min="${DATA.year}-01-01" /></label>
     <label class="field row-check nec-check"><input id="f_nec" type="checkbox" /><span>🔒 Necessário — não posso deixar de pagar</span></label>
     <div id="f_parc_prev" class="impact"></div>`;
@@ -3328,6 +3342,7 @@ function openEntryModal(tab, idx) {
     ${extra}
     ${catField}
     <label class="field"><span id="f_valLbl">Valor (${mLong(curMonth)})</span><input id="f_val" class="money" value="${isNew ? "" : (l.vals[curMonth] || "")}" placeholder="0,00" /></label>
+    <p class="money-tip">💡 Centavos automáticos: digite <b>1000</b> e vira <b>R$ 10,00</b></p>
     <div class="field-row">
       <label class="field"><span>Mês${isNew ? " de início" : ""}</span><select id="f_mes" class="sel">${monthOptionsHTML(curMonth)}</select></label>
       <label class="field"><span>${tab === "fixas" ? "Vencimento (dia)" : "Dia"}</span><select id="f_dia" class="sel"></select></label>
@@ -3463,6 +3478,7 @@ function openDiariaModal(idx, method) {
     <label class="field"><span>Descrição</span><input id="f_desc" type="text" value="${isNew ? "" : esc(d.desc)}" required placeholder="Ex.: Mercado" /></label>
     <label class="field"><span>Categoria</span><select id="f_catId" class="sel">${catSelectHTML(isNew ? null : entryCatId(d))}</select></label>
     <label class="field"><span>Valor (R$)</span><input id="f_val" class="money" value="${isNew ? "" : d.valor}" placeholder="0,00" required /></label>
+    <p class="money-tip">💡 Centavos automáticos: digite <b>1000</b> e vira <b>R$ 10,00</b></p>
     <div class="field-row">
       <label class="field"><span>Mês</span><select id="f_mes" class="sel">${monthOptionsHTML(mesSel)}</select></label>
       <label class="field"><span>Dia</span><select id="f_dia" class="sel"></select></label>
