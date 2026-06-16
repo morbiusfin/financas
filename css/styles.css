@@ -111,6 +111,8 @@ body.lock-on { background: #0b3d2e linear-gradient(160deg, #0b3d2e 0%, #12734d 1
    home indicator — fica ESCURA, igual ao escurecido do backdrop. Some a faixa branca/clara embaixo,
    independente do tema. (regra via :has + reforço por JS em lockScroll, p/ Safari sem :has) */
 html:has(body.scroll-locked), html:has(body.party-on) { background: #0a100d; }
+/* tela de entrada (landing): a faixa do rodapé/safe-area na MESMA cor do fundo, em qualquer tema */
+html:has(body.welcome-on) { background: var(--bg); }
 body.lock-on > *:not(#lockScreen):not(#unlockReveal):not(#splash) { visibility: hidden !important; }
 /* Fundo (degradês) numa camada FIXA própria — em vez de background-attachment:fixed no body, que no
    iOS Safari deixa emendas/linhas verticais nas bordas. Cobre a tela toda, sem romper a UI. */
@@ -610,6 +612,18 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .wel-sep::before, .wel-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .wel-new { width: 100%; }
 .wel-newhint { font-size: 11.5px; color: var(--muted); margin: 8px 0 0; line-height: 1.45; }
+
+/* ===== Recuperação por pergunta secreta ===== */
+.lock-forgot { display: block; width: 100%; margin: 12px auto 0; background: none; border: 0; color: rgba(255,255,255,.82); font: inherit; font-size: 13px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.lock-forgot:active { opacity: .6; }
+.rec-opts { display: flex; flex-direction: column; gap: 9px; }
+.rec-opts .rec-opt { width: 100%; text-align: center; padding: 13px 12px; border-radius: 13px; font-weight: 700; }
+.rec-opts.shake { animation: recShake .4s ease; }
+@keyframes recShake { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-7px);} 40%{transform:translateX(7px);} 60%{transform:translateX(-5px);} 80%{transform:translateX(5px);} }
+.rec-msg { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 22px; margin-top: 10px; font-size: 13px; font-weight: 700; color: #ff6b6b; text-align: center; }
+.rec-msg .rec-msg-emoji, .rec-msg .emoji-anim { width: 22px; height: 22px; }
+.rec-count { font-size: 40px; font-weight: 800; letter-spacing: -.5px; text-align: center; color: var(--ink); margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .rec-opts.shake { animation: none; } }
 .app-header .header-actions { gap: 5px; }
 .menu-btn { font-size: 18px; flex: 0 0 auto; }
 .menu-drawer { position: fixed; inset: 0; z-index: 115; background: rgba(0,0,0,.5); backdrop-filter: blur(2px); display: flex; }

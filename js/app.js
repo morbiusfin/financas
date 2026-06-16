@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.43";
+const APP_VERSION = "3.13.44";
 const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.44",
+    bullets: [
+      "Recuperação de acesso: ao criar o PIN você pode cadastrar uma pergunta secreta (1 resposta certa + 4 erradas). Esqueceu o código? Toque em \"Esqueci meu código\" e responda",
+      "Segurança: ao errar a recuperação, o app bloqueia por tempo que dobra a cada vez (1min, 2min, 4min…) com cronômetro e emoji",
+      "Tela de entrada: faixa do rodapé agora acompanha a cor do fundo em qualquer tema (sem faixa estranha)",
+    ]
+  },
   {
     version: "3.13.43",
     bullets: [
@@ -4020,6 +4028,7 @@ function logoutSequence() {
 function showWelcome() {
   const sp = document.getElementById("splash"); if (sp) { try { sp.remove(); } catch (e) {} }
   document.body.classList.remove("splash-on");
+  document.body.classList.add("welcome-on");   // faixa do rodapé/safe-area na MESMA cor do fundo (qualquer tema)
   const p = getPerfil();
   let w = document.getElementById("welcomeScreen");
   if (!w) { w = document.createElement("div"); w.id = "welcomeScreen"; w.className = "welcome-screen"; document.body.appendChild(w); }
@@ -4034,7 +4043,7 @@ function showWelcome() {
     + '</div>';
   setAvatarInto(w.querySelector("#welAvatar"), p.foto, p.nome);
   w.classList.remove("hidden"); requestAnimationFrame(() => w.classList.add("show"));
-  const leave = (after) => { w.classList.remove("show"); setTimeout(() => { try { w.remove(); } catch (e) {} after(); }, 300); };
+  const leave = (after) => { w.classList.remove("show"); document.body.classList.remove("welcome-on"); setTimeout(() => { try { w.remove(); } catch (e) {} after(); }, 300); };
   w.querySelector("#welEnter").onclick = () => { localStorage.removeItem(LOGGED_OUT_KEY); leave(resumeBoot); };
   w.querySelector("#welNew").onclick = () => {
     modalConfirm("Criar uma conta nova? Isso apaga os lançamentos atuais deste aparelho. Exporte um backup antes, se quiser guardar.", () => {
@@ -5067,6 +5076,126 @@ function removerPin() {
     toast("PIN removido"); renderNotifBtn();
   }, "Remover PIN");
 }
+/* ---------- Recuperação por pergunta secreta (múltipla escolha) + bloqueio exponencial ---------- */
+const REC_KEY = "financas2026.rec";
+const REC_LOCK_KEY = "financas2026.recLock";
+function getRec() { try { return JSON.parse(localStorage.getItem(REC_KEY) || "null"); } catch (e) { return null; } }
+function hasRec() { return !!(getRec() && getRec().env); }
+const _normA = (s) => "rec:" + String(s || "").trim().toLowerCase();
+function _shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+// guarda o PIN cifrado SOB a resposta certa. As 5 opções ficam visíveis (são as escolhas); só a certa abre o envelope.
+async function saveRecovery(q, correct, wrongs, pin) {
+  const k = await deriveKey(_normA(correct));
+  const env = await encryptEnvelope(k, { pin: String(pin) });
+  const opts = [correct].concat(wrongs).map(s => String(s).trim()).filter(Boolean);
+  localStorage.setItem(REC_KEY, JSON.stringify({ q: String(q).trim(), opts: opts, env: env }));
+}
+function recLockState() { try { return JSON.parse(localStorage.getItem(REC_LOCK_KEY) || '{"tries":3,"round":0,"until":0}'); } catch (e) { return { tries: 3, round: 0, until: 0 }; } }
+function recLockSave(s) { localStorage.setItem(REC_LOCK_KEY, JSON.stringify(s)); }
+function recLockReset() { localStorage.removeItem(REC_LOCK_KEY); }
+
+// SETUP da recuperação (chamado após criar o PIN) — opcional, pode pular
+function openRecoverySetup(pin) {
+  let m = document.getElementById("recSetupModal");
+  if (!m) {
+    m = document.createElement("div"); m.id = "recSetupModal"; m.className = "modal center hidden";
+    m.innerHTML = '<div class="modal-card"><button type="button" class="sheet-x" id="recSetClose" aria-label="Fechar">✕</button>'
+      + '<h2 style="text-align:center">🔑 Recuperação</h2>'
+      + '<p class="hint" style="text-align:left;margin:-6px 0 12px">Se esquecer o PIN, você responde a uma pergunta sua. Escreva a pergunta, a resposta <b>certa</b> e 4 <b>erradas</b> (parecidas, pra ninguém adivinhar).</p>'
+      + '<label class="field"><span>Pergunta</span><input id="recQ" type="text" maxlength="80" placeholder="Ex.: Nome do meu primeiro pet?"></label>'
+      + '<label class="field"><span>✅ Resposta CERTA</span><input id="recA0" type="text" maxlength="40" placeholder="a verdadeira"></label>'
+      + '<div class="field-row"><label class="field"><span>Errada 1</span><input id="recA1" type="text" maxlength="40"></label><label class="field"><span>Errada 2</span><input id="recA2" type="text" maxlength="40"></label></div>'
+      + '<div class="field-row"><label class="field"><span>Errada 3</span><input id="recA3" type="text" maxlength="40"></label><label class="field"><span>Errada 4</span><input id="recA4" type="text" maxlength="40"></label></div>'
+      + '<div class="modal-actions"><button type="button" class="btn ghost" id="recSkip">Agora não</button><button type="button" class="btn primary" id="recSave">Salvar</button></div></div>';
+    document.body.appendChild(m);
+    const close = () => m.classList.add("hidden");
+    m.querySelector("#recSetClose").onclick = close;
+    m.querySelector("#recSkip").onclick = close;
+    m.addEventListener("click", e => { if (e.target === m) close(); });
+  }
+  m.querySelectorAll("input").forEach(i => i.value = "");
+  m.querySelector("#recSave").onclick = async () => {
+    const q = m.querySelector("#recQ").value.trim();
+    const a0 = m.querySelector("#recA0").value.trim();
+    const ws = [1, 2, 3, 4].map(i => m.querySelector("#recA" + i).value.trim());
+    if (!q) { toast("Escreva a pergunta"); return; }
+    if (!a0) { toast("Escreva a resposta certa"); return; }
+    if (ws.some(w => !w)) { toast("Preencha as 4 respostas erradas"); return; }
+    if (new Set([a0].concat(ws).map(s => s.toLowerCase())).size < 5) { toast("As 5 respostas devem ser diferentes"); return; }
+    try { await saveRecovery(q, a0, ws, pin); recLockReset(); m.classList.add("hidden"); toast("Recuperação ativada 🔑"); }
+    catch (e) { toast("Não consegui salvar a recuperação"); }
+  };
+  showModal("#recSetupModal");
+}
+// chamado quando o PIN é criado: se ainda não há recuperação, oferece configurar
+function afterPinSet(pin) { if (!hasRec()) openRecoverySetup(pin); }
+
+// DESAFIO de recuperação (na tela de código): pergunta + 5 opções + bloqueio exponencial com cronômetro
+let _recTimer = null;
+function openRecovery(env) {
+  if (!hasRec()) { toast("Sem recuperação configurada neste aparelho"); return; }
+  window.__recEnv = env;
+  let m = document.getElementById("recModal");
+  if (!m) { m = document.createElement("div"); m.id = "recModal"; m.className = "modal center hidden"; document.body.appendChild(m); m.addEventListener("click", e => { if (e.target === m) closeRec(); }); }
+  renderRec(); showModal("#recModal");
+}
+function closeRec() { clearInterval(_recTimer); _recTimer = null; const m = document.getElementById("recModal"); if (m) m.classList.add("hidden"); }
+function renderRec() {
+  const m = document.getElementById("recModal"); if (!m) return;
+  const rec = getRec(), st = recLockState();
+  clearInterval(_recTimer); _recTimer = null;
+  if (st.until && Date.now() < st.until) {           // BLOQUEADO → cronômetro
+    m.innerHTML = '<div class="modal-card greet-card" style="text-align:center"><button type="button" class="sheet-x" id="recClose">✕</button>'
+      + '<div class="greet-emoji">' + animEmoji("despertador", "⏰", "greet-emoji-img") + '</div>'
+      + '<h2 style="text-align:center;margin:6px 0 4px">Muitas tentativas</h2>'
+      + '<p class="hint" style="text-align:center;margin:0 0 6px">Espere para tentar de novo:</p>'
+      + '<div class="rec-count" id="recCount">—</div>'
+      + '<div class="modal-actions"><button type="button" class="btn ghost" id="recClose2">Voltar ao código</button></div></div>';
+    m.querySelector("#recClose").onclick = closeRec; m.querySelector("#recClose2").onclick = closeRec;
+    const tick = () => { const left = Math.max(0, recLockState().until - Date.now()); const el = m.querySelector("#recCount"); if (el) { const s = Math.ceil(left / 1000); el.textContent = (s >= 60 ? Math.floor(s / 60) + "m " + (s % 60) + "s" : s + "s"); } if (left <= 0) { clearInterval(_recTimer); _recTimer = null; renderRec(); } };
+    tick(); _recTimer = setInterval(tick, 250);
+    return;
+  }
+  const opts = _shuffle(rec.opts);
+  m.innerHTML = '<div class="modal-card greet-card"><button type="button" class="sheet-x" id="recClose">✕</button>'
+    + '<div class="greet-emoji">' + animEmoji("interrogacao", "❓", "greet-emoji-img") + '</div>'
+    + '<h2 style="text-align:center;margin:6px 0 4px">Recuperar acesso</h2>'
+    + '<p class="hint" style="text-align:center;margin:0 0 12px">' + esc(rec.q) + '</p>'
+    + '<div class="rec-opts" id="recOpts">' + opts.map(o => '<button type="button" class="btn ghost rec-opt">' + esc(o) + '</button>').join("") + '</div>'
+    + '<div id="recMsg" class="rec-msg"></div>'
+    + '<div class="modal-actions"><button type="button" class="btn ghost" id="recClose2">Voltar ao código</button></div></div>';
+  m.querySelector("#recClose").onclick = closeRec; m.querySelector("#recClose2").onclick = closeRec;
+  m.querySelectorAll(".rec-opt").forEach(b => b.onclick = () => recTry(b.textContent, b));
+}
+async function recTry(answer, btn) {
+  const rec = getRec(), env = window.__recEnv;
+  if (btn) btn.disabled = true;
+  try {
+    const k = await deriveKey(_normA(answer), rec.env.salt);  // MESMO salt usado para cifrar
+    const obj = await decryptEnvelope(k, rec.env);          // só a resposta certa abre
+    const pin = obj.pin;
+    const pk = await deriveKey(pin, env.salt);              // recupera o PIN → desbloqueia os dados atuais
+    const data = await decryptEnvelope(pk, env);
+    recLockReset();
+    window.CRYPTO_KEY = pk; DATA = migrate(data); localStorage.setItem("financas2026.profile", "real");
+    document.body.classList.remove("test-mode");
+    closeRec(); toast("Acesso recuperado ✓"); playUnlock(startApp);
+  } catch (e) {                                             // errou
+    if (btn) btn.disabled = false;
+    let st = recLockState(); st.tries = (st.tries != null ? st.tries : 3) - 1;
+    const m = document.getElementById("recModal");
+    if (st.tries <= 0) {                                    // acabaram as chances → bloqueia (exponencial)
+      const round = st.round || 0;
+      st.until = Date.now() + 60000 * Math.pow(2, round); st.round = round + 1; st.tries = 2;
+      recLockSave(st); renderRec();
+    } else {
+      recLockSave(st);
+      const msg = m && m.querySelector("#recMsg");
+      if (msg) msg.innerHTML = animEmoji("sos", "🆘", "rec-msg-emoji") + ' Errou — ' + st.tries + (st.tries === 1 ? ' chance restante' : ' chances restantes');
+      const op = m && m.querySelector(".rec-opts"); if (op) { op.classList.remove("shake"); void op.offsetWidth; op.classList.add("shake"); }
+    }
+  }
+}
 const TEST_CODE = "8040";   // código do modo teste (privado — sem dica na tela)
 // Mantém o quadro de código SEMPRE centralizado na área visível: quando o teclado abre,
 // a área visível encolhe (visualViewport) e o quadro recentra; ao fechar, volta ao meio.
@@ -5125,6 +5254,12 @@ function showLock(env) {
   };
   $("#lockBtn").onclick = () => attempt(true);
   pin.onkeydown = (e) => { if (e.key === "Enter") attempt(true); };
+  // "Esqueci meu código" → recuperação por pergunta secreta (só se configurada neste aparelho)
+  let fg = document.getElementById("lockForgot");
+  if (!fg) { fg = document.createElement("button"); fg.id = "lockForgot"; fg.type = "button"; fg.className = "lock-forgot"; const lb = $("#lockBtn"); if (lb && lb.parentNode) lb.parentNode.insertBefore(fg, lb.nextSibling); }
+  fg.textContent = "Esqueci meu código";
+  fg.style.display = hasRec() ? "" : "none";
+  fg.onclick = () => openRecovery(env);
 }
 // Animação de desbloqueio: cadeado abre → a tela "abre no meio" (duas metades se separam) → cadeado esmaece pra direita.
 function playUnlock(after) {
@@ -5230,8 +5365,9 @@ async function applyPin4(p1, p2) {
   return true;
 }
 async function protectWithPin() {
-  const ok = await applyPin4(($("#accPin") || {}).value || "", ($("#accPin2") || {}).value || "");
-  if (ok) { toast("Dados reais protegidos 🔒"); openAccessModal(); }
+  const p1 = ($("#accPin") || {}).value || "";
+  const ok = await applyPin4(p1, ($("#accPin2") || {}).value || "");
+  if (ok) { toast("Dados reais protegidos 🔒"); afterPinSet(p1); }   // oferece a pergunta de recuperação
 }
 function exitTestMode() {
   localStorage.setItem("financas2026.profile", "real");
@@ -5718,8 +5854,9 @@ function renderOnb() {
       + '<button class="btn ghost" id="onbPinLater">Agora não — faço depois</button>'
       + '<p class="onb-warn">⚠️ Se esquecer a senha, os dados deste app não podem ser recuperados. Exporte um backup em ⚙️.</p>';
     $("#onbPinSet").onclick = async () => {
-      const ok = await applyPin4(($("#onbPin") || {}).value || "", ($("#onbPin2") || {}).value || "");
-      if (ok) { toast("App protegido 🔒"); finishOnboarding(); }
+      const p1 = ($("#onbPin") || {}).value || "";
+      const ok = await applyPin4(p1, ($("#onbPin2") || {}).value || "");
+      if (ok) { toast("App protegido 🔒"); finishOnboarding(); afterPinSet(p1); }   // oferece pergunta de recuperação
     };
     $("#onbPinLater").onclick = () => { toast("Quando quiser: Menu → Conta e acesso"); finishOnboarding(); };
     const fp = $("#onbPin"); if (fp) setTimeout(() => { try { fp.focus(); } catch (e) {} }, 60);
