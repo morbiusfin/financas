@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.62";
-const VERSION_NOTES = "🔑 agora em Configurações tem o seu “código de acesso” (pra identificar/liberar seu acesso com o administrador)";
+const APP_VERSION = "3.13.63";
+const VERSION_NOTES = "🐛 a barra de baixo (e o +) sempre volta ao fechar um lançamento — em todas as abas, inclusive Débito · 💰 o valor da meta abre certinho ao editar (13.000 não vira mais 13)";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.63",
+    bullets: [
+      "A barra de baixo e o botão + sempre voltam ao fechar um lançamento — em qualquer aba, inclusive no Débito (some atrás do teclado e volta sozinho; se travar, volta ao reabrir o app)",
+      "Editar uma meta agora mostra o valor certo (ex.: R$ 13.000,00 não vira mais R$ 13,00)",
+    ],
+  },
   {
     version: "3.13.62",
     bullets: [
@@ -1130,8 +1137,10 @@ function moneyVal(elOrStr) {
 function bindMoney(el) {
   if (!el || el._money) return; el._money = true;
   el.type = "text"; el.setAttribute("inputmode", "numeric"); el.setAttribute("autocomplete", "off");
-  if (el.value != null && el.value !== "") {            // valor inicial vem cru (ex.: "1234.56") → formata
-    const n = parseFloat(String(el.value).replace(",", "."));
+  if (el.value != null && el.value !== "") {            // valor inicial: aceita cru ("1234.56") OU já em BR ("13.000,00")
+    const v = String(el.value);
+    // se tem vírgula → é BR (tira os pontos de milhar, vírgula vira ponto); senão é cru
+    const n = v.indexOf(",") >= 0 ? parseFloat(v.replace(/\./g, "").replace(",", ".")) : parseFloat(v);
     el.value = (!isNaN(n) && n !== 0) ? fmtMoneyBR(n) : "";
   }
   el.addEventListener("input", () => {
@@ -4203,6 +4212,8 @@ function refreshScrollLock() {
       if (_modalWasOpen) {
         const a = document.activeElement;
         if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.blur) a.blur();
+        // modal fechou → re-avalia a tabbar/FAB SEM depender do resize do iOS (que às vezes some)
+        try { if (window.__revealBars) window.__revealBars(); } catch (e) {}
       }
       unlockScroll();
     }
@@ -6660,18 +6671,29 @@ function refreshInPlace() {
   // Revela a tabbar SÓ quando NADA mais pode movê-la: teclado 100% fechado, nenhum campo focado
   // e nenhum modal aberto — re-conferido em 2 frames seguidos. Se em qualquer checagem ainda
   // estiver instável, mantém escondida (nunca revela "torta" e depois corrige = o "sobe").
-  let settleT = null, r1 = 0, r2 = 0;
-  function clearReveal() { clearTimeout(settleT); cancelAnimationFrame(r1); cancelAnimationFrame(r2); }
-  function tryReveal() {
+  let settleT = null, settleT2 = null, r1 = 0, r2 = 0;
+  function clearReveal() { clearTimeout(settleT); clearTimeout(settleT2); cancelAnimationFrame(r1); cancelAnimationFrame(r2); }
+  // instabilidade REAL (mantém escondido pra sempre, de propósito): modal aberto ou campo focado.
+  const hardUnstable = () => modalOpen() || isField(document.activeElement);
+  // Revela quando assenta. CRÍTICO: se a ÚNICA instabilidade for o gap (teclado ainda fechando),
+  // NÃO desiste — re-tenta até o gap zerar. Sem isso, um resize final que o iOS não dispara
+  // deixa kbd-open preso → tabbar/FAB somem e nunca voltam (o bug do débito). #bugfix
+  function tryReveal(retries) {
     clearReveal();
+    retries = (retries == null) ? 8 : retries;
+    const finalize = () => setKbd((hardUnstable() || gap() > 120) ? true : false);
     settleT = setTimeout(() => {
-      if (unstable()) { setKbd(true); return; }
+      if (hardUnstable()) { setKbd(true); return; }       // modal/campo → fica escondido (correto)
+      if (gap() > 120) {                                   // teclado ainda descendo → espera mais
+        setKbd(true);
+        if (retries > 0) tryReveal(retries - 1);
+        return;
+      }
       reanchor();
-      r1 = requestAnimationFrame(() => {
-        if (unstable()) { setKbd(true); return; }
-        reanchor();
-        r2 = requestAnimationFrame(() => { setKbd(unstable() ? true : false); });
-      });
+      // rAF re-ancora a barra; mas rAF NÃO roda com a aba em background → fallback por timer
+      // garante o setKbd(false) mesmo sem rAF (app voltando do background, etc.).
+      r1 = requestAnimationFrame(() => { reanchor(); r2 = requestAnimationFrame(finalize); });
+      settleT2 = setTimeout(finalize, 120);
     }, 230);                                  // > animação de fechar do teclado iOS (~250ms total c/ debounce)
   }
   function hideNow() { clearReveal(); setKbd(true); }
@@ -6680,6 +6702,19 @@ function refreshInPlace() {
   // foco em campo → esconde JÁ (antes do teclado terminar de subir, sem janela pra driftar)
   document.addEventListener("focusin", (e) => { if (isField(e.target)) hideNow(); });
   document.addEventListener("focusout", (e) => { if (isField(e.target)) tryReveal(); });
+  // Redes de segurança: fechar QUALQUER modal e voltar pro app re-avaliam a barra (não dependem
+  // só do resize do iOS, que às vezes não vem). __revealBars é chamado pelo observer de scroll-lock.
+  // heal completo: se NÃO há modal aberto mas sobrou scroll-locked (esconde tabbar+FAB) → destrava;
+  // e re-avalia kbd-open (esconde tabbar). Cobre os dois jeitos da barra ficar presa.
+  window.__revealBars = () => {
+    try {
+      if (!modalOpen() && document.body.classList.contains("scroll-locked") && typeof unlockScroll === "function") unlockScroll();
+    } catch (e) {}
+    tryReveal();
+  };
+  window.addEventListener("focus", () => window.__revealBars());
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) window.__revealBars(); });
+  window.addEventListener("pageshow", () => window.__revealBars());
 })();
 
 /* ⬆️ Botão "voltar ao topo": aparece ao descer (>320px), some perto do topo */
