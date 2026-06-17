@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.65";
-const VERSION_NOTES = "💑 conta conjunta mais fácil: o passo a passo agora tem botões pra agir ali mesmo (ativar a nuvem e ver como instalar no iPhone/Android), “Ele” virou “Seu par”, e o menu ganhou “Instalar na tela de início”";
+const APP_VERSION = "3.13.66";
+const VERSION_NOTES = "🔥 novo gráfico “Ritmo de gastos” (o 1º em Gráficos): quanto você já gastou acumulado por dia, comparado com o mês passado e a média dos últimos 3 meses";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.66",
+    bullets: [
+      "Novo gráfico <b>Ritmo de gastos</b> (o primeiro em Gráficos): mostra quanto você já gastou <b>acumulado dia a dia</b>, comparado com o <b>mês passado</b> e a <b>média dos últimos 3 meses</b> — e o quanto está acima/abaixo no mesmo ponto do mês",
+    ],
+  },
   {
     version: "3.13.65",
     bullets: [
@@ -2859,11 +2865,74 @@ const serieRec = () => { const b = curYear() * 12; return Array.from({ length: 1
 const serieDesp = () => { const b = curYear() * 12; return Array.from({ length: 12 }, (_, i) => despesaMes(b + i)); };
 const serieSaldo = () => { const b = curYear() * 12; return Array.from({ length: 12 }, (_, i) => sobraMes(b + i)); };
 
+/* ---------- Ritmo de gastos: gasto acumulado por dia (mês vigente × anterior × média 3m) ---------- */
+function monthDays(m) { const y = DATA.year + Math.floor(m / 12); const mi = ((m % 12) + 12) % 12; return new Date(y, mi + 1, 0).getDate(); }
+function ritmoSpendPerDay(m) {
+  const dim = monthDays(m);
+  const per = new Array(dim + 1).fill(0);
+  const add = (dia, val) => { val = Number(val) || 0; if (val > 0) { let d = parseInt(dia, 10); if (!(d >= 1 && d <= dim)) d = 1; per[d] += val; } };
+  (DATA.fixas || []).forEach(l => add(l.dia, (l.vals || [])[m]));
+  (DATA.cartao || []).forEach(l => add(l.dia, (l.vals || [])[m]));
+  (DATA.diaria || []).forEach(d => { if (d.mes === m) add(d.dia, d.valor); });
+  const cum = []; let s = 0; for (let d = 1; d <= dim; d++) { s += per[d]; cum.push(Math.round(s * 100) / 100); }
+  return cum;
+}
+function renderRitmoChart() {
+  const cv = $("#gRitmo"); if (!cv) return;
+  if (charts.gRitmo) { try { charts.gRitmo.destroy(); } catch (e) {} charts.gRitmo = null; }
+  const m = curMonth;
+  const curC = ritmoSpendPerDay(m), prevC = ritmoSpendPerDay(m - 1);
+  const a1 = prevC, a2 = ritmoSpendPerDay(m - 2), a3 = ritmoSpendPerDay(m - 3);
+  const maxDays = Math.max(curC.length, prevC.length, a2.length, a3.length, 28);
+  const labels = Array.from({ length: maxDays }, (_, i) => i + 1);
+  const at = (arr, i) => (i < arr.length ? arr[i] : (arr.length ? arr[arr.length - 1] : 0));
+  const avg3 = labels.map((_, i) => Math.round(((at(a1, i) + at(a2, i) + at(a3, i)) / 3) * 100) / 100);
+  const isReal = (typeof realMesAbs === "function" && m === realMesAbs());
+  const todayIdx = isReal ? Math.min(REAL_TODAY.getDate(), curC.length) : curC.length;
+  const curData = labels.map((_, i) => (i < todayIdx ? at(curC, i) : null));
+  const prevData = labels.map((_, i) => (prevC.length ? at(prevC, i) : 0));
+  const curSoFar = todayIdx > 0 ? curC[todayIdx - 1] : 0;
+  const prevAtT = prevC.length ? at(prevC, Math.min(todayIdx, prevC.length) - 1) : 0;
+  const diff = curSoFar - prevAtT, up = diff >= 0;
+  const pct = prevAtT > 0 ? (diff / prevAtT * 100) : (curSoFar > 0 ? 100 : 0);
+  const head = $("#ritmoHead");
+  if (head) head.innerHTML = `<div class="ritmo-big">${brl(Math.abs(diff))} <span class="ritmo-dir">${up ? "acima" : "abaixo"}</span></div>`
+    + `<div class="ritmo-badge ${up ? "up" : "down"}">${up ? "▲" : "▼"} ${up ? "+" : "−"}${Math.abs(pct).toFixed(1)}%</div>`
+    + `<div class="ritmo-sub">vs <b>${brl(prevAtT)}</b> no mesmo ponto do mês passado</div>`;
+  const ds = [
+    { label: "Este mês", data: curData, borderColor: "#e5484d", borderWidth: 3, backgroundColor: "transparent", fill: false, tension: .3, spanGaps: false, pointRadius: labels.map((_, i) => i === todayIdx - 1 ? 5 : 0), pointBackgroundColor: "#e5484d", order: 0 },
+    { label: "Mês passado", data: prevData, borderColor: "#8b9a92", borderWidth: 2, borderDash: [6, 5], fill: false, tension: .3, pointRadius: 0, order: 2 },
+    { label: "Média 3 meses", data: avg3, borderColor: "#2f7ff0", borderWidth: 2, borderDash: [2, 4], fill: false, tension: .3, pointRadius: 0, order: 1 }
+  ];
+  charts.gRitmo = new Chart(cv, {
+    type: "line", data: { labels, datasets: ds },
+    options: {
+      responsive: true, maintainAspectRatio: false, layout: { padding: { top: 10, bottom: 2 } },
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: true, position: "bottom", labels: { boxWidth: 12, font: { size: 10 }, usePointStyle: true } },
+        tooltip: { callbacks: { title: items => "Dia " + items[0].label, label: c => `${c.dataset.label}: ${brl(c.raw)}` } },
+        valueLabels: { on: false }
+      },
+      scales: {
+        y: { min: 0, ticks: { font: { size: 9 }, callback: v => v >= 1000 ? "R$ " + (v / 1000).toFixed(v % 1000 ? 1 : 0) + "k" : "R$ " + v }, grid: { color: "rgba(128,128,128,.12)" }, grace: "8%" },
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, autoSkip: true, maxTicksLimit: 8, maxRotation: 0 } }
+      }
+    }
+  });
+}
+
 function renderGraficos(host) {
   stopResumoAnim();
   gSelMonth = ((curMonth % 12) + 12) % 12;
   const ano = DATA.year + curYear();
   host.innerHTML = `
+    <div class="section-card g-card fade-in">
+      <h3>🔥 Ritmo de gastos — ${mLong(curMonth)}</h3>
+      <p class="hint" style="text-align:left;margin:-2px 0 8px">Quanto você já gastou acumulado, dia a dia — comparado com o mês passado e a média dos últimos 3 meses.</p>
+      <div id="ritmoHead" class="ritmo-head"></div>
+      <div class="chart-wrap"><canvas id="gRitmo" height="210"></canvas></div>
+    </div>
     <div class="section-card g-card fade-in">
       <h3>🎯 Orçamento × Realizado — ${mLong(curMonth)}</h3>
       <p class="hint" style="text-align:left;margin:-2px 0 8px">Defina as metas no menu ☰ → <b>Categorias e orçamento</b>. Verde = dentro da meta, vermelho = estourou.</p>
@@ -2904,6 +2973,7 @@ function renderGraficos(host) {
       <div class="g-insights" id="insRec"></div>
     </div>`;
   renderGCharts();
+  renderRitmoChart();
   renderOrcRealChart(curMonth);
   bindGSim();
   const il = $("#insSaldo"); if (il) il.innerHTML = insightsSaldo();
@@ -2916,7 +2986,7 @@ function renderGraficos(host) {
 function renderGCharts() {
   if (typeof Chart === "undefined") return;
   applyChartTheme();
-  ["gSaldo", "gDesp", "gRec", "gCard", "dough", "bar", "line", "sim", "sobra", "orc"].forEach(k => { if (charts[k]) { try { charts[k].destroy(); } catch (e) {} charts[k] = null; } });
+  ["gRitmo", "gSaldo", "gDesp", "gRec", "gCard", "dough", "bar", "line", "sim", "sobra", "orc"].forEach(k => { if (charts[k]) { try { charts[k].destroy(); } catch (e) {} charts[k] = null; } });
   const labels = Array.from({ length: 12 }, (_, i) => MESES_CURTO[i]);
   charts.gDesp = makeBarTrend("gDesp", labels, serieDesp(), "#e5484d", drillDesp);
   charts.gRec = makeBarTrend("gRec", labels, serieRec(), "#1db954", drillRec);
