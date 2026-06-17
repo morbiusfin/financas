@@ -248,6 +248,11 @@
       <!-- backup/import/sincronização, tema, PIN ficam no MENU. Aqui só fica o input escondido (usado pelo menu Backup). -->
       <input type="file" id="importFile" accept="application/json" hidden />
       <div id="notifWrap" style="margin:12px 0"></div>
+      <div class="access-row">
+        <span class="access-lab">🔑 Seu código de acesso</span>
+        <div class="access-val"><code id="accessCode">…</code><button type="button" id="copyAccess" class="access-copy">copiar</button></div>
+        <span class="access-hint">Mostre esse código ao administrador para liberar/identificar seu acesso.</span>
+      </div>
       <p class="hint">Backup, sincronização, tema e PIN estão no menu ☰. Seus dados ficam salvos neste aparelho.</p>
       <div class="modal-actions">
         <button type="button" class="btn primary" id="btnCloseSettings">Fechar</button>

@@ -1,11 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.61";
-const VERSION_NOTES = "🔔 'Contas a vencer' agora respeita o 'avisar X dias antes' de cada conta (não aparece antes da hora) · 💸 quebra das despesas (Fixas/Cartão/Débitos com %) dentro do fluxo, escondendo as zeradas";
+const APP_VERSION = "3.13.62";
+const VERSION_NOTES = "🔑 agora em Configurações tem o seu “código de acesso” (pra identificar/liberar seu acesso com o administrador)";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.62",
+    bullets: [
+      "Novo em Configurações: “Seu código de acesso” — um código curto do seu aparelho pra você mostrar ao administrador (nada muda no uso do app)",
+    ],
+  },
   {
     version: "3.13.61",
     bullets: [
@@ -4258,8 +4264,31 @@ document.addEventListener("keydown", (e) => {
 });
 $("#btnCancel").onclick = closeModal;
 $("#modal").onclick = (e) => { if (e.target.id === "modal") closeModal(); };
+/* ===== Código de acesso (hash do id do aparelho). A trava de licença vive no painel admin;
+   aqui o app só EXIBE o código pra pessoa mandar ao administrador. Nada bloqueia por enquanto. ===== */
+const DEVICE_LS = "financas2026.deviceId";
+let _accessCode = null;
+async function deviceCode() {
+  if (_accessCode) return _accessCode;
+  let id = localStorage.getItem(DEVICE_LS);
+  if (!id) { id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random() + "-" + Math.random())); localStorage.setItem(DEVICE_LS, id); }
+  try {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(id));
+    const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    _accessCode = hex.slice(0, 8).toUpperCase();
+  } catch (e) { _accessCode = String(id).replace(/[^A-Za-z0-9]/g, "").slice(0, 8).toUpperCase().padEnd(8, "0"); }
+  return _accessCode;
+}
+function fmtAccess(c) { return c && c.length === 8 ? c.slice(0, 4) + "-" + c.slice(4) : c; }
+function populateAccessCode() {
+  const el = $("#accessCode"); if (!el) return;
+  deviceCode().then(c => { el.textContent = fmtAccess(c); });
+}
+{ const cb = $("#copyAccess"); if (cb) cb.onclick = async () => { try { const c = await deviceCode(); await navigator.clipboard.writeText(fmtAccess(c)); toast("Código copiado 📋"); } catch (e) { toast("Copie manualmente"); } }; }
+
 function openSettings() {
   $("#saldoInicial").value = DATA.saldoInicial || 0;
+  populateAccessCode();
   const sg = $("#setGreet");
   if (sg) {
     const row = sg.closest(".set-toggle");

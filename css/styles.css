@@ -2008,3 +2008,12 @@ body.splash-on .tabbar, body.splash-on #fab { visibility: hidden; }
 .gc-back:active { transform: scale(.95); }
 .gc-prog-row { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--muted); font-weight: 700; margin: 4px 0 10px; }
 .gc-prog-row .gc-prog { flex: 1; height: 8px; margin-top: 0; }
+
+/* ===== Código de acesso (Configurações) ===== */
+.access-row { display: flex; flex-direction: column; gap: 7px; margin: 12px 0 4px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card-2); }
+.access-lab { font-size: 13px; font-weight: 700; color: var(--ink); }
+.access-val { display: flex; align-items: center; gap: 10px; }
+.access-val code { flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 19px; font-weight: 800; letter-spacing: 2px; color: var(--accent); }
+.access-copy { flex: 0 0 auto; border: 1px solid var(--line); background: var(--card); color: var(--blue); font-family: var(--font); font-weight: 700; font-size: 12.5px; padding: 8px 14px; border-radius: 10px; cursor: pointer; transition: transform .1s ease, border-color .18s ease; }
+.access-copy:active { transform: scale(.94); }
+.access-hint { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
