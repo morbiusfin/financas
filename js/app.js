@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.79";
-const VERSION_NOTES = "🧱 tela de lançar no Débito refeita do zero, separada do resto — a barra de baixo não tem mais como sair do lugar ao abrir/fechar/salvar/cancelar";
+const APP_VERSION = "3.13.80";
+const VERSION_NOTES = "🧱 lançar no Débito agora usa a MESMA telinha das Receitas (com Débito/PIX) — a barra de baixo fica firme tanto ao salvar quanto ao cancelar";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.80",
+    bullets: [
+      "Lançar um gasto no <b>Débito</b> passou a usar a <b>mesma telinha</b> das Receitas e contas (com a escolha <b>Débito ou PIX</b> ali no topo). Com isso, a <b>barra de baixo</b> fica firme no lugar tanto ao <b>salvar</b> quanto ao <b>cancelar</b>.",
+    ],
+  },
   {
     version: "3.13.79",
     bullets: [
@@ -3827,7 +3833,7 @@ function bindRows(view) {
     r.onclick = (e) => {
       if (selMode) { e.preventDefault(); toggleSel(idx); return; }  // se o long-press já ativou a seleção
       if (e.target.dataset.toggle !== undefined) { toggleStatus(curTab, +e.target.dataset.toggle); e.stopPropagation(); return; }
-      if (curTab === "diaria") return openDiariaModal(idx);
+      if (curTab === "diaria") return openEntryModal("diaria", idx);
       openEntryModal(curTab, idx);
     };
   });
@@ -4031,7 +4037,11 @@ function updateParcelaPreview() {
 /* ---------- MODAIS ---------- */
 function openEntryModal(tab, idx) {
   if (idx == null) markExplored("add");                // exploração: usou o + (novo lançamento)
-  const isNew = idx == null, l = isNew ? null : DATA[tab][idx], isReceita = tab === "receitas";
+  const isNew = idx == null, l = isNew ? null : DATA[tab][idx], isReceita = tab === "receitas", isDiaria = tab === "diaria";
+  // Débito (diaria): usa EXATAMENTE a mesma máquina do Receita (#modal + showModal/closeModal +
+  // scroll-lock), só muda os campos. Assim o teclado/abrir/fechar/salvar se comporta igual ao Receita
+  // (que funciona) → a barra de baixo não sobe nem no salvar. #bugfix-debito-raia
+  let metodo = isDiaria ? ((!isNew && l && l.metodo) || "debito") : null;
   const stOpts = isReceita ? [["recebido", "Recebido"], ["programado", "Programado"], ["vazio", "—"]]
                            : [["pago", "Pago"], ["programado", "Programado"], ["vazio", "—"]];
   $("#modalTitle").textContent = isNew
@@ -4040,6 +4050,9 @@ function openEntryModal(tab, idx) {
   let extra = "";
   const necCheck = `<label class="field row-check nec-check"><input id="f_nec" type="checkbox" ${(!isNew && l && l.nec) ? "checked" : ""}/><span>🔒 Necessário — não posso deixar de pagar</span></label>`;
   if (isReceita) extra = `<label class="field"><span>Tipo de renda</span><select id="f_tipo"><option value="Ativa">Ativa (recorrente)</option><option value="Extra">Extra (avulsa)</option></select></label>`;
+  else if (isDiaria) extra = `<div class="seg" id="f_seg" role="tablist">
+      <button type="button" class="seg-btn${metodo === "debito" ? " active" : ""}" data-met="debito">💳 Débito</button>
+      <button type="button" class="seg-btn${metodo === "pix" ? " active" : ""}" data-met="pix">⚡ PIX</button></div>`;
   else if (tab === "fixas") extra = `<div class="field-row">
       <label class="field"><span>Avisar (dias antes)</span><input id="f_aviso" type="number" min="0" max="15" value="${isNew || !l.aviso ? "" : l.aviso}" placeholder="ex.: 3" /></label>
       <label class="field"><span>Meta/mês (opcional)</span><input id="f_meta" class="money" value="${isNew || !l.meta ? "" : l.meta}" placeholder="R$" /></label></div>` + necCheck;
@@ -4048,47 +4061,64 @@ function openEntryModal(tab, idx) {
       <label class="field"><span>de (total)</span><input id="f_pt" type="number" min="1" value="${isNew || !l.parcTotal ? "" : l.parcTotal}" placeholder="--" /></label>
       <label class="field"><span>Cartão</span><input id="f_cartao" type="text" value="${isNew || !l.cartao ? "" : esc(l.cartao)}" placeholder="final" /></label></div>` + necCheck;
 
-  const catField = isReceita ? "" : `<label class="field"><span>Categoria</span><select id="f_catId" class="sel">${catSelectHTML(isNew ? null : l.catId)}</select></label>`;
+  const valMes = isDiaria && !isNew ? (l.mes != null ? l.mes : curMonth) : curMonth;
+  const valVal = isNew ? "" : (isDiaria ? (l.valor || "") : (l.vals[curMonth] || ""));
+  const catField = isReceita ? "" : `<label class="field"><span>Categoria</span><select id="f_catId" class="sel">${catSelectHTML(isNew ? null : (isDiaria ? entryCatId(l) : l.catId))}</select></label>`;
   $("#entryForm").innerHTML = `
-    <label class="field"><span>Descrição</span><input id="f_desc" type="text" value="${isNew ? "" : esc(l.desc)}" required placeholder="Ex.: ${isReceita ? "Salário" : "Aluguel"}" /></label>
+    <label class="field"><span>Descrição</span><input id="f_desc" type="text" value="${isNew ? "" : esc(l.desc)}" required placeholder="Ex.: ${isReceita ? "Salário" : (isDiaria ? "Mercado" : "Aluguel")}" /></label>
     ${extra}
     ${catField}
-    <label class="field"><span id="f_valLbl">Valor (${mLong(curMonth)})</span><input id="f_val" class="money" value="${isNew ? "" : (l.vals[curMonth] || "")}" placeholder="0,00" /></label>
+    <label class="field"><span id="f_valLbl">Valor (${isDiaria ? "R$" : mLong(curMonth)})</span><input id="f_val" class="money" value="${valVal}" placeholder="0,00" required /></label>
     <p class="money-tip">💡 Centavos automáticos: digite <b>1000</b> e vira <b>R$ 10,00</b></p>
     <div class="field-row">
-      <label class="field"><span>Mês${isNew ? " de início" : ""}</span><select id="f_mes" class="sel">${monthOptionsHTML(curMonth)}</select></label>
+      <label class="field"><span>Mês${isNew && !isDiaria ? " de início" : ""}</span><select id="f_mes" class="sel">${monthOptionsHTML(valMes)}</select></label>
       <label class="field"><span>${tab === "fixas" ? "Vencimento (dia)" : "Dia"}</span><select id="f_dia" class="sel"></select></label>
     </div>
-    <label class="field"><span>Situação</span><select id="f_st">${stOpts.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select></label>
+    ${isDiaria ? "" : `<label class="field"><span>Situação</span><select id="f_st">${stOpts.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select></label>
     <label class="field row-check"><input id="f_all" type="checkbox" /><span>Repetir nos próximos meses</span></label>
     <label class="field" id="f_rep_wrap" style="display:none"><span>Por quantos meses? (a partir do mês escolhido — pode passar de 2026)</span>
-      <input id="f_rep" type="number" min="1" max="120" inputmode="numeric" value="12" /></label>`;
-  const diaDefaultE = isNew ? (curMonth === realMesAbs() ? REAL_TODAY.getDate() : null) : (l.dia || null);
+      <input id="f_rep" type="number" min="1" max="120" inputmode="numeric" value="12" /></label>`}`;
+  const diaDefaultE = isNew ? (valMes === realMesAbs() ? REAL_TODAY.getDate() : null) : (l.dia || null);
   fillDaySelect("f_dia", "f_mes", diaDefaultE);   // novo lançamento no mês vigente → já vem com o dia de hoje
-  if (!isNew) { if (isReceita) $("#f_tipo").value = l.tipo || "Ativa"; $("#f_st").value = l.sts[curMonth] || "vazio"; }
-  else $("#f_st").value = isReceita ? "recebido" : "pago";
-  $("#f_all").onchange = () => { $("#f_rep_wrap").style.display = $("#f_all").checked ? "block" : "none"; };
+  if (!isNew) { if (isReceita) $("#f_tipo").value = l.tipo || "Ativa"; if (!isDiaria) $("#f_st").value = l.sts[curMonth] || "vazio"; }
+  else if (!isDiaria) $("#f_st").value = isReceita ? "recebido" : "pago";
+  { const fa = $("#f_all"); if (fa) fa.onchange = () => { $("#f_rep_wrap").style.display = fa.checked ? "block" : "none"; }; }
+  if (isDiaria) $$("#f_seg .seg-btn").forEach(b => b.onclick = () => { $$("#f_seg .seg-btn").forEach(x => x.classList.toggle("active", x === b)); metodo = b.dataset.met; });
 
   // Aviso inteligente: mostra a sobra do mês DEPOIS deste lançamento (em tempo real).
   const isExpenseE = tab !== "receitas";
-  const oldValAt = (m) => isNew ? 0 : (Number(l.vals[m]) || 0);
+  const oldValAt = (m) => isNew ? 0 : (isDiaria ? (Number(l.valor) || 0) : (Number(l.vals[m]) || 0));
   $("#entryForm").insertAdjacentHTML("beforeend", `<div id="f_impact" class="impact"></div>`);
   const fv = $("#f_val"); if (fv) fv.oninput = () => updateImpact(isExpenseE, oldValAt(+$("#f_mes").value));
   $("#f_mes").onchange = () => {
     const bm = +$("#f_mes").value;
     fillDaySelect("f_dia", "f_mes");
-    const vl = $("#f_valLbl"); if (vl) vl.textContent = "Valor (" + mLong(bm) + ")";
-    if (!isNew) { ensureLen(l, bm + 1); $("#f_val").value = l.vals[bm] ? fmtMoneyBR(l.vals[bm]) : ""; $("#f_st").value = l.sts[bm] || "vazio"; }
+    if (!isDiaria) {
+      const vl = $("#f_valLbl"); if (vl) vl.textContent = "Valor (" + mLong(bm) + ")";
+      if (!isNew) { ensureLen(l, bm + 1); $("#f_val").value = l.vals[bm] ? fmtMoneyBR(l.vals[bm]) : ""; $("#f_st").value = l.sts[bm] || "vazio"; }
+    }
     updateImpact(isExpenseE, oldValAt(bm));
   };
-  updateImpact(isExpenseE, oldValAt(curMonth));
+  updateImpact(isExpenseE, oldValAt(valMes));
 
   $("#btnDelete").classList.toggle("hidden", isNew);
-  $("#btnDelete").onclick = () => modalConfirm("Excluir este lançamento (todos os meses)?", () => { tombstone(DATA[tab][idx].id); DATA[tab].splice(idx, 1); persist(); closeModal(); toast("Excluído"); }, "Excluir");
+  $("#btnDelete").onclick = () => modalConfirm(isDiaria ? "Excluir esta compra?" : "Excluir este lançamento (todos os meses)?", () => { tombstone(DATA[tab][idx].id); DATA[tab].splice(idx, 1); persist(); closeModal(); toast("Excluído"); }, "Excluir");
   $("#entryForm").onsubmit = (e) => {
     e.preventDefault();
-    const val = moneyVal($("#f_val")), st = $("#f_st").value, all = $("#f_all").checked;
+    const val = moneyVal($("#f_val"));
     const bm = +$("#f_mes").value;
+    if (isDiaria) {                                            // Débito: item de 1 mês só (sem vals/sts)
+      const catId = $("#f_catId") ? ($("#f_catId").value || null) : null;
+      const o = { desc: $("#f_desc").value.trim(), valor: val, dia: parseInt($("#f_dia").value) || null, catId, categoria: catId ? ((catById(catId) || {}).nome || "Geral") : "Geral", metodo };
+      if (isNew) DATA.diaria.push({ id: uid(), mes: bm, ...o, m: nowMs() });
+      else { Object.assign(l, o); l.mes = bm; l.m = nowMs(); }
+      persist(); closeModal();
+      const saD = disponivelMes(bm) - despesaMes(bm);
+      if (val > 0 && saD < 0) toast(`⚠️ ${mLong(bm)} ficou no vermelho (${brl(saD)}) · Ctrl+Z desfaz`);
+      else toast(`${isNew ? "Adicionado" : "Salvo"} em ${mLong(bm)} ✓`);
+      return;
+    }
+    const st = $("#f_st").value, all = $("#f_all").checked;
     let line = isNew ? { id: uid(), desc: "", vals: Array(12).fill(0), sts: Array(12).fill("vazio") } : l;
     ensureLen(line, bm + 1);
     line.desc = $("#f_desc").value.trim();
@@ -4481,7 +4511,7 @@ $("#fab").onclick = () => {
   // Débito abre o modal DIRETO (igual Receitas/Fixas) — a escolha PIX/Débito é um segmentado
   // DENTRO do modal. Tira o balão chooser do caminho: era o único passo estrutural diferente
   // das abas que funcionam (balão solto no body, sem scroll-lock) → causava a barra "subir" no iOS.
-  return curTab === "diaria" ? openDiariaModal(null) : curTab === "cartao" ? openCartaoChooser() : openEntryModal(curTab, null);
+  return curTab === "diaria" ? openEntryModal("diaria", null) : curTab === "cartao" ? openCartaoChooser() : openEntryModal(curTab, null);
 };
 $("#btnUndo").onclick = undo;
 { const br = $("#btnRefresh"); if (br) br.onclick = syncNow; }
