@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.75";
-const VERSION_NOTES = "🛟 barra de baixo no Débito: ela não sobe mais ao abrir/fechar o lançamento, mesmo quando a lista do dia tem poucos itens";
+const APP_VERSION = "3.13.76";
+const VERSION_NOTES = "🛟 barra de baixo travada de vez: ao abrir/fechar qualquer lançamento (Débito incluso, salvando ou cancelando) ela volta exatamente pro lugar — nunca mais sobe";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.76",
+    bullets: [
+      "A <b>barra de baixo</b> agora fica 100% no lugar em qualquer aba — inclusive no <b>Débito</b>: ao abrir e fechar um lançamento (salvando ou cancelando), ela volta exatamente pra onde estava, sem subir.",
+    ],
+  },
   {
     version: "3.13.75",
     bullets: [
@@ -6913,8 +6919,11 @@ function refreshInPlace() {
   // estiver instável, mantém escondida (nunca revela "torta" e depois corrige = o "sobe").
   let settleT = null, settleT2 = null, r1 = 0, r2 = 0;
   function clearReveal() { clearTimeout(settleT); clearTimeout(settleT2); cancelAnimationFrame(r1); cancelAnimationFrame(r2); }
-  // instabilidade REAL (mantém escondido pra sempre, de propósito): modal aberto ou campo focado.
-  const hardUnstable = () => modalOpen() || isField(document.activeElement);
+  // instabilidade REAL (exige display:none / mantém kbd-open): SÓ campo focado (= teclado de verdade).
+  // Modal aberto NÃO entra mais aqui: o modal esconde a barra via scroll-locked (visibility:hidden),
+  // que NÃO tira do render tree → o position:fixed mantém a âncora e a barra volta no lugar ao fechar
+  // (antes, modalOpen() aqui setava kbd-open → display:none → drift "subindo" em aba curta). #bugfix-debito-raia
+  const hardUnstable = () => isField(document.activeElement);
   // Revela quando assenta. CRÍTICO: se a ÚNICA instabilidade for o gap (teclado ainda fechando),
   // NÃO desiste — re-tenta até o gap zerar. Sem isso, um resize final que o iOS não dispara
   // deixa kbd-open preso → tabbar/FAB somem e nunca voltam (o bug do débito). #bugfix
@@ -6924,7 +6933,10 @@ function refreshInPlace() {
     const finalize = () => {
       const unstable = hardUnstable() || gap() > 120;
       setKbd(unstable);
-      if (!unstable) { repinBars(); requestAnimationFrame(repinBars); }   // revelou → re-fixa (display-toggle) p/ não ficar "subida" em página curta
+      if (!unstable) {                              // revelou → re-fixa em RAJADA (display-toggle): cobre o
+        repinBars(); requestAnimationFrame(repinBars);   // assentamento do iOS após o teclado fechar (salvar)
+        [120, 320, 560].forEach(ms => setTimeout(() => { if (!hardUnstable() && gap() <= 120) repinBars(); }, ms));
+      }
     };
     settleT = setTimeout(() => {
       if (hardUnstable()) { setKbd(true); return; }       // modal/campo → fica escondido (correto)

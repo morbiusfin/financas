@@ -1107,11 +1107,15 @@ select.sel { cursor: pointer; }
   transform: translateZ(0); -webkit-transform: translateZ(0); will-change: transform; backface-visibility: hidden;
   transition: background-color .35s ease, box-shadow .35s ease, opacity .2s ease; }
 #fab { transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .2s ease; }
-/* Pop-up aberto (scroll travado): a barra de baixo flutuante e o + SOMEM — senão ficam "ilhados"
-   atrás do backdrop translúcido, com um vão escuro embaixo (parece que a base quebrou). Voltam ao fechar. */
-/* Pop-up aberto: a barra de baixo e o + SOMEM NA HORA (sem fade/sem deslizar). Assim a pílula nunca
-   "sobe" antes de sumir quando o iOS recalcula a safe-area ao travar o scroll. Voltam ao fechar. */
-body.scroll-locked .tabbar, body.scroll-locked #fab,
+/* Pop-up aberto (scroll travado): a barra de baixo e o + ficam INVISÍVEIS, mas com `visibility`
+   (NÃO `display:none`). Por quê: com display:none a barra SAI do render tree e, ao fechar o modal,
+   o iOS a recoloca DESANCORADA em aba de lista CURTA (ex.: Débito 1 item) — ela "sobe" e não volta,
+   porque o scroll-nudge de re-âncora não tem efeito sem área pra rolar. Com visibility:hidden ela
+   permanece no render tree, o position:fixed NUNCA perde a âncora, e ao reaparecer volta EXATAMENTE
+   pro lugar (igual às outras abas). Fica invisível e sem toque, então não "ilha" atrás do backdrop. */
+body.scroll-locked .tabbar, body.scroll-locked #fab {
+  visibility: hidden !important; pointer-events: none !important; }
+/* party-on (comemoração) some de vez (display:none) — não tem o problema da aba curta. */
 body.party-on .tabbar, body.party-on #fab {
   display: none !important; }
 /* ===== Entrada da tab bar (ao abrir o app): pílula sobe + fade, ícones em sequência, vidro depois ===== */
