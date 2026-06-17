@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.83";
-const VERSION_NOTES = "🛟 barra de baixo: reforço pro 1º lançamento do Débito — ela reencaixa sozinha (sem piscar) logo após salvar, mesmo na primeira vez que você abre a tela";
+const APP_VERSION = "3.13.84";
+const VERSION_NOTES = "🛟 barra de baixo: ao salvar com o teclado ABERTO, o app fecha o teclado e espera ele descer antes de fechar a janela — a barra para de subir de vez";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.84",
+    bullets: [
+      "Resolvido o último caso da <b>barra de baixo</b>: quando você salva um lançamento com o <b>teclado ainda aberto</b>, o app agora fecha o teclado e espera ele descer antes de fechar a janelinha — assim a barra fica firme no lugar, sem subir.",
+    ],
+  },
   {
     version: "3.13.83",
     bullets: [
@@ -4124,10 +4130,12 @@ function openEntryModal(tab, idx) {
       const o = { desc: $("#f_desc").value.trim(), valor: val, dia: parseInt($("#f_dia").value) || null, catId, categoria: catId ? ((catById(catId) || {}).nome || "Geral") : "Geral" };
       if (isNew) DATA.diaria.push({ id: uid(), mes: bm, ...o, m: nowMs() });
       else { Object.assign(l, o); l.mes = bm; l.m = nowMs(); }
-      persist(); closeModal();
-      const saD = disponivelMes(bm) - despesaMes(bm);
-      if (val > 0 && saD < 0) toast(`⚠️ ${mLong(bm)} ficou no vermelho (${brl(saD)}) · Ctrl+Z desfaz`);
-      else toast(`${isNew ? "Adicionado" : "Salvo"} em ${mLong(bm)} ✓`);
+      afterKeyboardDown(() => {                                 // fecha o teclado e ESPERA descer antes de salvar/fechar
+        persist(); closeModal();
+        const saD = disponivelMes(bm) - despesaMes(bm);
+        if (val > 0 && saD < 0) toast(`⚠️ ${mLong(bm)} ficou no vermelho (${brl(saD)}) · Ctrl+Z desfaz`);
+        else toast(`${isNew ? "Adicionado" : "Salvo"} em ${mLong(bm)} ✓`);
+      });
       return;
     }
     const st = $("#f_st").value, all = $("#f_all").checked;
@@ -4146,10 +4154,12 @@ function openEntryModal(tab, idx) {
     } else { line.vals[bm] = val; line.sts[bm] = val > 0 ? st : "vazio"; }
     line.m = nowMs();                                          // mtime p/ o merge da conta conjunta
     if (isNew) DATA[tab].push(line);
-    persist(); closeModal();
-    const sa = disponivelMes(bm) - despesaMes(bm);
-    if (isExpenseE && val > 0 && sa < 0) toast(`⚠️ ${mLong(bm)} ficou no vermelho (${brl(sa)}) · Ctrl+Z desfaz`);
-    else toast(`${isNew ? "Adicionado" : "Salvo"} em ${mLong(bm)} ✓`);
+    afterKeyboardDown(() => {                                  // fecha o teclado e ESPERA descer antes de salvar/fechar
+      persist(); closeModal();
+      const sa = disponivelMes(bm) - despesaMes(bm);
+      if (isExpenseE && val > 0 && sa < 0) toast(`⚠️ ${mLong(bm)} ficou no vermelho (${brl(sa)}) · Ctrl+Z desfaz`);
+      else toast(`${isNew ? "Adicionado" : "Salvo"} em ${mLong(bm)} ✓`);
+    });
   };
   showModal("#modal");
 }
@@ -4409,6 +4419,22 @@ function renderOrcRealChart(m) {
 /* ---------- Infra ---------- */
 function showModal(s) { const df = $("#diariaForm"); if (df) df.innerHTML = ""; const el = $(s); el.classList.remove("hidden"); bindMoneyAll(el); }
 function closeModal() { $("#modal").classList.add("hidden"); }
+// Executa `fn` SÓ depois que o teclado do iOS descer. Tira o foco (some o teclado) e espera o
+// visualViewport voltar (ou um timeout). Salvar com o teclado ABERTO e fechar o modal ao mesmo
+// tempo era o que deixava a barra "subir" no iOS (modal some + teclado desce ao mesmo tempo →
+// fixed desancora). Assim o salvar/fechar acontece com a tela JÁ estável. #bugfix-debito-raia
+function afterKeyboardDown(fn) {
+  const ae = document.activeElement;
+  if (ae && typeof ae.blur === "function") { try { ae.blur(); } catch (e) {} }
+  const vv = window.visualViewport;
+  const down = () => !vv || (window.innerHeight - vv.height) <= 120;
+  if (down()) { fn(); return; }
+  let done = false;
+  const go = () => { if (done) return; done = true; try { if (vv) vv.removeEventListener("resize", onVV); } catch (e) {} clearTimeout(t); fn(); };
+  const onVV = () => { if (down()) go(); };
+  if (vv) vv.addEventListener("resize", onVV);
+  const t = setTimeout(go, 500);   // fallback: se o resize não vier, segue mesmo assim
+}
 
 /* Confirmação em modal HTML (NÃO usar confirm() nativo: no PWA instalado no iOS ele é
    bloqueado e retorna false silenciosamente → exclusões "não funcionavam"). Callback no OK. */
