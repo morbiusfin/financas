@@ -1,11 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.66";
-const VERSION_NOTES = "🔥 novo gráfico “Ritmo de gastos” (o 1º em Gráficos): quanto você já gastou acumulado por dia, comparado com o mês passado e a média dos últimos 3 meses";
+const APP_VERSION = "3.13.67";
+const VERSION_NOTES = "🔥 Ritmo de gastos turbinado: um resumo do dia abaixo do gráfico que muda conforme você passa o dedo · 📲 o guia de instalar na tela de início aparece sozinho depois do “Começar do zero”";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.67",
+    bullets: [
+      "Ritmo de gastos: novo <b>resumo do dia</b> embaixo do gráfico que <b>muda quando você passa o dedo</b> (acumulado, gasto naquele dia, mês passado e média 3m); o eixo começa no zero e o layout ficou alinhado",
+      "O guia <b>“Instalar na tela de início”</b> agora aparece sozinho logo depois do “Começar do zero” (uma vez), e o botão “Entendi” não fica mais colado na borda",
+    ],
+  },
   {
     version: "3.13.66",
     bullets: [
@@ -2866,6 +2873,7 @@ const serieDesp = () => { const b = curYear() * 12; return Array.from({ length: 
 const serieSaldo = () => { const b = curYear() * 12; return Array.from({ length: 12 }, (_, i) => sobraMes(b + i)); };
 
 /* ---------- Ritmo de gastos: gasto acumulado por dia (mês vigente × anterior × média 3m) ---------- */
+let _ritmo = null;   // dados do gráfico atual, p/ o resumo que responde ao dedo (scrub)
 function monthDays(m) { const y = DATA.year + Math.floor(m / 12); const mi = ((m % 12) + 12) % 12; return new Date(y, mi + 1, 0).getDate(); }
 function ritmoSpendPerDay(m) {
   const dim = monthDays(m);
@@ -2899,6 +2907,7 @@ function renderRitmoChart() {
   if (head) head.innerHTML = `<div class="ritmo-big">${brl(Math.abs(diff))} <span class="ritmo-dir">${up ? "acima" : "abaixo"}</span></div>`
     + `<div class="ritmo-badge ${up ? "up" : "down"}">${up ? "▲" : "▼"} ${up ? "+" : "−"}${Math.abs(pct).toFixed(1)}%</div>`
     + `<div class="ritmo-sub">vs <b>${brl(prevAtT)}</b> no mesmo ponto do mês passado</div>`;
+  _ritmo = { curC, prevC, avg3, todayIdx };
   const ds = [
     { label: "Este mês", data: curData, borderColor: "#e5484d", borderWidth: 3, backgroundColor: "transparent", fill: false, tension: .3, spanGaps: false, pointRadius: labels.map((_, i) => i === todayIdx - 1 ? 5 : 0), pointBackgroundColor: "#e5484d", order: 0 },
     { label: "Mês passado", data: prevData, borderColor: "#8b9a92", borderWidth: 2, borderDash: [6, 5], fill: false, tension: .3, pointRadius: 0, order: 2 },
@@ -2909,6 +2918,7 @@ function renderRitmoChart() {
     options: {
       responsive: true, maintainAspectRatio: false, layout: { padding: { top: 10, bottom: 2 } },
       interaction: { mode: "index", intersect: false },
+      onHover: (e, els) => fillRitmoScrub(els && els.length ? els[0].index : null),
       plugins: {
         legend: { display: true, position: "bottom", labels: { boxWidth: 12, font: { size: 10 }, usePointStyle: true } },
         tooltip: { callbacks: { title: items => "Dia " + items[0].label, label: c => `${c.dataset.label}: ${brl(c.raw)}` } },
@@ -2920,6 +2930,28 @@ function renderRitmoChart() {
       }
     }
   });
+  fillRitmoScrub(null);   // estado inicial = hoje
+}
+// resumo do gasto diário — atualiza conforme o dedo passa no gráfico (idx 0-based; null = hoje)
+function fillRitmoScrub(idx) {
+  const el = $("#ritmoScrub"); if (!el || !_ritmo) return;
+  const curC = _ritmo.curC, prevC = _ritmo.prevC, avg3 = _ritmo.avg3, todayIdx = _ritmo.todayIdx;
+  const span = Math.max(curC.length, prevC.length, avg3.length);
+  if (idx == null || idx < 0) idx = Math.max(0, todayIdx - 1);
+  idx = Math.min(idx, span - 1);
+  const at = (a, i) => (i < a.length ? a[i] : (a.length ? a[a.length - 1] : 0));
+  const future = idx >= todayIdx;                       // dia do mês ainda não chegou
+  const curCum = future ? null : at(curC, idx);
+  const dayDelta = future ? null : (idx > 0 ? at(curC, idx) - at(curC, idx - 1) : (curC[0] || 0));
+  const prevCum = at(prevC, idx), avgCum = at(avg3, idx);
+  el.innerHTML =
+    `<div class="rs-day">📅 Dia ${idx + 1}${future ? " <i>(ainda não chegou)</i>" : ""}</div>`
+    + `<div class="rs-grid">`
+    + `<div class="rs-cell"><span class="rs-dot" style="background:#e5484d"></span>acumulado<b>${future ? "—" : brl(curCum)}</b></div>`
+    + `<div class="rs-cell"><span class="rs-lab2">gasto no dia</span><b>${future ? "—" : brl(dayDelta)}</b></div>`
+    + `<div class="rs-cell"><span class="rs-dot" style="background:#8b9a92"></span>mês passado<b>${brl(prevCum)}</b></div>`
+    + `<div class="rs-cell"><span class="rs-dot" style="background:#2f7ff0"></span>média 3m<b>${brl(avgCum)}</b></div>`
+    + `</div>`;
 }
 
 function renderGraficos(host) {
@@ -2932,6 +2964,7 @@ function renderGraficos(host) {
       <p class="hint" style="text-align:left;margin:-2px 0 8px">Quanto você já gastou acumulado, dia a dia — comparado com o mês passado e a média dos últimos 3 meses.</p>
       <div id="ritmoHead" class="ritmo-head"></div>
       <div class="chart-wrap"><canvas id="gRitmo" height="210"></canvas></div>
+      <div id="ritmoScrub" class="ritmo-scrub"></div>
     </div>
     <div class="section-card g-card fade-in">
       <h3>🎯 Orçamento × Realizado — ${mLong(curMonth)}</h3>
@@ -6639,6 +6672,8 @@ function finishOnboarding() {
   render();
   toast("Pronto! Toque no + quando quiser lançar algo.");
   const t = document.querySelector(".tab.active"); if (t) try { t.focus(); } catch (e) {}
+  // logo após o onboarding (ex.: "Começar do zero"), no celular e 1x só → guia de instalar na tela de início
+  if (installGuideApplicable()) setTimeout(openInstallGuide, 500);
 }
 function renderSeedBanner() {   // banner "dados de exemplo" no topo do conteúdo (modo Explorar)
   if (localStorage.getItem("financas2026.isSeed") !== "1") return;
