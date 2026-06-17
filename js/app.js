@@ -1,11 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.64";
-const VERSION_NOTES = "🔒 ao tocar Entrar, a tela de senha aparece na hora — acabou aquele “flash” em que o app piscava por um instante antes de pedir a senha";
+const APP_VERSION = "3.13.65";
+const VERSION_NOTES = "💑 conta conjunta mais fácil: o passo a passo agora tem botões pra agir ali mesmo (ativar a nuvem e ver como instalar no iPhone/Android), “Ele” virou “Seu par”, e o menu ganhou “Instalar na tela de início”";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) ===== */
 const CHANGELOG = [
+  {
+    version: "3.13.65",
+    bullets: [
+      "Conta conjunta: o passo a passo virou interativo — botões pra <b>ativar a sincronização na nuvem</b> e ver <b>como instalar (iPhone/Android)</b> direto ali, sem caçar no menu",
+      "“Ele (2º)” agora se chama <b>“Seu par”</b>",
+      "Novo no menu: <b>Instalar na tela de início</b> (guia iPhone/Android a qualquer momento)",
+    ],
+  },
   {
     version: "3.13.64",
     bullets: [
@@ -5232,9 +5240,11 @@ function openSyncHelp() {
       + '<li>O que um lança aparece pro outro em segundos (e ao abrir o app).</li></ul></div>'
       + '<div class="sh-steps-t">📲 Passo a passo:</div>'
       + '<ol class="sh-steps">'
-      + '<li><b>Você (1º):</b> ative a <b>sincronização na nuvem</b> em ⚙️ (uma vez só).</li>'
-      + '<li>No perfil → <b>Conta conjunta</b> → toque em <b>“Compartilhar convite”</b> e mande o link/QR pro seu par.</li>'
-      + '<li><b>Ele (2º):</b> abre o link no celular. Se ainda não tem o app, instala (Android: Chrome → Instalar; iPhone: Safari → Compartilhar → Adicionar à Tela de Início) e abre o link de novo.</li>'
+      + '<li><b>Você:</b> ative a <b>sincronização na nuvem</b> (uma vez só) no botão aqui:'
+      +   '<button type="button" class="btn primary sh-act" id="shSync">☁️ Ativar sincronização na nuvem</button></li>'
+      + '<li>Toque em <b>“Abrir conta conjunta”</b> (botão verde abaixo) e mande o <b>link / QR</b> pro seu par.</li>'
+      + '<li><b>Seu par:</b> abre o link no celular. Se ainda não tiver o app, é só instalar na tela de início:'
+      +   '<button type="button" class="btn ghost sh-act" id="shInstall">📱 Como instalar (iPhone / Android)</button></li>'
       + '<li>🟢 <b>Pronto!</b> Os dois compartilham a mesma conta. Cada um continua com o <b>seu</b> nome e foto.</li>'
       + '</ol>'
       + '<div class="sh-err-t">❓ Dúvidas comuns</div>'
@@ -5247,6 +5257,8 @@ function openSyncHelp() {
     m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); });
     m.querySelector("#shClose").onclick = () => m.classList.add("hidden");
     m.querySelector("#shPair").onclick = () => { m.classList.add("hidden"); openPairModal(); };
+    const sy = m.querySelector("#shSync"); if (sy) sy.onclick = () => { m.classList.add("hidden"); configurarSync(); };
+    const ins = m.querySelector("#shInstall"); if (ins) ins.onclick = () => openInstallGuide();   // por cima do guia; ao fechar, volta pra cá
   }
   m.classList.remove("hidden");
 }
@@ -5613,6 +5625,7 @@ function closeTut() { const m = document.getElementById("tutModal"); if (m) m.cl
   const mt = $("#miTutorial"); if (mt) mt.onclick = () => { closeMenu(); openTutorial(); };
   const mn = $("#miManual"); if (mn) mn.onclick = () => { closeMenu(); openManual(); };
   const mf = $("#miFaq"); if (mf) mf.onclick = () => { closeMenu(); openFaq(); };
+  const mi = $("#miInstalar"); if (mi) mi.onclick = () => { closeMenu(); openInstallGuide(); };
 })();
 (function bindWhatsNew() {                 // liga o ícone e os botões do modal (elementos estáticos)
   const i = $("#btnWhatsNew"); if (i) i.onclick = openWhatsNew;

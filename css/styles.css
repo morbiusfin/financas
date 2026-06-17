@@ -398,8 +398,10 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .sh-body ul, .sh-body ol { margin: 0; padding-left: 22px; }
 .sh-body li { font-size: 13px; line-height: 1.55; color: var(--muted); margin-bottom: 6px; }
 .sh-body li b { color: var(--ink); }
-.sh-steps li { margin-bottom: 9px; }
+.sh-steps li { margin-bottom: 11px; }
 .sh-card #shPair { width: 100%; margin-top: 16px; }
+/* botões de ação dentro dos passos do walkthrough da conta conjunta */
+.sh-steps .sh-act { display: block; width: 100%; margin: 9px 0 2px; padding: 11px 14px; font-size: 13.5px; }
 
 /* pareamento do casal */
 .pair-card { max-width: 360px; }
