@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.80";
-const VERSION_NOTES = "🧱 lançar no Débito agora usa a MESMA telinha das Receitas (com Débito/PIX) — a barra de baixo fica firme tanto ao salvar quanto ao cancelar";
+const APP_VERSION = "3.13.81";
+const VERSION_NOTES = "🧱 lançar no Débito ficou igual às Contas fixas e mais simples: saiu a escolha Débito/PIX. A barra de baixo fica firme ao salvar e ao cancelar";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.81",
+    bullets: [
+      "Lançar um gasto no <b>Débito</b> ficou igual às <b>Contas fixas</b> e mais simples: <b>saiu a escolha Débito/PIX</b> — você só preenche descrição, valor, categoria e dia. A barra de baixo fica firme no lugar ao salvar e ao cancelar.",
+    ],
+  },
   {
     version: "3.13.80",
     bullets: [
@@ -3798,9 +3804,8 @@ function renderDiaria(view) {
     html += `<div class="group-head">${emo}${esc(cat)} <span>${brl(sub)}</span></div><div class="list">${itens.map(({ d, idx }, gi) => {
       const on = selected.has(idx);
       const box = selMode ? `<span class="sel-box${on ? " on" : ""}" data-sel="${idx}"></span>` : "";
-      const met = d.metodo === "pix" ? `<span class="met-pill pix">⚡ PIX</span>` : d.metodo === "debito" ? `<span class="met-pill debito">💳 Débito</span>` : "";
       const dia = d.dia ? `dia ${d.dia}` : "";
-      const subln = (met || dia) ? `<div class="sub">${[dia, met].filter(Boolean).join(" · ")}</div>` : "";
+      const subln = dia ? `<div class="sub">${dia}</div>` : "";
       return `<div class="list-row${selMode ? " sel-mode" : ""}${on ? " sel-on" : ""}" data-idx="${idx}" style="--i:${Math.min(gi, 16)}">${box}<div class="desc"><div class="name">${esc(d.desc || "—")}</div>${subln}</div><span class="amount">${brl(d.valor)}</span></div>`;
     }).join("")}</div>`;
   });
@@ -4038,10 +4043,9 @@ function updateParcelaPreview() {
 function openEntryModal(tab, idx) {
   if (idx == null) markExplored("add");                // exploração: usou o + (novo lançamento)
   const isNew = idx == null, l = isNew ? null : DATA[tab][idx], isReceita = tab === "receitas", isDiaria = tab === "diaria";
-  // Débito (diaria): usa EXATAMENTE a mesma máquina do Receita (#modal + showModal/closeModal +
-  // scroll-lock), só muda os campos. Assim o teclado/abrir/fechar/salvar se comporta igual ao Receita
-  // (que funciona) → a barra de baixo não sobe nem no salvar. #bugfix-debito-raia
-  let metodo = isDiaria ? ((!isNew && l && l.metodo) || "debito") : null;
+  // Débito (diaria): usa EXATAMENTE a mesma máquina do Fixas/Receita (#modal + showModal/closeModal
+  // + scroll-lock), só muda os campos (sem situação/recorrência; grava 1 mês). SEM Débito/PIX.
+  // Assim o teclado/abrir/fechar/salvar se comporta igual ao Fixas (que funciona) → a barra não sobe.
   const stOpts = isReceita ? [["recebido", "Recebido"], ["programado", "Programado"], ["vazio", "—"]]
                            : [["pago", "Pago"], ["programado", "Programado"], ["vazio", "—"]];
   $("#modalTitle").textContent = isNew
@@ -4050,9 +4054,6 @@ function openEntryModal(tab, idx) {
   let extra = "";
   const necCheck = `<label class="field row-check nec-check"><input id="f_nec" type="checkbox" ${(!isNew && l && l.nec) ? "checked" : ""}/><span>🔒 Necessário — não posso deixar de pagar</span></label>`;
   if (isReceita) extra = `<label class="field"><span>Tipo de renda</span><select id="f_tipo"><option value="Ativa">Ativa (recorrente)</option><option value="Extra">Extra (avulsa)</option></select></label>`;
-  else if (isDiaria) extra = `<div class="seg" id="f_seg" role="tablist">
-      <button type="button" class="seg-btn${metodo === "debito" ? " active" : ""}" data-met="debito">💳 Débito</button>
-      <button type="button" class="seg-btn${metodo === "pix" ? " active" : ""}" data-met="pix">⚡ PIX</button></div>`;
   else if (tab === "fixas") extra = `<div class="field-row">
       <label class="field"><span>Avisar (dias antes)</span><input id="f_aviso" type="number" min="0" max="15" value="${isNew || !l.aviso ? "" : l.aviso}" placeholder="ex.: 3" /></label>
       <label class="field"><span>Meta/mês (opcional)</span><input id="f_meta" class="money" value="${isNew || !l.meta ? "" : l.meta}" placeholder="R$" /></label></div>` + necCheck;
@@ -4083,7 +4084,6 @@ function openEntryModal(tab, idx) {
   if (!isNew) { if (isReceita) $("#f_tipo").value = l.tipo || "Ativa"; if (!isDiaria) $("#f_st").value = l.sts[curMonth] || "vazio"; }
   else if (!isDiaria) $("#f_st").value = isReceita ? "recebido" : "pago";
   { const fa = $("#f_all"); if (fa) fa.onchange = () => { $("#f_rep_wrap").style.display = fa.checked ? "block" : "none"; }; }
-  if (isDiaria) $$("#f_seg .seg-btn").forEach(b => b.onclick = () => { $$("#f_seg .seg-btn").forEach(x => x.classList.toggle("active", x === b)); metodo = b.dataset.met; });
 
   // Aviso inteligente: mostra a sobra do mês DEPOIS deste lançamento (em tempo real).
   const isExpenseE = tab !== "receitas";
@@ -4109,7 +4109,7 @@ function openEntryModal(tab, idx) {
     const bm = +$("#f_mes").value;
     if (isDiaria) {                                            // Débito: item de 1 mês só (sem vals/sts)
       const catId = $("#f_catId") ? ($("#f_catId").value || null) : null;
-      const o = { desc: $("#f_desc").value.trim(), valor: val, dia: parseInt($("#f_dia").value) || null, catId, categoria: catId ? ((catById(catId) || {}).nome || "Geral") : "Geral", metodo };
+      const o = { desc: $("#f_desc").value.trim(), valor: val, dia: parseInt($("#f_dia").value) || null, catId, categoria: catId ? ((catById(catId) || {}).nome || "Geral") : "Geral" };
       if (isNew) DATA.diaria.push({ id: uid(), mes: bm, ...o, m: nowMs() });
       else { Object.assign(l, o); l.mes = bm; l.m = nowMs(); }
       persist(); closeModal();
