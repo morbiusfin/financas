@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.78";
-const VERSION_NOTES = "🛟 barra de baixo: corrigida a causa de raiz do 'subir' no Débito (tela de lista curta) — agora ela fica ancorada igual em todas as abas";
+const APP_VERSION = "3.13.79";
+const VERSION_NOTES = "🧱 tela de lançar no Débito refeita do zero, separada do resto — a barra de baixo não tem mais como sair do lugar ao abrir/fechar/salvar/cancelar";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.79",
+    bullets: [
+      "A telinha de lançar um gasto no <b>Débito</b> foi refeita do zero, separada do resto do app — assim a <b>barra de baixo</b> fica 100% firme no lugar ao abrir, fechar, salvar ou cancelar. Tudo igual: você escolhe Débito ou PIX ali mesmo, num toque.",
+    ],
+  },
   {
     version: "3.13.78",
     bullets: [
@@ -4174,12 +4180,22 @@ function openCartaoChooser() {
   ]);
 }
 
+// Fecha a folha do Débito. Como ela NÃO é .modal, não há scroll-lock pra desfazer; só esconde,
+// limpa o form (pra não duplicar os IDs #f_* com o #modal) e re-avalia a barra (caso teclado tenha aberto).
+function closeDiariaSheet() {
+  const sh = $("#diariaSheet"); if (sh) sh.classList.add("hidden");
+  const f = $("#diariaForm"); if (f) f.innerHTML = "";
+  try { if (window.__revealBars) window.__revealBars(); } catch (e) {}
+}
+// REFEITO DO ZERO (isolado do #modal): abre a folha #diariaSheet. Sem scroll-lock e sem mexer na
+// tabbar/FAB → a barra de baixo não tem como "subir" ao abrir/fechar/salvar/cancelar no Débito.
 function openDiariaModal(idx, method) {
   const isNew = idx == null, d = isNew ? null : DATA.diaria[idx];
   let metodo = method || (d && d.metodo) || "debito";
   const mesSel = isNew ? curMonth : (d.mes != null ? d.mes : curMonth);
-  $("#modalTitle").textContent = (isNew ? "Nova " : "Editar ") + "compra no débito";
-  $("#entryForm").innerHTML = `
+  $("#entryForm").innerHTML = "";              // garante que os IDs #f_* existam SÓ na folha (sem duplicar)
+  $("#dsTitle").textContent = (isNew ? "Nova " : "Editar ") + "compra no débito";
+  $("#diariaForm").innerHTML = `
     <div class="seg" id="f_seg" role="tablist">
       <button type="button" class="seg-btn${metodo === "debito" ? " active" : ""}" data-met="debito">💳 Débito</button>
       <button type="button" class="seg-btn${metodo === "pix" ? " active" : ""}" data-met="pix">⚡ PIX</button>
@@ -4192,30 +4208,36 @@ function openDiariaModal(idx, method) {
       <label class="field"><span>Mês</span><select id="f_mes" class="sel">${monthOptionsHTML(mesSel)}</select></label>
       <label class="field"><span>Dia</span><select id="f_dia" class="sel"></select></label>
     </div>
-    <p class="hint" style="text-align:left">📌 Escolha o <b>mês</b> aqui — o gasto vai pro mês certo mesmo que você esteja vendo outro.</p>`;
+    <p class="hint" style="text-align:left">📌 Escolha o <b>mês</b> aqui — o gasto vai pro mês certo mesmo que você esteja vendo outro.</p>
+    <div id="f_impact" class="impact"></div>`;
   const diaDefault = isNew ? (mesSel === realMesAbs() ? REAL_TODAY.getDate() : null) : (d.dia || null);
   fillDaySelect("f_dia", "f_mes", diaDefault);
   const oldValD = isNew ? 0 : (Number(d.valor) || 0);
-  $("#entryForm").insertAdjacentHTML("beforeend", `<div id="f_impact" class="impact"></div>`);
   const fvd = $("#f_val"); if (fvd) fvd.oninput = () => updateImpact(true, oldValD);
   $("#f_mes").onchange = () => { fillDaySelect("f_dia", "f_mes"); updateImpact(true, oldValD); };
   $$("#f_seg .seg-btn").forEach(b => b.onclick = () => { $$("#f_seg .seg-btn").forEach(x => x.classList.toggle("active", x === b)); metodo = b.dataset.met; });
   updateImpact(true, oldValD);
-  $("#btnDelete").classList.toggle("hidden", isNew);
-  $("#btnDelete").onclick = () => modalConfirm("Excluir esta compra?", () => { tombstone(DATA.diaria[idx].id); DATA.diaria.splice(idx, 1); persist(); closeModal(); toast("Excluído"); }, "Excluir");
-  $("#entryForm").onsubmit = (e) => {
+  const del = $("#dsDelete");
+  del.classList.toggle("hidden", isNew);
+  del.onclick = () => modalConfirm("Excluir esta compra?", () => { tombstone(DATA.diaria[idx].id); DATA.diaria.splice(idx, 1); persist(); closeDiariaSheet(); toast("Excluído"); }, "Excluir");
+  $("#diariaForm").onsubmit = (e) => {
     e.preventDefault();
     const val = moneyVal($("#f_val")), mes = +$("#f_mes").value;
     const catId = $("#f_catId") ? ($("#f_catId").value || null) : null;
     const o = { desc: $("#f_desc").value.trim(), valor: val, dia: parseInt($("#f_dia").value) || null, catId, categoria: catId ? ((catById(catId) || {}).nome || "Geral") : "Geral", metodo };
     if (isNew) DATA.diaria.push({ id: uid(), mes, ...o, m: nowMs() });
     else { Object.assign(d, o); d.mes = mes; d.m = nowMs(); }
-    persist(); closeModal();
+    persist(); closeDiariaSheet();
     const sa = disponivelMes(mes) - despesaMes(mes);
     if (val > 0 && sa < 0) toast(`⚠️ ${mLong(mes)} ficou no vermelho (${brl(sa)}) · Ctrl+Z desfaz`);
     else toast(`${isNew ? "Adicionado" : "Salvo"} em ${mLong(mes)} ✓`);
   };
-  showModal("#modal");
+  $("#dsCancel").onclick = closeDiariaSheet;
+  $("#dsClose").onclick = closeDiariaSheet;
+  const sh = $("#diariaSheet");
+  sh.onclick = (e) => { if (e.target === sh) closeDiariaSheet(); };   // toque no fundo fecha
+  sh.classList.remove("hidden");
+  bindMoneyAll(sh);
 }
 
 /* ---------- Categorias e orçamento (gerenciador no menu) ---------- */
@@ -4343,7 +4365,7 @@ function renderOrcRealChart(m) {
 }
 
 /* ---------- Infra ---------- */
-function showModal(s) { const el = $(s); el.classList.remove("hidden"); bindMoneyAll(el); }
+function showModal(s) { const df = $("#diariaForm"); if (df) df.innerHTML = ""; const el = $(s); el.classList.remove("hidden"); bindMoneyAll(el); }
 function closeModal() { $("#modal").classList.add("hidden"); }
 
 /* Confirmação em modal HTML (NÃO usar confirm() nativo: no PWA instalado no iOS ele é
@@ -6866,7 +6888,7 @@ function refreshInPlace() {
   // todos os .modal; somamos menu, onboarding e a tela de código.
   const bloqueado = () =>
     document.body.classList.contains("scroll-locked")
-    || !!document.querySelector(".menu-drawer:not(.hidden), .onb:not(.hidden), #lockScreen:not(.hidden), #unlockReveal")
+    || !!document.querySelector(".menu-drawer:not(.hidden), .onb:not(.hidden), #lockScreen:not(.hidden), #unlockReveal, #diariaSheet:not(.hidden)")
     || document.body.classList.contains("kbd-open");
   const cancelPTR = () => { pulling = false; ptr.style.height = "0"; ptr.style.opacity = "0"; };
   window.addEventListener("touchstart", (e) => {

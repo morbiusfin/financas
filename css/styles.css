@@ -1187,6 +1187,20 @@ body.kbd-open #fab { opacity: 0; pointer-events: none; transform: none; }
 /* fundo congelado enquanto um modal está aberto (não rola por trás do bottom-sheet) */
 body.scroll-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: hidden; overscroll-behavior: none; }
 
+/* ===== FOLHA DO DÉBITO (isolada — NÃO usa a máquina de .modal/scroll-lock) =====
+   Overlay quase opaco que cobre TUDO (inclusive a tabbar, z-index acima dela). Não trava o body,
+   então a barra de baixo nunca é movida → não "sobe". touch-action:none barra o scroll do fundo. */
+.dsheet { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: rgba(8,16,13,.92); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  touch-action: none; animation: fadeIn .18s ease both; }
+.dsheet.hidden { display: none; }
+.dsheet-card { position: relative; background: var(--card); color: var(--ink); width: 100%; max-width: 440px;
+  border-radius: 22px; padding: 22px 20px calc(20px + var(--safe-bottom)); box-shadow: var(--shadow-lg);
+  max-height: 88vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.dsheet-card h2 { margin: 0 0 16px; font-size: 19px; font-weight: 800; letter-spacing: -.3px; }
+.dsheet-actions { display: flex; gap: 10px; margin-top: 14px; }
+.dsheet-actions .btn { flex: 1; }
+
 /* ===== MODAL ===== */
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: flex; align-items: center; justify-content: center;
   padding: 22px 14px; backdrop-filter: blur(2px); animation: fadeInUp .2s ease both;
