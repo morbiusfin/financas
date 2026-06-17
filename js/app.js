@@ -1,12 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.72";
-const VERSION_NOTES = "🛒 lançar no Débito ficou igualzinho às outras abas: o + abre a tela na hora e você escolhe Débito ou PIX ali dentro — a barra de baixo não sai mais do lugar";
+const APP_VERSION = "3.13.73";
+const VERSION_NOTES = "🧹 telinha de Metas mais limpa e um aviso bem claro antes de recomeçar do zero, pra você não apagar nada sem querer";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.73",
+    bullets: [
+      "A tela de <b>Metas</b> ficou mais limpa: tiramos uma dica que não fazia falta ali.",
+      "Antes de <b>recomeçar do zero</b>, agora aparece um aviso bem claro de que tudo será apagado — assim você confirma com tranquilidade e não perde nada sem querer.",
+    ],
+  },
   {
     version: "3.13.72",
     bullets: [
@@ -2181,7 +2188,6 @@ function renderMetaForm() {
     +   '<label class="field" style="flex:1"><span>Quanto custa (R$)</span><input id="metaAlvo" class="money" value="' + (editing && editing.alvo ? fmtMoneyBR(editing.alvo) : "") + '" placeholder="0,00" /></label>'
     +   '<label class="field" style="flex:1"><span>Já guardei (R$)</span><input id="metaGuard" class="money" value="' + (editing && editing.guardado ? fmtMoneyBR(editing.guardado) : "") + '" placeholder="0,00" /></label>'
     + '</div>'
-    + '<p class="money-tip">💡 Centavos automáticos: digite <b>1000</b> e vira <b>R$ 10,00</b></p>'
     + '<div class="meta-actions">'
     +   (editing ? '<button type="button" class="btn danger" id="metaDel">Excluir</button>' : '')
     +   '<button type="button" class="btn primary" id="metaSave">' + (editing ? "Salvar" : "Criar meta") + '</button>'
@@ -6649,9 +6655,9 @@ function maybeStartOnboarding() {
 }
 function wipeToZero(afterWipe, onCancel) {
   const o = $("#onboarding"), body = $("#onbBody"); if (!o || !body) return;
-  body.innerHTML = '<h2 id="onbTitle">Começar do zero?</h2>'
-    + '<p class="onb-sub">Vou apagar os lançamentos de exemplo para você cadastrar os seus. Você pode restaurar o exemplo depois, em Configurações.</p>'
-    + '<button class="btn primary" id="onbWipe">Apagar exemplos</button>'
+  body.innerHTML = '<h2 id="onbTitle">Tem certeza?</h2>'
+    + '<p class="onb-sub">Isso vai <b>apagar tudo o que você já preencheu</b> e recomeçar do zero. Essa ação <b>não dá pra desfazer</b>.</p>'
+    + '<button class="btn danger" id="onbWipe">Sim, apagar tudo</button>'
     + '<button class="btn ghost" id="onbCancelWipe">Voltar</button>';
   o.classList.remove("hidden");
   $("#onbWipe").onclick = () => { DATA = emptyData(); localStorage.removeItem("financas2026.isSeed"); lastSnap = JSON.stringify(DATA); render(); toast("Tudo limpo. Pode começar a lançar."); afterWipe(); };
