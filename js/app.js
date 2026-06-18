@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.88";
-const VERSION_NOTES = "🎨 o seletor do Ritmo de gastos agora segue o visual escuro do app (sem aquela caixa branca do sistema)";
+const APP_VERSION = "3.13.89";
+const VERSION_NOTES = "📚 Tutorial e Perguntas frequentes atualizados com tudo que mudou: Ritmo de gastos + filtro, limite do cartão com parcelas, login/senha e avisos de atualização";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.89",
+    bullets: [
+      "Atualizamos o <b>Tutorial</b> e as <b>Perguntas frequentes</b> com tudo de novo no app: o <b>Ritmo de gastos</b> e o filtro, o <b>limite do cartão</b> contando as parcelas, a <b>senha/login</b> ao abrir o app, e o aviso quando sai uma versão nova.",
+    ],
+  },
   {
     version: "3.13.88",
     bullets: [
@@ -5961,14 +5967,16 @@ function openManual() {
 
 const TUTORIAL = [
   ["👋", "Bem-vindo ao MorbiusFin", "É o seu controle de contas do mês, sem complicação e no bolso. Em poucos passos você pega o jeito. Pode pular quando quiser.", "aceno"],
-  ["📋", "Resumo do mês", "Aqui dá pra ver pra onde o seu dinheiro vai: o que entrou, o que saiu e o que sobra no fim. No topo você troca pra Gráficos e Insights quando quiser.", "grafico"],
+  ["📋", "Resumo do mês", "Aqui dá pra ver pra onde o seu dinheiro vai: o que entrou, o que saiu e o que sobra no fim. No topo você troca entre Resumo, Gráficos, Insights e Metas.", "grafico"],
+  ["🔥", "Ritmo de gastos", "Em Gráficos, o primeiro card mostra quanto você já gastou acumulado, dia a dia, comparado com o mês passado e a média dos últimos 3 meses. No seletor do topo dá pra filtrar por Tudo, Fixas, Cartões ou Débito.", "fogo"],
   ["🔔", "Contas a vencer", "O sino lá em cima avisa quando tem conta chegando perto do prazo ou já atrasada. Toque pra ver e pagar, e ele para de piscar.", "sino"],
-  ["➕", "Lançar gastos e ganhos", "Nas abas de baixo (Receitas, Fixas, Cartão e Débito), o + serve pra adicionar. No Cartão dá pra parcelar em até 60×.", "mais"],
+  ["➕", "Lançar gastos e ganhos", "Nas abas de baixo (Receitas, Fixas, Cartões e Débito), o + adiciona. No Cartão dá pra parcelar em até 60× — e o limite já considera todas as parcelas, liberando conforme você paga. No Débito é rapidinho: descrição, valor, categoria e dia.", "mais"],
   ["🏷️", "Categorias e metas", "No menu você cria categorias com emoji e define quanto quer gastar em cada uma. Verde quer dizer que está dentro, vermelho quer dizer que passou.", "moeda"],
   ["🎯", "Metas (objetivos)", "No topo do Resumo, toque em 🎯 Metas. Crie um objetivo como uma viagem, a casa ou o carro: diga quanto custa e quanto já guardou. A barrinha mostra o progresso e o emoji muda conforme o objetivo.", "alvo"],
   ["🏅", "Medalhas de acúmulo", "No Insights, você vai desbloqueando medalhas conforme sua reserva cresce, do primeiro passo ao lendário. É um jeito divertido de ver o dinheiro guardado subir e se animar a guardar mais.", "trofeu"],
   ["💑", "Conta de casal", "No perfil, escolha Conjunta e junte os dois celulares por QR. O que um de vocês lança aparece no outro na hora, sem precisar de nuvem.", "coracao"],
-  ["❓", "Ajuda sempre à mão", "Viu um “?” em algum canto do app? Toque que ele explica o que aquilo faz. E este tutorial fica guardado no menu, é só voltar quando precisar.", "interrogacao"],
+  ["🔐", "Senha e acesso", "Dá pra proteger o app com uma senha (Menu → Conta e acesso). Quando você fecha o app de vez e abre de novo, ele começa na tela de login e pede a senha. Se só troca de app e volta, continua de onde estava, sem pedir de novo.", "cadeado"],
+  ["❓", "Ajuda e atualizações", "Viu um “?” em algum canto? Toque que ele explica o que aquilo faz. Quando sai uma versão nova, o app te avisa na tela pra atualizar num toque. Este tutorial fica guardado no menu — é só voltar quando precisar.", "interrogacao"],
 ];
 let _tutI = 0;
 function ensureTutModal() {
