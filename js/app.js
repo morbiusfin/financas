@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.90";
-const VERSION_NOTES = "🧴 resumo do dia (no Ritmo de gastos) com mais respiro embaixo — os valores não ficam mais colados na borda da caixa";
+const APP_VERSION = "3.13.91";
+const VERSION_NOTES = "🧹 tirei o aviso de 'centavos automáticos' das telinhas de lançamento (o atalho continua funcionando, só ficou mais limpo)";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.91",
+    bullets: [
+      "Deixamos as telinhas de lançamento mais limpas: saiu o aviso de “centavos automáticos”. Não se preocupe — o atalho continua valendo: digite <b>1000</b> e vira <b>R$ 10,00</b>.",
+    ],
+  },
   {
     version: "3.13.90",
     bullets: [
@@ -4064,9 +4070,7 @@ function openCartaoModal() {
     <div class="field-row">
       <label class="field"><span id="f_val_lbl">Valor da compra</span><input id="f_val" class="money" placeholder="0,00" required /></label>
       <label class="field" id="f_n_field" style="display:none"><span>Em quantas vezes</span><select id="f_n" class="sel">${parcOpts}</select></label>
-    </div>
-    <p class="money-tip">💡 Centavos automáticos: digite <b>1000</b> e vira <b>R$ 10,00</b></p>
-    <label class="field"><span>Data da compra</span><input id="f_data" type="date" value="${todayISO()}" min="${DATA.year}-01-01" /></label>
+    </div>    <label class="field"><span>Data da compra</span><input id="f_data" type="date" value="${todayISO()}" min="${DATA.year}-01-01" /></label>
     <label class="field row-check nec-check"><input id="f_nec" type="checkbox" /><span>🔒 Necessário — não posso deixar de pagar</span></label>
     <div id="f_parc_prev" class="impact"></div>`;
   // segmento À vista / Parcelado → muda a interface na hora
@@ -4157,9 +4161,7 @@ function openEntryModal(tab, idx) {
     <label class="field"><span>Descrição</span><input id="f_desc" type="text" value="${isNew ? "" : esc(l.desc)}" required placeholder="Ex.: ${isReceita ? "Salário" : (isDiaria ? "Mercado" : "Aluguel")}" /></label>
     ${extra}
     ${catField}
-    <label class="field"><span id="f_valLbl">Valor (${isDiaria ? "R$" : mLong(curMonth)})</span><input id="f_val" class="money" value="${valVal}" placeholder="0,00" required /></label>
-    <p class="money-tip">💡 Centavos automáticos: digite <b>1000</b> e vira <b>R$ 10,00</b></p>
-    <div class="field-row">
+    <label class="field"><span id="f_valLbl">Valor (${isDiaria ? "R$" : mLong(curMonth)})</span><input id="f_val" class="money" value="${valVal}" placeholder="0,00" required /></label>    <div class="field-row">
       <label class="field"><span>Mês${isNew && !isDiaria ? " de início" : ""}</span><select id="f_mes" class="sel">${monthOptionsHTML(valMes)}</select></label>
       <label class="field"><span>${tab === "fixas" ? "Vencimento (dia)" : "Dia"}</span><select id="f_dia" class="sel"></select></label>
     </div>
@@ -4326,9 +4328,7 @@ function openDiariaModal(idx, method) {
     </div>
     <label class="field"><span>Descrição</span><input id="f_desc" type="text" value="${isNew ? "" : esc(d.desc)}" required placeholder="Ex.: Mercado" /></label>
     <label class="field"><span>Categoria</span><select id="f_catId" class="sel">${catSelectHTML(isNew ? null : entryCatId(d))}</select></label>
-    <label class="field"><span>Valor (R$)</span><input id="f_val" class="money" value="${isNew ? "" : d.valor}" placeholder="0,00" required /></label>
-    <p class="money-tip">💡 Centavos automáticos: digite <b>1000</b> e vira <b>R$ 10,00</b></p>
-    <div class="field-row">
+    <label class="field"><span>Valor (R$)</span><input id="f_val" class="money" value="${isNew ? "" : d.valor}" placeholder="0,00" required /></label>    <div class="field-row">
       <label class="field"><span>Mês</span><select id="f_mes" class="sel">${monthOptionsHTML(mesSel)}</select></label>
       <label class="field"><span>Dia</span><select id="f_dia" class="sel"></select></label>
     </div>
