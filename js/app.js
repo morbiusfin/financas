@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.84";
-const VERSION_NOTES = "🛟 barra de baixo: ao salvar com o teclado ABERTO, o app fecha o teclado e espera ele descer antes de fechar a janela — a barra para de subir de vez";
+const APP_VERSION = "3.13.85";
+const VERSION_NOTES = "🛟 barra de baixo: ao salvar com o teclado aberto, a janelinha agora espera ~1s (teclado descer + tela assentar) antes de fechar — a barra volta certinho pro lugar";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.85",
+    bullets: [
+      "Mais um reforço na <b>barra de baixo</b>: ao salvar com o teclado aberto, a janelinha aguarda o teclado descer e a tela assentar (cerca de 1 segundo) antes de fechar — assim a barra volta exatamente pro lugar. Tem trava pra não duplicar o lançamento se você tocar duas vezes.",
+    ],
+  },
   {
     version: "3.13.84",
     bullets: [
@@ -4123,6 +4129,8 @@ function openEntryModal(tab, idx) {
   $("#btnDelete").onclick = () => modalConfirm(isDiaria ? "Excluir esta compra?" : "Excluir este lançamento (todos os meses)?", () => { tombstone(DATA[tab][idx].id); DATA[tab].splice(idx, 1); persist(); closeModal(); toast("Excluído"); }, "Excluir");
   $("#entryForm").onsubmit = (e) => {
     e.preventDefault();
+    if (_entryBusy) return;                                   // já salvando (aguardando o teclado descer) → ignora toque repetido
+    _entryBusy = true;
     const val = moneyVal($("#f_val"));
     const bm = +$("#f_mes").value;
     if (isDiaria) {                                            // Débito: item de 1 mês só (sem vals/sts)
@@ -4417,23 +4425,27 @@ function renderOrcRealChart(m) {
 }
 
 /* ---------- Infra ---------- */
-function showModal(s) { const df = $("#diariaForm"); if (df) df.innerHTML = ""; const el = $(s); el.classList.remove("hidden"); bindMoneyAll(el); }
-function closeModal() { $("#modal").classList.add("hidden"); }
-// Executa `fn` SÓ depois que o teclado do iOS descer. Tira o foco (some o teclado) e espera o
-// visualViewport voltar (ou um timeout). Salvar com o teclado ABERTO e fechar o modal ao mesmo
-// tempo era o que deixava a barra "subir" no iOS (modal some + teclado desce ao mesmo tempo →
-// fixed desancora). Assim o salvar/fechar acontece com a tela JÁ estável. #bugfix-debito-raia
+let _entryBusy = false;             // trava anti-duplo-toque enquanto o salvar aguarda o teclado descer
+function showModal(s) { _entryBusy = false; const df = $("#diariaForm"); if (df) df.innerHTML = ""; const el = $(s); el.classList.remove("hidden"); bindMoneyAll(el); }
+function closeModal() { _entryBusy = false; $("#modal").classList.add("hidden"); }
+// Executa `fn` SÓ depois que o teclado do iOS descer E a viewport ASSENTAR. Tira o foco (some o
+// teclado), espera o visualViewport voltar (gap<=120) e dá um respiro extra (SETTLE) antes de
+// rodar fn. Salvar com o teclado ABERTO e fechar o modal ao mesmo tempo deixava a barra "subir"
+// no iOS (modal some + teclado desce + viewport assenta atrasada → o position:fixed desancora).
+// Segurando o fechamento ~1s, a tela já está estável quando a barra reaparece. #bugfix-debito-raia
 function afterKeyboardDown(fn) {
   const ae = document.activeElement;
   if (ae && typeof ae.blur === "function") { try { ae.blur(); } catch (e) {} }
   const vv = window.visualViewport;
   const down = () => !vv || (window.innerHeight - vv.height) <= 120;
-  if (down()) { fn(); return; }
+  const SETTLE = 480;                // respiro após o teclado reportar fechado (viewport iOS assenta atrasada)
   let done = false;
-  const go = () => { if (done) return; done = true; try { if (vv) vv.removeEventListener("resize", onVV); } catch (e) {} clearTimeout(t); fn(); };
-  const onVV = () => { if (down()) go(); };
+  const fire = () => { if (done) return; done = true; try { if (vv) vv.removeEventListener("resize", onVV); } catch (e) {} clearTimeout(t1); clearTimeout(t2); fn(); };
+  if (down()) { t2 = setTimeout(fire, 80); return; }   // teclado já em baixo → fecha quase na hora
+  const onVV = () => { if (down()) { try { vv.removeEventListener("resize", onVV); } catch (e) {} t2 = setTimeout(fire, SETTLE); } };  // desceu → +respiro → fecha
   if (vv) vv.addEventListener("resize", onVV);
-  const t = setTimeout(go, 500);   // fallback: se o resize não vier, segue mesmo assim
+  var t1 = setTimeout(fire, 1100);   // fallback duro: fecha de qualquer jeito após ~1,1s
+  var t2 = 0;
 }
 
 /* Confirmação em modal HTML (NÃO usar confirm() nativo: no PWA instalado no iOS ele é
