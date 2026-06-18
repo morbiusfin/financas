@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.89";
-const VERSION_NOTES = "📚 Tutorial e Perguntas frequentes atualizados com tudo que mudou: Ritmo de gastos + filtro, limite do cartão com parcelas, login/senha e avisos de atualização";
+const APP_VERSION = "3.13.90";
+const VERSION_NOTES = "🧴 resumo do dia (no Ritmo de gastos) com mais respiro embaixo — os valores não ficam mais colados na borda da caixa";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.90",
+    bullets: [
+      "Pequeno ajuste no <b>resumo do dia</b> (embaixo do Ritmo de gastos): mais espaço na parte de baixo, pra os valores não ficarem colados na borda da caixa.",
+    ],
+  },
   {
     version: "3.13.89",
     bullets: [
