@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.87";
-const VERSION_NOTES = "📊 Ritmo de gastos agora tem filtro (Tudo / Fixas / Cartões / Débito) + 💳 limite do cartão conta TODAS as parcelas (não só a do mês)";
+const APP_VERSION = "3.13.88";
+const VERSION_NOTES = "🎨 o seletor do Ritmo de gastos agora segue o visual escuro do app (sem aquela caixa branca do sistema)";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.88",
+    bullets: [
+      "Detalhe visual: o seletor do <b>Ritmo de gastos</b> (Tudo/Fixas/Cartões/Débito) agora combina com o tema escuro do app — sem aquela caixinha branca do sistema.",
+    ],
+  },
   {
     version: "3.13.87",
     bullets: [
