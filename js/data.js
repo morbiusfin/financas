@@ -164,6 +164,13 @@ function saveData(d) {
     // grava criptografado (AES-GCM). Sem o PIN, ilegível. (só nos dados REAIS)
     window.encryptEnvelope(window.CRYPTO_KEY, d).then(env => put(key, JSON.stringify(env))).catch(() => {});
   } else {
+    // BLINDAGEM: nunca rebaixar um blob CIFRADO p/ texto puro sem chave. Se há conta protegida (enc)
+    // e estamos sem CRYPTO_KEY, gravar plaintext apagaria o PIN silenciosamente → o login parava de
+    // pedir senha (bug relatado). Aborta o save e mantém o cifrado. A remoção LEGÍTIMA do PIN escreve
+    // direto em STORE_KEY (removePinFlow), não passa por aqui. #bugfix-senha-some
+    if (isReal && !window.CRYPTO_KEY && !window.__forcePlain) {
+      try { const cur = JSON.parse(localStorage.getItem(key) || "null"); if (cur && cur.enc) { console.warn("saveData: bloqueado overwrite de blob cifrado com texto puro (conta protegida sem chave)"); return; } } catch (e) {}
+    }
     put(key, JSON.stringify(d));
   }
 }

@@ -113,7 +113,7 @@ body.lock-on { background: #0b3d2e linear-gradient(160deg, #0b3d2e 0%, #12734d 1
 html:has(body.scroll-locked), html:has(body.party-on) { background: #0a100d; }
 /* tela de entrada (landing): a faixa do rodapé/safe-area na MESMA cor do fundo, em qualquer tema */
 html:has(body.welcome-on) { background: var(--bg); }
-body.lock-on > *:not(#lockScreen):not(#unlockReveal):not(#splash) { visibility: hidden !important; }
+body.lock-on > *:not(#lockScreen):not(#unlockReveal):not(#splash):not(#recModal) { visibility: hidden !important; }
 /* Fundo (degradês) numa camada FIXA própria — em vez de background-attachment:fixed no body, que no
    iOS Safari deixa emendas/linhas verticais nas bordas. Cobre a tela toda, sem romper a UI. */
 body::before {
@@ -831,6 +831,11 @@ body:has(#fab:not(.hidden)) main { padding-bottom: 178px; }   /* o + flutua até
   transform: translateZ(0); -webkit-transform: translateZ(0); }
 /* enquanto a tela de código está aberta, esconde tabbar e + (tela cheia, sem faixa no fim) */
 body.lock-on .tabbar, body.lock-on #fab { visibility: hidden; }
+/* "Esqueci minha senha": o #recModal é filho do body, e a regra body.lock-on > *:not(#lockScreen)…
+   escondia TODOS os filhos do body menos o lock → a janela de recuperação (acertar a pergunta) abria
+   INVISÍVEL atrás do lock; só aparecia ao "Voltar ao login" (que remove o lock-on). Mantém o recModal
+   VISÍVEL e ACIMA do lock (z 1000), pra abrir na mesma tela do clique. #bugfix-recovery */
+body.lock-on > #recModal { visibility: visible !important; z-index: 1300; }
 
 /* ===== Desbloqueio: pré-carga (anel de progresso) → estalo + flash → portas abrem ===== */
 .unlock-reveal { position: fixed; inset: 0; z-index: 1500; pointer-events: none; overflow: hidden;

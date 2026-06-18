@@ -1,12 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.93";
-const VERSION_NOTES = "⬆️ o botão '＋ Nova categoria' agora fica no TOPO de Categorias e orçamento — sem precisar rolar até o fim; a categoria nova já aparece logo abaixo";
+const APP_VERSION = "3.13.94";
+const VERSION_NOTES = "🔒 'Esqueci minha senha' agora abre a pergunta secreta na MESMA tela (não mais escondida atrás) + reforço: sua proteção por PIN não some mais sozinha";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.94",
+    bullets: [
+      "Corrigimos o <b>“Esqueci minha senha”</b>: a janelinha pra responder sua <b>pergunta secreta</b> e recuperar o acesso agora abre <b>na mesma tela</b>, por cima — antes ela abria escondida atrás e você só via depois de tocar em “Voltar”.",
+      "Reforço de <b>segurança</b>: sua proteção por <b>PIN</b> não some mais sozinha. O app nunca grava seus dados <b>sem criptografia</b> enquanto há uma senha ativa — assim o login continua pedindo a senha como deve.",
+    ],
+  },
   {
     version: "3.13.93",
     bullets: [
@@ -4948,9 +4955,13 @@ function showWelcome() {
   w.querySelector("#welNew").onclick = () => {
     modalConfirm("Criar uma conta nova? Isso apaga os lançamentos atuais deste aparelho. Exporte um backup antes, se quiser guardar.", () => {
       window.CRYPTO_KEY = null;
+      // RESET intencional: pode substituir um blob cifrado por uma conta nova SEM senha. A blindagem do
+      // saveData (não rebaixar cifrado→texto puro) é liberada só aqui, durante esta troca confirmada.
+      window.__forcePlain = true;
       DATA = (typeof emptyData === "function") ? emptyData() : buildSeed();
       localStorage.removeItem("financas2026.isSeed"); localStorage.removeItem(LOGGED_OUT_KEY);
       try { saveData(DATA); } catch (e) {}
+      window.__forcePlain = false;
       lastSnap = JSON.stringify(DATA);
       leave(() => { window.__eraSeedNovo = true; startApp(); });   // conta nova → entra e oferece onboarding
     }, "Apagar e começar");
