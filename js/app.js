@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.92";
-const VERSION_NOTES = "⌨️ em Categorias e orçamento o teclado não cobre mais o campo que você edita + 🔎 busca de emoji por nome (pt/en): digite 'beijinho', 'dinheiro', 'gato'…";
+const APP_VERSION = "3.13.93";
+const VERSION_NOTES = "⬆️ o botão '＋ Nova categoria' agora fica no TOPO de Categorias e orçamento — sem precisar rolar até o fim; a categoria nova já aparece logo abaixo";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.93",
+    bullets: [
+      "Em <b>Categorias e orçamento</b>, o botão <b>＋ Nova categoria</b> subiu pro <b>topo</b> da lista — não precisa mais rolar até o fim pra criar uma. E a categoria nova já aparece logo abaixo do botão, pronta pra você dar o nome.",
+    ],
+  },
   {
     version: "3.13.92",
     bullets: [
@@ -4411,10 +4417,12 @@ function renderCatMgr() {
 }
 function addCategoria() {
   const id = "c" + Date.now().toString(36);
-  DATA.categorias = catList().concat([{ id, nome: "Nova categoria", emoji: "🏷️" }]);
+  // botão fica no TOPO → a categoria nova entra no topo (aparece logo abaixo do botão)
+  DATA.categorias = [{ id, nome: "Nova categoria", emoji: "🏷️" }].concat(catList());
   persist(); renderCatMgr();
+  const sc = document.querySelector("#catModal .modal-scroll"); if (sc) sc.scrollTop = 0;
   const inp = document.querySelector(`.cat-name-inp[data-name-for="${id}"]`);
-  if (inp) { inp.focus(); inp.select(); inp.scrollIntoView({ block: "nearest" }); }
+  if (inp) { inp.focus(); inp.select(); }
 }
 
 /* ---------- Seletor de emoji ---------- */
