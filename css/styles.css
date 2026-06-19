@@ -1605,6 +1605,16 @@ body.scroll-locked { left: 0; right: 0; width: 100%; overflow: hidden; overscrol
 .flow-row.total .pos { color: #7dffb4; } .flow-row.total .neg { color: #ff9a9d; }
 .flow-row.total span i { color: rgba(255,255,255,.82); }   /* % na linha verde fica legível */
 
+.orc-total { margin: 2px 16px 10px; background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: 14px; color: var(--muted); }
+.orc-total b { color: var(--ink); font-size: 16px; }
+.orc-total i { font-style: normal; }
+.orc-total.neg b { color: var(--red); }
+/* observação da compra em tela cheia (toque no 📝) */
+.obs-flag { cursor: pointer; }
+.obs-card { max-width: 360px; }
+.obs-ic { font-size: 34px; line-height: 1; text-align: center; }
+.obs-desc { font-weight: 800; font-size: 15px; color: var(--ink); text-align: center; margin: 0 0 10px; }
+.obs-text { white-space: pre-wrap; word-break: break-word; text-align: left; background: var(--card-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 14.5px; line-height: 1.5; color: var(--ink); max-height: 50vh; overflow-y: auto; }
 .pr-block { margin: 14px 0; padding: 0 16px; }
 .pr-head { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; margin-bottom: 7px; }
 .pr-head i { font-style: normal; color: var(--muted); font-weight: 500; }

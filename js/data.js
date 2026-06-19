@@ -4,7 +4,8 @@
    - fixas:    vencimento (dia) + aviso (dias antes), meta (orçamento), status pago|programado|vazio
    - cartao:   parcela (atual/total), cartão (final), status pago|programado|vazio
    - diaria:   débitos dia a dia, com categoria
-   - metas:    orçamento mensal por categoria
+   - orcamento: orçamento mensal por CATEGORIA { catId: valor/mês } — fonte única do orçamento
+   - metas:    LEGADO (orçamento por tipo fixas/cartao/diaria) — aposentado, não editável; mantido só p/ retrocompat
    Regras (fluxo de caixa):
    - Saldo inicial do mês = Sobra do mês anterior
    - Disponível = Saldo inicial + Receitas do mês
@@ -116,7 +117,7 @@ const STORE_KEY = "financas2026.v2";
 
 function migrate(d) {
   // garante campos novos em dados antigos
-  d.metas = d.metas || { fixas: 0, cartao: 0, diaria: 0 };
+  d.metas = d.metas || { fixas: 0, cartao: 0, diaria: 0 };   // LEGADO (orçamento por tipo) — aposentado; orçamento real é d.orcamento (por categoria)
   d.cartoes = d.cartoes || [];   // cartões cadastrados: { id, nome, last4, fechamento, vencimento }
   d.categorias = (d.categorias && d.categorias.length) ? d.categorias : defaultCategorias();   // categorias com emoji
   d.orcamento = d.orcamento || {};   // meta de orçamento por categoria: { catId: valor/mês }

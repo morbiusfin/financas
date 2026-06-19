@@ -1,12 +1,20 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.14.0";
-const VERSION_NOTES = "📸 Ajuste da foto cabe na tela sem rolar (zoom + girar juntos) e novo botão Editar foto (sem reimportar) · ❓ pergunta da recuperação maior e mais legível · 🚪 botão Sair no topo do menu";
+const APP_VERSION = "3.15.0";
+const VERSION_NOTES = "🎯 Orçamento unificado: agora é só POR CATEGORIA (o antigo por tipo foi aposentado; saúde e insights acompanham, nada apagado) · 😀 muito mais emojis (roupas + ~150 bandeiras de países) com busca pt/en · 📝 observação da compra abre em tela cheia (toque no 📝)";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.15.0",
+    bullets: [
+      "Seu <b>orçamento agora é só por categoria</b> — um lugar só. O antigo por tipo (Fixas/Cartão/Débito) saiu de cena; a <b>saúde financeira</b> e os <b>insights</b> passaram a olhar suas categorias. <b>Nada foi apagado</b>: se você tinha o antigo, o app avisa pra redefinir.",
+      "<b>Muito mais emojis</b> pra escolher: <b>roupas e acessórios</b> e cerca de <b>150 bandeiras de países</b> — tudo com busca por nome (português ou inglês).",
+      "A <b>observação da compra</b> agora abre <b>em tela</b>: toque no <b>📝</b> ao lado do valor pra ler tudo.",
+    ],
+  },
   {
     version: "3.14.0",
     bullets: [
@@ -1862,9 +1870,11 @@ function healthScore(m) {
   let score = 50;
   if (rec > 0) score = 50 + Math.round((rec - desp) / rec * 130);   // poupar 38% ≈ 100; gastar tudo = 50; estourar ≈ baixo
   if (sobra > 0) score += 6; else score -= 10;
-  const metas = DATA.metas || {};
-  [["fixas", fixasMes(m)], ["cartao", cartaoMes(m)], ["diaria", diariaMes(m)]]
-    .forEach(([k, v]) => { if ((metas[k] || 0) > 0 && v > metas[k]) score -= 8; });
+  // orçamento por categoria estourado → penaliza (teto de −24 pra não zerar à toa)
+  const orc = DATA.orcamento || {}, realC = realizadoPorCategoria(m);
+  let overCount = 0;
+  catList().forEach(c => { const meta = Number(orc[c.id]) || 0; if (meta > 0 && (Number(realC[c.id]) || 0) > meta) overCount++; });
+  score -= Math.min(24, overCount * 8);
   return Math.max(0, Math.min(100, score));
 }
 function healthMeta(s) {
@@ -1930,10 +1940,9 @@ function computeInsights(m) {
         text: `Despesas ${d > 0 ? "subiram" : "caíram"} <b>${Math.abs(d)}%</b> vs ${mLong(m - 1)} (${brl(ant)} → ${brl(desp)}).` });
     }
   }
-  const metas = DATA.metas || {}, estouro = [];
-  [["fixas", fixasMes(m), "Fixas"], ["cartao", cartaoMes(m), "Cartão"], ["diaria", diariaMes(m), "Dia a dia"]]
-    .forEach(([k, v, n]) => { if ((metas[k] || 0) > 0 && v > metas[k]) estouro.push(n); });
-  if (estouro.length) out.push({ ic: "⚠️", tone: "bad", text: `Orçamento estourado em <b>${estouro.join(", ")}</b>.` });
+  const orcI = DATA.orcamento || {}, realI = realizadoPorCategoria(m), estouro = [];
+  catList().forEach(c => { const meta = Number(orcI[c.id]) || 0; if (meta > 0 && (Number(realI[c.id]) || 0) > meta) estouro.push(c.nome); });
+  if (estouro.length) out.push({ ic: "⚠️", tone: "bad", text: `Orçamento estourado em <b>${estouro.slice(0, 4).join(", ")}</b>${estouro.length > 4 ? " e mais" : ""}.` });
   if (m >= 3) {
     const med = (cartaoMes(m - 1) + cartaoMes(m - 2) + cartaoMes(m - 3)) / 3, atual = cartaoMes(m);
     if (med > 0 && atual > med * 1.3)
@@ -2811,21 +2820,26 @@ function renderCatList(m) {
   ).join("");
 }
 
+// Orçamento ÚNICO = por CATEGORIA (DATA.orcamento). O antigo por tipo (DATA.metas) foi aposentado.
 function renderMetas(m) {
-  const metas = DATA.metas || {};
-  const itens = [
-    { k: "fixas", name: "Despesas Fixas", val: fixasMes(m) },
-    { k: "cartao", name: "Cartão", val: cartaoMes(m) },
-    { k: "diaria", name: "Dia a Dia", val: diariaMes(m) },
-  ].filter(i => (metas[i.k] || 0) > 0);
-  if (!itens.length) return "";
-  return `<div class="section-card"><h3>Orçamento do mês (META) ${helpQ("metas")}</h3>${itens.map(i => {
-    const meta = metas[i.k], rawPct = Math.round(i.val / meta * 100), pct = Math.min(100, rawPct), over = i.val > meta;
+  const orc = DATA.orcamento || {}, real = realizadoPorCategoria(m);
+  const rows = catList()
+    .map(c => ({ c, meta: Number(orc[c.id]) || 0, val: Number(real[c.id]) || 0 }))
+    .filter(r => r.meta > 0)
+    .sort((a, b) => (b.val / b.meta) - (a.val / a.meta));   // mais estourados primeiro
+  if (!rows.length) return "";
+  const totMeta = rows.reduce((s, r) => s + r.meta, 0), totVal = rows.reduce((s, r) => s + r.val, 0);
+  const totOver = totVal > totMeta, totPct = Math.round(totVal / totMeta * 100);
+  const body = rows.map(r => {
+    const rawPct = Math.round(r.val / r.meta * 100), pct = Math.min(100, rawPct), over = r.val > r.meta;
     return `<div class="pr-block">
-      <div class="pr-head"><span>${i.name}</span><span class="${over ? "neg" : ""}">${brl(i.val)} <i>/ ${brl(meta)} · ${rawPct}%</i></span></div>
+      <div class="pr-head"><span>${r.c.emoji} ${esc(r.c.nome)}</span><span class="${over ? "neg" : ""}">${brl(r.val)} <i>/ ${brl(r.meta)} · ${rawPct}%</i></span></div>
       <div class="pr-bar"><div class="pr-fill ${over ? "over" : ""}" style="width:${pct}%"></div></div>
     </div>`;
-  }).join("")}</div>`;
+  }).join("");
+  return `<div class="section-card"><h3>Orçamento do mês (por categoria) ${helpQ("metas")}</h3>
+    <div class="orc-total ${totOver ? "neg" : ""}">Total gasto: <b>${brl(totVal)}</b> / ${brl(totMeta)} <i>· ${totPct}%</i></div>
+    ${body}</div>`;
 }
 
 /* ---------- RESUMO ANUAL ---------- */
@@ -4035,6 +4049,7 @@ function bindRows(view) {
     const cancelLP = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
     r.addEventListener("pointerdown", (e) => {
       if (e.target.dataset.toggle !== undefined) return;            // não no badge de status
+      if (e.target.classList && e.target.classList.contains("obs-flag")) return;   // 📝 abre a observação, não seleciona
       sx = e.clientX; sy = e.clientY;
       cancelLP();
       lpTimer = setTimeout(() => { lpTimer = null; if (navigator.vibrate) try { navigator.vibrate(15); } catch (_) {} enterSelMode(idx); }, 550);
@@ -4044,11 +4059,27 @@ function bindRows(view) {
     r.addEventListener("pointercancel", cancelLP);
     r.onclick = (e) => {
       if (selMode) { e.preventDefault(); toggleSel(idx); return; }  // se o long-press já ativou a seleção
+      if (e.target.classList && e.target.classList.contains("obs-flag")) { e.stopPropagation(); const l = DATA[curTab] && DATA[curTab][idx]; if (l) showObs(l.desc, l.obs); return; }   // 📝 → observação em tela
       if (e.target.dataset.toggle !== undefined) { toggleStatus(curTab, +e.target.dataset.toggle); e.stopPropagation(); return; }
       if (curTab === "diaria") return openEntryModal("diaria", idx);
       openEntryModal(curTab, idx);
     };
   });
+}
+// Observação da compra em TELA (modal central): toque no 📝 abre o texto completo, legível.
+function showObs(desc, obs) {
+  if (!obs) return;
+  let m = document.getElementById("obsModal");
+  if (!m) { m = document.createElement("div"); m.id = "obsModal"; m.className = "modal center hidden"; document.body.appendChild(m); m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); }); }
+  m.innerHTML = '<div class="modal-card obs-card"><button type="button" class="sheet-x" id="obsX" aria-label="Fechar">✕</button>'
+    + '<div class="obs-ic">📝</div>'
+    + '<h2 style="text-align:center;margin:6px 0 6px">Observação</h2>'
+    + (desc ? '<div class="obs-desc">' + esc(desc) + '</div>' : '')
+    + '<div class="obs-text">' + esc(obs) + '</div>'
+    + '<div class="modal-actions"><button type="button" class="btn primary" id="obsOk">Fechar</button></div></div>';
+  const close = () => m.classList.add("hidden");
+  m.querySelector("#obsX").onclick = close; m.querySelector("#obsOk").onclick = close;
+  m.classList.remove("hidden");
 }
 function toggleStatus(tab, idx) {
   const l = DATA[tab][idx], m = curMonth;
@@ -4594,6 +4625,23 @@ const EMOJI_GROUPS = [
   { name: "Símbolos", icon: "❤️", emojis: "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ☮️ ✝️ ☪️ 🕉️ ☸️ ✡️ 🔯 🕎 ☯️ ☦️ 🛐 ⛎ ♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓ 🆔 ⚛️ 🉑 ☢️ ☣️ 📴 📳 🈶 🈚 🈸 🈺 🈷️ ✴️ 🆚 💮 🉐 ㊙️ ㊗️ 🈴 🈵 🈹 🈲 🅰️ 🅱️ 🆎 🆑 🅾️ 🆘 ❌ ⭕ 🛑 ⛔ 📛 🚫 💯 💢 ♨️ 🚷 🚯 🚳 🚱 🔞 📵 🚭 ❗ ❕ ❓ ❔ ‼️ ⁉️ 🔅 🔆 〽️ ⚠️ 🚸 🔱 ⚜️ 🔰 ♻️ ✅ 🈯 💹 ❇️ ✳️ ❎ 🌐 💠 Ⓜ️ 🌀 💤 🏧 🚾 ♿ 🅿️ 🛗 🈳 🈂️ 🛂 🛃 🛄 🛅 🚹 🚺 🚼 ⚧️ 🚻 🚮 🎦 📶 🈁 🔣 ℹ️ 🔤 🔡 🔠 🆖 🆗 🆙 🆒 🆕 🆓 0️⃣ 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣ 8️⃣ 9️⃣ 🔟 🔢 #️⃣ *️⃣ ⏏️ ▶️ ⏸️ ⏯️ ⏹️ ⏺️ ⏭️ ⏮️ ⏩ ⏪ ⏫ ⏬ ◀️ 🔼 🔽 ➡️ ⬅️ ⬆️ ⬇️ ↗️ ↘️ ↙️ ↖️ ↕️ ↔️ ↪️ ↩️ ⤴️ ⤵️ 🔀 🔁 🔂 🔄 🔃 🎵 🎶 ➕ ➖ ➗ ✖️ 🟰 ♾️ 💲 💱 ™️ ©️ ®️ 〰️ ➰ ➿ 🔚 🔙 🔛 🔝 🔜 ✔️ ☑️ 🔘 🔴 🟠 🟡 🟢 🔵 🟣 ⚫ ⚪ 🟤 🔺 🔻 🔸 🔹 🔶 🔷 🔳 🔲 ▪️ ▫️ ◾ ◽ ◼️ ◻️ 🟥 🟧 🟨 🟩 🟦 🟪 ⬛ ⬜ 🟫 🔈 🔇 🔉 🔊 🔔 🔕 📣 📢 💬 💭 🗯️ ♠️ ♣️ ♥️ ♦️ 🃏 🎴 🀄 🕐 🕑 🕒 🕓 🕔 🕕 🕖 🕗 🕘 🕙 🕚 🕛".split(" ") },
   { name: "Bandeiras", icon: "🚩", emojis: "🏁 🚩 🎌 🏴 🏳️ 🏳️‍🌈 🏳️‍⚧️ 🏴‍☠️ 🇧🇷 🇵🇹 🇺🇸 🇨🇦 🇲🇽 🇦🇷 🇨🇱 🇨🇴 🇵🇪 🇺🇾 🇵🇾 🇧🇴 🇻🇪 🇪🇨 🇬🇧 🇮🇪 🇫🇷 🇪🇸 🇮🇹 🇩🇪 🇨🇭 🇦🇹 🇳🇱 🇧🇪 🇸🇪 🇳🇴 🇩🇰 🇫🇮 🇵🇱 🇷🇺 🇺🇦 🇬🇷 🇹🇷 🇯🇵 🇰🇷 🇨🇳 🇮🇳 🇦🇺 🇳🇿 🇿🇦 🇪🇬 🇸🇦 🇦🇪 🇮🇱".split(" ") },
 ];
+// "Todos os emojis": amplia cada grupo com extras (sem mexer nos strings acima). Merge com dedup.
+// Maiores buracos cobertos: ROUPAS/acessórios (Objetos) e ~150 BANDEIRAS de países.
+const EMOJI_EXTRAS = {
+  "Rostos e pessoas": "🫨 🩷 🩵 🩶 🫶 🫷 🫸 🫳 🫴 🫱 🫲 🫅 🫃 🫄 👼 🤰 🤱 🧌 👲 👳 🧕 🧏 🙋‍♂️ 🙅‍♀️ 🤷‍♂️ 🤦‍♀️ 🧎 🧍",
+  "Animais e natureza": "🦬 🦣 🦫 🦤 🦭 🪼 🪽 🪿 🐦‍⬛ 🪳 🪺 🪹 🪷 🪻 🐈‍⬛ 🪸 🫎 🫏 🌬️ 🪨 🪵",
+  "Comida e bebida": "🫛 🫜 🫚 🫙 🫗 🫘 🧆 🫔 🫕 🧈 🫓 🥮",
+  "Atividades": "🪇 🪈 🪭 🛝 🪩 🛟 🎟️ 🩰 🎭 🪄",
+  "Viagens e lugares": "🛞 🛟 🛖 🗾 🛣️ 🛤️ 🏞️ 🌁 🏘️ 🏚️",
+  "Objetos": "👓 🕶️ 🥽 🥼 🦺 👔 👕 👖 🧣 🧤 🧥 🧦 👗 👘 🥻 🩱 🩲 🩳 👙 👚 👛 👜 👝 🎒 🩴 👞 👟 🥾 🥿 👠 👡 👢 👑 👒 🎩 🎓 🧢 ⛑️ 📿 💍 🪫 🪪 🩼 🩻 🪝 🪡 🧵 🧶 🪢 🛗 🪦 🪧 ⛓️",
+  "Símbolos": "⚕️ ♀️ ♂️ 🛜 🪯",
+  "Bandeiras": "🇪🇺 🇦🇫 🇦🇱 🇩🇿 🇦🇩 🇦🇴 🇦🇬 🇦🇲 🇧🇸 🇧🇩 🇧🇧 🇧🇭 🇧🇿 🇧🇯 🇧🇹 🇧🇼 🇧🇦 🇧🇬 🇧🇫 🇧🇮 🇰🇭 🇨🇲 🇨🇻 🇨🇫 🇹🇩 🇰🇲 🇨🇬 🇨🇩 🇨🇷 🇨🇮 🇭🇷 🇨🇺 🇨🇾 🇨🇿 🇩🇯 🇩🇲 🇩🇴 🇸🇻 🇬🇶 🇪🇷 🇪🇪 🇸🇿 🇪🇹 🇫🇯 🇬🇦 🇬🇲 🇬🇪 🇬🇭 🇬🇩 🇬🇹 🇬🇳 🇬🇼 🇬🇾 🇭🇹 🇭🇳 🇭🇰 🇭🇺 🇮🇸 🇮🇩 🇮🇷 🇮🇶 🇯🇲 🇯🇴 🇰🇿 🇰🇪 🇰🇮 🇰🇼 🇰🇬 🇱🇦 🇱🇻 🇱🇧 🇱🇸 🇱🇷 🇱🇾 🇱🇮 🇱🇹 🇱🇺 🇲🇬 🇲🇼 🇲🇾 🇲🇻 🇲🇱 🇲🇹 🇲🇷 🇲🇺 🇲🇩 🇲🇨 🇲🇳 🇲🇪 🇲🇦 🇲🇿 🇲🇲 🇳🇦 🇳🇵 🇳🇮 🇳🇪 🇳🇬 🇰🇵 🇲🇰 🇴🇲 🇵🇰 🇵🇦 🇵🇬 🇵🇭 🇶🇦 🇷🇴 🇷🇼 🇸🇲 🇸🇳 🇷🇸 🇸🇨 🇸🇱 🇸🇬 🇸🇰 🇸🇮 🇸🇧 🇸🇴 🇱🇰 🇸🇩 🇸🇷 🇸🇾 🇹🇼 🇹🇯 🇹🇿 🇹🇭 🇹🇬 🇹🇴 🇹🇹 🇹🇳 🇹🇲 🇺🇬 🇺🇿 🇻🇺 🇻🇳 🇾🇪 🇿🇲 🇿🇼",
+};
+EMOJI_GROUPS.forEach(g => {
+  const ex = EMOJI_EXTRAS[g.name]; if (!ex) return;
+  const have = new Set(g.emojis);
+  ex.split(" ").filter(Boolean).forEach(e => { if (!have.has(e)) { g.emojis.push(e); have.add(e); } });
+});
 // Nome em inglês de cada grupo → quem digitar "food"/"animals"/"flags" acha o grupo inteiro.
 const EMOJI_GROUP_EN = {
   "Rostos e pessoas": "faces people emotion smiley emoji",
@@ -4629,6 +4677,10 @@ const EMOJI_KW = {
   // — bandeiras —
   "🏁":"bandeira quadriculada chegada corrida finish","🚩":"bandeira vermelha flag marcador","🏴":"bandeira preta black flag","🏳️":"bandeira branca rendicao white flag","🏳️‍🌈":"bandeira lgbt arco iris pride rainbow","🏴‍☠️":"bandeira pirata pirate caveira","🇧🇷":"brasil brazil bandeira","🇵🇹":"portugal bandeira","🇺🇸":"estados unidos eua usa america bandeira","🇨🇦":"canada bandeira","🇲🇽":"mexico bandeira","🇦🇷":"argentina bandeira","🇨🇱":"chile bandeira","🇨🇴":"colombia bandeira","🇪🇸":"espanha spain bandeira","🇫🇷":"franca france bandeira","🇮🇹":"italia italy bandeira","🇩🇪":"alemanha germany bandeira","🇬🇧":"reino unido inglaterra uk england bandeira","🇯🇵":"japao japan bandeira","🇨🇳":"china bandeira",
 };
+// keywords das ROUPAS/acessórios e itens novos (mesclados no dicionário acima)
+Object.assign(EMOJI_KW, {
+  "👕":"camiseta camisa shirt tshirt roupa","👔":"camisa social gravata shirt tie roupa","👖":"calca jeans pants roupa","👗":"vestido dress roupa","👘":"quimono kimono roupa","🥻":"sari roupa","🩳":"shorts bermuda roupa","👚":"blusa roupa feminina","🧥":"casaco jaqueta coat jacket roupa","🧦":"meia sock","🧤":"luva glove","🧣":"cachecol scarf","👞":"sapato shoe calcado","👟":"tenis sneaker calcado","👠":"salto sapato heel","👡":"sandalia sapato","👢":"bota boot","🥾":"bota trilha boot","🥿":"sapatilha flat","🩴":"chinelo sandalia flip flop","👒":"chapeu hat","🎩":"cartola chapeu top hat","🧢":"bone cap chapeu","⛑️":"capacete helmet","👑":"coroa crown rei rainha","💍":"anel alianca ring joia","👓":"oculos glasses","🕶️":"oculos de sol sunglasses","🥽":"oculos protecao goggles","👜":"bolsa bag","👛":"carteira bolsa purse","👝":"bolsa pochete clutch","🎒":"mochila backpack","🧵":"linha costura thread","🧶":"la croche trico yarn novelo","🪪":"identidade rg documento id carteira","🪫":"bateria fraca low battery","🦺":"colete seguranca vest","🪯":"khanda sikh","⚕️":"saude medico medicina health","♀️":"feminino mulher female","♂️":"masculino homem male","🇪🇺":"uniao europeia europa eu bandeira","🇮🇩":"indonesia bandeira","🇮🇷":"ira iran bandeira","🇮🇶":"iraque iraq bandeira","🇨🇺":"cuba bandeira","🇨🇿":"republica tcheca czech bandeira","🇭🇺":"hungria hungary bandeira","🇷🇴":"romenia romania bandeira","🇷🇸":"servia serbia bandeira","🇸🇬":"singapura singapore bandeira","🇹🇭":"tailandia thailand bandeira","🇻🇳":"vietna vietnam bandeira","🇵🇰":"paquistao pakistan bandeira","🇵🇭":"filipinas philippines bandeira","🇳🇬":"nigeria bandeira","🇰🇪":"quenia kenya bandeira","🇲🇦":"marrocos morocco bandeira","🇨🇷":"costa rica bandeira","🇩🇴":"republica dominicana bandeira","🇬🇹":"guatemala bandeira","🇭🇳":"honduras bandeira","🇸🇻":"el salvador bandeira","🇳🇮":"nicaragua bandeira","🇵🇦":"panama bandeira"
+});
 function normEmoji(s) { return (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
 let _emojiIndex = null;
 function emojiIndex() {
@@ -4888,7 +4940,7 @@ function redo() {
   saveData(DATA); render(); pushSync(); toast("Refeito ↪︎");
 }
 function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
-let toastT; function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 1800); }
+let toastT; function toast(msg, ms) { const t = $("#toast"); t.textContent = msg; t.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), ms || 1800); }
 
 /* ---------- Eventos ---------- */
 $$(".tab").forEach(t => t.onclick = () => commitTab(t));
@@ -6094,7 +6146,7 @@ const HELP = {
   flow: ["O caminho do dinheiro", "Mostra: o que <b>sobrou do mês passado</b> + <b>receitas</b> − <b>despesas</b> = <b>o que sobra</b> no mês."],
   prevreal: ["Previsto × Realizado", "O que você <b>já recebeu/pagou</b> contra o que <b>ainda falta</b> no mês."],
   comp: ["Composição das despesas", "Como seus gastos se dividem entre <b>Fixas</b>, <b>Cartão</b> e <b>Dia a dia</b>."],
-  metas: ["Orçamento (metas)", "Suas metas por categoria. <b>Verde</b> = dentro da meta; <b>vermelho</b> = estourou. Defina no menu → Categorias."],
+  metas: ["Orçamento do mês", "Seu orçamento <b>por categoria</b>: o gasto do mês vs. o limite que você definiu em cada categoria. <b>Verde</b> = dentro; <b>vermelho</b> = estourou. Defina no menu → <b>Categorias e orçamento</b>."],
 };
 function helpQ(key) { return `<button type="button" class="help-q" data-help="${key}" aria-label="O que é isso?">?</button>`; }
 function openHelp(key) {
@@ -7039,6 +7091,22 @@ setTimeout(checkForUpdate, 6500);
 setInterval(checkForUpdate, 5 * 60 * 1000);
 
 /* ---------- Boot ---------- */
+// Migração segura do orçamento: o antigo por TIPO (DATA.metas) foi aposentado em favor do por
+// CATEGORIA. NÃO apagamos nada — só avisamos UMA vez quem tinha orçamento por tipo e ainda não
+// definiu por categoria, pra redefinir (nada some calado).
+function maybeNotifyBudgetMigration() {
+  try {
+    if (localStorage.getItem("financas2026.budgetMigV1")) return;
+    const metas = DATA.metas || {};
+    const temTipo = ["fixas", "cartao", "diaria"].some(k => (Number(metas[k]) || 0) > 0);
+    const orc = DATA.orcamento || {};
+    const temCat = Object.keys(orc).some(k => (Number(orc[k]) || 0) > 0);
+    if (temTipo && !temCat) {
+      toast("Agora o orçamento é por categoria — defina em ☰ → Categorias e orçamento", 6500);
+    }
+    localStorage.setItem("financas2026.budgetMigV1", "1");
+  } catch (e) {}
+}
 function startApp() {
   window.__started = true;
   lastSnap = JSON.stringify(DATA);
@@ -7049,6 +7117,7 @@ function startApp() {
   checkAndNotify(); checkVersion();
   startTitleRotator();                  // título alterna entre o nome da página e a saudação (Bom dia, Nome 🌅)
   setTimeout(checkFullscreen, 3200);   // detecta install antigo (sem tela cheia → faixa no rodapé) e orienta a reinstalar
+  setTimeout(maybeNotifyBudgetMigration, 4600);   // aviso 1x: orçamento por tipo → por categoria
   setTimeout(cpCheckHashPair, 600);    // se abriu por um link de convite (#pair=…), já entra no pareamento do casal
   const t0 = Date.now();
   // Splash curto (só o nome): mostra ~2,2s e revela o app; o sync continua por trás.
