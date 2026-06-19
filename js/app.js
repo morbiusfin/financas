@@ -1,12 +1,21 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.98";
-const VERSION_NOTES = "💳 Compra recorrente no cartão (por X meses ou meses escolhidos) + campo de observações + sugestão de descrição pelo histórico · 🎯 busca de emoji nas Metas · 🔔 pop-up de contas maior e 📂 menu mais enxuto (cantos arredondados) · 📸 editor de foto com zoom + girar sempre visíveis";
+const APP_VERSION = "3.13.99";
+const VERSION_NOTES = "🔔 Tocar numa conta a vencer abre pra editar · 📊 novo gráfico de Saldo que sobra por mês (barras) · ⚙️ Saldo inicial com formatação automática (. ,) + explicado no tutorial · 🔒 faixa do rodapé na tela de senha agora fica na cor do fundo";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.99",
+    bullets: [
+      "No bloco <b>Contas a vencer</b>, agora é só <b>tocar numa conta</b> pra abrir e editar ela na hora — vale pra qualquer conta que aparecer ali.",
+      "Novo gráfico em <b>Gráficos</b>: <b>Saldo que sobra por mês</b>, em barras e <b>sem somar</b> com os outros meses — verde quando sobrou, vermelho quando faltou. Toque numa barra pra ver o detalhe.",
+      "O <b>Saldo inicial do ano</b> (em Configurações) agora <b>formata sozinho</b> com ponto e vírgula, igual aos outros valores (ex.: 100000 vira <b>R$ 100.000,00</b>). E entrou no <b>Tutorial detalhado</b> explicando pra que serve e quando usar.",
+      "Na <b>tela de senha</b>, aquela faixa lá no rodapé do celular agora fica na <b>cor do fundo</b> — sem aquele tom destoando.",
+    ],
+  },
   {
     version: "3.13.98",
     bullets: [
@@ -2756,12 +2765,18 @@ function renderVencList() {
   el.innerHTML = vs.map(v => {
     const cls = vencBadge(v.daysLeft).cls;
     const u = (cls === "atras" || cls === "d0") ? "u-red" : (cls === "d1" || cls === "d3") ? "u-amber" : "u-green";
-    return `<div class="venc-row ${u}">
+    return `<div class="venc-row ${u}" data-vid="${v.id}" title="Tocar para editar esta conta">
       <div class="vr-main"><div class="vr-name">${esc(v.desc)}</div><div class="vr-sub">dia ${v.venc} ${vencBadgeHTML(v.daysLeft)}</div></div>
       <span class="vr-amt">${brl(v.val)}</span>
       <button class="vr-pay" data-pay="${v.id}">Pagar</button>
     </div>`;
   }).join("");
+  // tocar na linha (fora do Pagar) abre a conta pra EDIÇÃO — vale pra qualquer conta do bloco
+  $$(".venc-row[data-vid]", el).forEach(row => row.onclick = (e) => {
+    if (e.target.closest(".vr-pay")) return;                 // o Pagar tem ação própria
+    const idx = (DATA.fixas || []).findIndex(x => x.id === row.dataset.vid);
+    if (idx >= 0) openEntryModal("fixas", idx);
+  });
   // Pagar: a linha esvaece e a lista encolhe (≤ ~0,7s) antes de salvar
   $$("[data-pay]", el).forEach(b => b.onclick = () => {
     const id = b.dataset.pay, row = b.closest(".venc-row");
@@ -3096,6 +3111,8 @@ const trendForca = (r2) => r2 >= 0.6 ? "forte" : r2 >= 0.3 ? "moderada" : "fraca
 const serieRec = () => { const b = curYear() * 12; return Array.from({ length: 12 }, (_, i) => receitaMes(b + i)); };
 const serieDesp = () => { const b = curYear() * 12; return Array.from({ length: 12 }, (_, i) => despesaMes(b + i)); };
 const serieSaldo = () => { const b = curYear() * 12; return Array.from({ length: 12 }, (_, i) => sobraMes(b + i)); };
+// sobra DO MÊS (sem acúmulo): receita − despesa do próprio mês (pode ser negativa)
+const serieSobraMes = () => { const b = curYear() * 12; return Array.from({ length: 12 }, (_, i) => receitaMes(b + i) - despesaMes(b + i)); };
 
 /* ---------- Ritmo de gastos: gasto acumulado por dia (mês vigente × anterior × média 3m) ---------- */
 let _ritmo = null;   // dados do gráfico atual, p/ o resumo que responde ao dedo (scrub)
@@ -3236,6 +3253,12 @@ function renderGraficos(host) {
       <div class="g-insights" id="insSaldo"></div>
     </div>
     <div class="section-card g-card fade-in">
+      <h3>💰 Saldo que sobra por mês — ${ano}</h3>
+      <p class="hint" style="text-align:left;margin:-2px 0 8px">Quanto sobrou (ou faltou) em cada mês, <b>sem somar</b> com os outros. Verde sobrou, vermelho faltou. Toque numa barra pra ver.</p>
+      <div class="chart-wrap"><canvas id="gSobra" height="210"></canvas></div>
+      <div class="g-detail" id="detSobra"></div>
+    </div>
+    <div class="section-card g-card fade-in">
       <h3>📉 Despesas por mês — ${ano}</h3>
       <p class="hint" style="text-align:left;margin:-2px 0 8px">Toque numa barra pra ver as despesas daquele mês.</p>
       <div class="chart-wrap"><canvas id="gDesp" height="210"></canvas></div>
@@ -3257,26 +3280,30 @@ function renderGraficos(host) {
   const il = $("#insSaldo"); if (il) il.innerHTML = insightsSaldo();
   const id2 = $("#insDesp"); if (id2) id2.innerHTML = insightsDespesas();
   const ir = $("#insRec"); if (ir) ir.innerHTML = insightsReceitas();
-  drillSaldo(gSelMonth); drillDesp(gSelMonth); drillRec(gSelMonth);
+  drillSaldo(gSelMonth); drillSobra(gSelMonth); drillDesp(gSelMonth); drillRec(gSelMonth);
   setupCardSection();
 }
 
 function renderGCharts() {
   if (typeof Chart === "undefined") return;
   applyChartTheme();
-  ["gRitmo", "gSaldo", "gDesp", "gRec", "gCard", "dough", "bar", "line", "sim", "sobra", "orc"].forEach(k => { if (charts[k]) { try { charts[k].destroy(); } catch (e) {} charts[k] = null; } });
+  ["gRitmo", "gSaldo", "gSobra", "gDesp", "gRec", "gCard", "dough", "bar", "line", "sim", "sobra", "orc"].forEach(k => { if (charts[k]) { try { charts[k].destroy(); } catch (e) {} charts[k] = null; } });
   const labels = Array.from({ length: 12 }, (_, i) => MESES_CURTO[i]);
   charts.gDesp = makeBarTrend("gDesp", labels, serieDesp(), "#e5484d", drillDesp);
   charts.gRec = makeBarTrend("gRec", labels, serieRec(), "#1db954", drillRec);
+  charts.gSobra = makeBarTrend("gSobra", labels, serieSobraMes(), (v) => v >= 0 ? "#15c266" : "#e5484d", drillSobra);
   charts.gSaldo = makeSaldoChart(labels);
 }
 function barColors(color, n) { return Array.from({ length: n }, (_, i) => i === gSelMonth ? color : color + "85"); }
 function makeBarTrend(id, labels, data, color, onIdx) {
+  // color pode ser string (cor fixa) OU função(valor,índice)->cor (ex.: verde/vermelho por sinal)
+  const baseFn = typeof color === "function" ? color : () => color;
+  const bg = data.map((v, i) => { const c = baseFn(v, i); return i === gSelMonth ? c : c + "85"; });
   const reg = linReg(data), trend = data.map((_, i) => reg.at(i));
   return new Chart($("#" + id), {
     type: "bar",
     data: { labels, datasets: [
-      { label: "valor", data, backgroundColor: barColors(color, 12), borderRadius: 5, order: 2 },
+      { label: "valor", data, backgroundColor: bg, borderRadius: 5, order: 2 },
       { _trend: true, type: "line", label: "tendência", data: trend, borderColor: "#cfd8d3", borderWidth: 2, borderDash: [5, 4], pointRadius: 0, fill: false, tension: 0, order: 1 }
     ] },
     options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 18, bottom: 4 } },
@@ -3385,6 +3412,22 @@ function drillSaldo(i) {
     <p class="det-flux hint">${fluxoNota}</p>`;
   if (charts.gSaldo) { try { charts.gSaldo.data.datasets[0].pointRadius = serieSaldo().map((_, k) => k === i ? 6 : 3); charts.gSaldo.update("none"); } catch (e) {} }
   animDetail("#detSaldo");
+}
+function drillSobra(i) {
+  gSelMonth = i; const m = curYear() * 12 + i, el = $("#detSobra"); if (!el) return;
+  const r = receitaMes(m), d = despesaMes(m), net = r - d;
+  el.innerHTML = `<div class="det-head">${mLong(m)}</div>
+    <div class="det-kpis">
+      <div class="dk"><span>+ Receitas</span><b class="pos">${brl(r)}</b></div>
+      <div class="dk"><span>− Despesas</span><b class="neg">${brl(d)}</b></div>
+      <div class="dk big"><span>= Sobra do mês</span><b class="${net >= 0 ? "pos" : "neg"}">${brl(net)}</b></div>
+    </div>
+    <p class="det-flux hint">${net >= 0
+      ? `Sobrou ${brl(net)} neste mês — entrou mais do que saiu.`
+      : `Faltou ${brl(-net)} neste mês — saiu mais do que entrou (o saldo acumulado cobre).`}</p>`;
+  // re-pinta as barras com o sinal (verde/vermelho) e destaca o mês escolhido
+  const c = charts.gSobra; if (c) { try { c.data.datasets[0].backgroundColor = serieSobraMes().map((v, k) => { const base = v >= 0 ? "#15c266" : "#e5484d"; return k === i ? base : base + "85"; }); c.update("none"); } catch (e) {} }
+  animDetail("#detSobra");
 }
 
 /* ====================== 💳 Gráfico de cartão de crédito ======================
@@ -4886,7 +4929,7 @@ function populateAccessCode() {
 { const cb = $("#copyAccess"); if (cb) cb.onclick = async () => { try { const c = await deviceCode(); await navigator.clipboard.writeText(fmtAccess(c)); toast("Código copiado 📋"); } catch (e) { toast("Copie manualmente"); } }; }
 
 function openSettings() {
-  $("#saldoInicial").value = DATA.saldoInicial || 0;
+  const si = $("#saldoInicial"); if (si) { si.value = DATA.saldoInicial ? fmtMoneyBR(DATA.saldoInicial) : ""; bindMoney(si); }   // formata com . e , igual aos demais valores
   populateAccessCode();
   const sg = $("#setGreet");
   if (sg) {
@@ -6181,20 +6224,21 @@ const MANUAL = [
   ["🔀 As 4 visões do Resumo", "No topo do Resumo tem 4 botões: <b>Resumo</b>, <b>Gráficos</b>, <b>Insights</b> e <b>Metas</b>. Ficou em dúvida sobre alguma parte? Toque no <b>?</b> ao lado do título que ele explica ali mesmo."],
   ["📋 Resumo do mês", "Mostra o caminho do seu dinheiro: o que sobrou somado às receitas dá o disponível, e tirando as despesas você vê o que ainda resta. Tem também o <b>Previsto × Realizado</b> (o que já entrou e saiu de verdade) e a divisão das despesas entre Fixas, Cartão e Débito."],
   ["💪 Saúde financeira", "Uma notinha de 0 a 100. Quanto mais você guarda do que ganha, mais ela sobe. Vai de Crítica a Ótima, passando por Atenção e Boa. Embaixo aparece quanto você guardou no mês (ou o quanto ficou no vermelho)."],
-  ["📊 Gráficos", "Em <b>Gráficos</b> dá pra ver o <b>Orçamento × Realizado</b> por categoria (verde quer dizer dentro do combinado, vermelho quer dizer que estourou), o <b>saldo acumulado</b> ao longo do ano e as <b>despesas e receitas mês a mês</b>. Toque numa barra pra abrir os lançamentos daquele mês."],
+  ["📊 Gráficos", "Em <b>Gráficos</b> dá pra ver o <b>Orçamento × Realizado</b> por categoria (verde quer dizer dentro do combinado, vermelho quer dizer que estourou), o <b>saldo acumulado</b> ao longo do ano, o <b>saldo que sobra por mês</b> (sem somar com os outros — verde sobrou, vermelho faltou) e as <b>despesas e receitas mês a mês</b>. Toque numa barra pra abrir os lançamentos daquele mês."],
   ["🔥 Ritmo de gastos", "O primeiro card dos Gráficos: mostra <b>quanto você já gastou acumulado, dia a dia</b>, comparado com o <b>mês passado</b> e a <b>média dos últimos 3 meses</b> — e se está acima ou abaixo no mesmo ponto do mês. No seletor do topo dá pra escolher o que entra: <b>Tudo, Fixas, Cartões ou Débito</b>. Passe o dedo no gráfico pra ver o resumo de cada dia."],
   ["🧪 Simulador de gastos", "Ainda em Gráficos: digite um valor e o número de parcelas, e ele desenha uma linha tracejada mostrando como ficaria seu saldo <b>se</b> você fizesse essa compra. No fim, um aviso te diz se cabe ou em que mês vai apertar. O ↺ limpa tudo."],
   ["💳 Gastos no cartão", "Mais pra baixo nos Gráficos tem uma parte só do cartão. Escolha o cartão no filtro de cima e veja, mês a mês, quanto foi de cartão no ano. Embaixo aparece a lista das suas compras, da maior pra menor. Toque numa compra que o gráfico vira a linha do tempo das parcelas — as pagas ficam verdes, as que ainda vêm ficam roxas — e do lado uma leitura te diz quantas parcelas faltam, quanto ainda falta pagar e em que mês ela termina. É ótimo pra saber quando o cartão vai aliviar."],
   ["💡 Insights", "É a leitura do seu mês. Ele aponta o que foi bem e o que saiu do controle, dá umas dicas (quanto você poupou, qual gasto vale a pena revisar, como ficou comparado ao mês passado) e ainda arrisca como o mês deve fechar."],
   ["🏅 Medalhas", "No Insights tem um quadro de conquistas. As coloridas você já desbloqueou, as cinzas ainda estão fechadas. Elas vêm do seu saldo, do número de lançamentos, dos meses em que você economizou, das metas que criou e por aí vai. Uma barrinha mostra quanto você já juntou."],
-  ["🎯 Metas", "Crie seus objetivos: uma viagem, a casa, o carro. Coloque o nome, quanto custa e quanto já guardou. A barra mostra o progresso e o emoji se ajusta sozinho ao nome que você escolheu. Quando chega nos 100%, vem o confete. Pra mexer é no ✎, e dá pra excluir lá dentro da edição."],
+  ["🎯 Metas", "Crie seus objetivos: uma viagem, a casa, o carro. Coloque o nome, quanto custa e quanto já guardou. A barra mostra o progresso e o emoji se ajusta sozinho ao nome — e, se quiser, <b>toque no emoji pra buscar e escolher outro</b> (digite “praia”, “carro”, “beijinho”… em português ou inglês). Quando chega nos 100%, vem o confete. Pra mexer é no ✎, e dá pra excluir lá dentro da edição."],
   ["💰 Receitas", "Tudo que entra: salário, um extra aqui e ali. Cada item tem valor, dia e situação (Recebido ou Programado). Na hora de adicionar, escolha <b>Ativa</b> pra algo que se repete (tipo o salário) ou <b>Extra</b> pra um valor avulso (tipo um freela)."],
   ["📌 Fixas", "As contas que voltam todo mês: aluguel, assinaturas e afins. Dá pra definir o dia do vencimento, o aviso, uma meta de gasto e marcar como <b>Necessário</b>. Marcou <b>Repetir nos próximos meses</b>? Ele já preenche os meses seguintes pra você."],
-  ["💳 Cartões", "As compras no cartão. No topo aparecem seus cartões com <b>limite usado e disponível</b> (já contando <b>todas as parcelas</b> das compras parceladas, não só a do mês — vai liberando conforme você paga), fechamento e vencimento. No +, escolha <b>à vista</b> ou <b>parcelado em até 60×</b>, e ele coloca cada parcela no mês certo conforme a data de fechamento."],
+  ["💳 Cartões", "As compras no cartão. No topo aparecem seus cartões com <b>limite usado e disponível</b> (já contando <b>todas as parcelas</b> das compras parceladas, não só a do mês — vai liberando conforme você paga), fechamento e vencimento. No +, escolha <b>à vista</b>, <b>parcelado em até 60×</b> ou <b>recorrente</b> (tipo assinatura: por quantos meses se repete ou marcando os meses exatos) — ele coloca cada parcela no mês certo conforme a data de fechamento. Conforme você digita a <b>descrição</b>, ele sugere compras que você já fez e já traz a <b>categoria</b> daquele lugar. E dá pra deixar uma <b>observação</b> na compra, se quiser."],
   ["🛒 Débito (dia a dia)", "Os gastos do dia a dia: mercado, farmácia, gasolina. Cada um com <b>categoria</b>, agrupados por categoria. Diferente das Fixas, eles não se repetem; cada gasto entra na hora que acontece."],
   ["➕ Adicionar, editar, apagar", "O <b>+</b> verde abre um novo lançamento na aba em que você está. Toque num item pra <b>editar</b>. Pra apagar, segure o dedo num item: ele entra no modo de seleção, e aí o <b>+</b> vira uma <b>🗑️ vermelha</b> no mesmo canto — marque os que quiser e toque na lixeira. Cancelou ou apagou? O <b>+</b> volta. O <b>↩︎</b> lá em cima desfaz. Uma mão na roda: os <b>centavos são automáticos</b>, então digitar 1000 vira R$ 10,00."],
   ["🟢 Badge de status", "Em Receitas, Fixas e Cartões, aquele selinho do lado do valor mostra se está <b>Pago/Recebido</b> (verde) ou <b>Programado</b> (âmbar). Toque direto nele pra alternar, sem precisar abrir a edição."],
   ["☰ Menu", "Aqui mora tudo: editar perfil, os tutoriais, conta e acesso (o PIN), backup e sincronização, categorias, metas, configurações, aviso de vencimento, tema, começar do zero e sair do app. Lá em cima, a barra de <b>Exploração do app</b> mostra o quanto você já passeou por ele."],
+  ["⚙️ Configurações & saldo inicial", "No menu ☰ → <b>Configurações</b>. O <b>Saldo inicial do ano</b> é quanto você já tinha guardado no comecinho do ano (ou o que sobrou do ano passado) — ele entra como ponto de partida em Janeiro e vai passando pros meses seguintes. Digite só os números, que ele <b>formata sozinho com ponto e vírgula</b> (ex.: 100000 vira <b>R$ 100.000,00</b>), igual a todo valor no app. Use ao <b>começar a usar o app no meio do ano</b> (ponha o que você tem hoje guardado) ou na <b>virada do ano</b>. Aqui também ligam/desligam a <b>saudação</b> de abertura e as <b>notificações</b>, e fica o seu <b>código de acesso</b>."],
   ["👤 Perfil & conta conjunta", "Toque no avatar pra trocar a foto ou o bichinho, mudar o nome e o tipo de conta. Na opção <b>Conjunta</b>, você gera um convite (link ou QR) e manda pro seu par. Os dois celulares ficam sincronizados: o que um lança, aparece no do outro."],
   ["☁️ Backup e seus dados", "Seus dados ficam <b>só no seu celular</b>, então vale exportar um backup de vez em quando: menu → Backup e sincronização → Exportar, que gera um arquivo .json. Trocou de celular? Exporta no antigo e importa no novo. Sincronizar pela nuvem é opcional, fica a seu critério."],
   ["🔒 PIN, recuperação e segurança", "Em Conta e acesso você cria um <b>PIN de 4 dígitos</b> que embaralha (criptografa) seus dados. Na hora de criar, dá pra deixar uma <b>pergunta de recuperação</b> guardada. Esqueceu o código? Toque em “Esqueci meu código” e responda. Se errar muitas vezes, ele bloqueia por um tempo que vai aumentando a cada tentativa."],
