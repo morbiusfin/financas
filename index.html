@@ -233,21 +233,6 @@
     </div>
   </div>
 
-  <!-- FOLHA DO DÉBITO (refeita do zero, ISOLADA): NÃO é .modal de propósito → o observer de
-       scroll-lock não trava o body (position:fixed) e a barra de baixo NUNCA é tocada → não sobe. -->
-  <div id="diariaSheet" class="dsheet hidden" role="dialog" aria-modal="true" aria-labelledby="dsTitle">
-    <div class="dsheet-card">
-      <button type="button" id="dsClose" class="sheet-x" aria-label="Fechar">✕</button>
-      <h2 id="dsTitle">Nova compra no débito</h2>
-      <form id="diariaForm"></form>
-      <div class="dsheet-actions">
-        <button type="button" id="dsDelete" class="btn danger hidden">Excluir</button>
-        <button type="button" id="dsCancel" class="btn ghost">Cancelar</button>
-        <button type="submit" form="diariaForm" class="btn primary">Salvar</button>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL: configurações -->
   <div id="settingsModal" class="modal hidden">
     <div class="modal-card">

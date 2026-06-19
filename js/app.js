@@ -1,12 +1,21 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.94";
-const VERSION_NOTES = "🔒 'Esqueci minha senha' agora abre a pergunta secreta na MESMA tela (não mais escondida atrás) + reforço: sua proteção por PIN não some mais sozinha";
+const APP_VERSION = "3.13.95";
+const VERSION_NOTES = "🧹 acertos da auditoria: a 'Sobra do ano' agora conta seu saldo inicial (bate com a do mês), o cartão vira 'Cartão' genérico nos gráficos e fizemos uma faxina interna (app mais leve)";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.13.95",
+    bullets: [
+      "Acertamos a <b>Sobra do ano</b> (Resumo Anual): agora ela considera o seu <b>saldo inicial</b>, igual à Sobra do mês — os números passam a bater entre as telas.",
+      "No gráfico de <b>despesas por categoria</b>, o cartão agora aparece como <b>“Cartão”</b> (nome genérico), sem ficar preso a uma marca específica.",
+      "Deixamos o texto do <b>mês mais folgado</b> (nos Insights) mais claro: ele mostra a folga <b>do próprio mês</b> (o que entra a mais do que sai), sem se confundir com o saldo acumulado.",
+      "Faxina por baixo do capô: removemos código antigo que não era mais usado — o app ficou mais leve.",
+    ],
+  },
   {
     version: "3.13.94",
     bullets: [
@@ -1489,7 +1498,6 @@ function vencimentos(m) {
     })
     .sort((a, b) => a.venc - b.venc);
 }
-const contasAlerta = (m) => vencimentos(m).filter(v => v.naJanela || (isMesAtual() && !v.pago && v.daysLeft >= 0));
 // SÓ as contas PERTO de vencer: respeita o "avisar X dias antes" de CADA conta (ou 7 dias, se não definiu) + atrasadas
 function contasPerto(m) {
   if (!isMesAtual()) return [];
@@ -1910,7 +1918,7 @@ function projectionInsights(m) {
   // 2) mês mais folgado do ano (maior sobra dentro do próprio mês)
   let best = { i: -1, v: -Infinity };
   for (let i = 0; i < 12; i++) { const v = receitaMes(base + i) - despesaMes(base + i); if (v > best.v) best = { i: i, v: v }; }
-  if (best.v > 0) out.push({ ic: "🌟", tone: "info", text: `Seu mês mais folgado do ano é <b>${mLong(base + best.i)}</b> — sobra ~<b>${brl(best.v)}</b> só naquele mês.` });
+  if (best.v > 0) out.push({ ic: "🌟", tone: "info", text: `Seu mês mais folgado do ano é <b>${mLong(base + best.i)}</b> — nele <b>entra ~${brl(best.v)} a mais do que sai</b> (folga do próprio mês, sem contar o saldo que já vem acumulado).` });
   // 3) pico de saldo acumulado e fechamento do ano
   const fim = sobraMes(base + 11);
   out.push({ ic: fim >= 0 ? "🔮" : "⚠️", tone: fim >= 0 ? "good" : "bad",
@@ -2725,7 +2733,7 @@ function renderVencList() {
 function renderCatList(m) {
   const cats = [
     { name: "Despesas Fixas", val: fixasMes(m), color: "#0b3d2e" },
-    { name: "Cartão Mercado Pago", val: cartaoMes(m), color: "#1db954" },
+    { name: "Cartão", val: cartaoMes(m), color: "#1db954" },
     { name: "Débitos Dia a Dia", val: diariaMes(m), color: "#f5a623" },
   ].filter(c => c.val > 0);
   const el = $("#catList"); if (!el) return;
@@ -2758,7 +2766,10 @@ function renderMetas(m) {
 function renderAnual(view) {
   const yi0 = curYear() * 12, yi1 = yi0 + 12, ano = DATA.year + curYear();
   const range = (fn) => { let s = 0; for (let i = yi0; i < yi1; i++) s += fn(i); return s; };
-  const totRec = range(receitaMes), totDesp = range(despesaMes), sobraAno = totRec - totDesp;
+  const totRec = range(receitaMes), totDesp = range(despesaMes);
+  // "Sobra em {ano}" = saldo ACUMULADO no fim do ano (inclui o saldo inicial), igual à "Sobra do mês"
+  // do Resumo Mensal — antes era só totRec−totDesp e ignorava o saldo inicial (divergia do mensal). #audit-P1.1
+  const sobraAno = sobraMes(yi0 + 11);
   const cat = { fixas: range(fixasMes), cartao: range(cartaoMes), diaria: range(diariaMes) };
   // maiores despesas fixas SÓ do ano selecionado
   const linhasAno = DATA.fixas.map(l => ({ desc: l.desc, tot: (l.vals || []).slice(yi0, yi1).reduce((s, v) => s + (Number(v) || 0), 0) }))
@@ -2772,7 +2783,7 @@ function renderAnual(view) {
     </div>
     <div class="section-card"><h3>Despesas por categoria (${ano})</h3>
       <div class="cat-line"><span class="dot" style="background:#0b3d2e"></span><span class="cname">Despesas Fixas</span><span class="cval">${brl(cat.fixas)}</span></div>
-      <div class="cat-line"><span class="dot" style="background:#1db954"></span><span class="cname">Cartão Mercado Pago</span><span class="cval">${brl(cat.cartao)}</span></div>
+      <div class="cat-line"><span class="dot" style="background:#1db954"></span><span class="cname">Cartão</span><span class="cval">${brl(cat.cartao)}</span></div>
       <div class="cat-line"><span class="dot" style="background:#f5a623"></span><span class="cname">Débitos Dia a Dia</span><span class="cval">${brl(cat.diaria)}</span></div>
     </div>
     <div class="section-card"><h3>Sobra por mês (${ano})</h3>
@@ -2803,7 +2814,7 @@ function renderCharts() {
     // só entram no gráfico (e na legenda) as fatias COM valor > 0
     const parts = [
       { name: "Despesas Fixas", val: fixasMes(m), color: "#0b3d2e" },
-      { name: "Cartão Mercado Pago", val: cartaoMes(m), color: "#15c266" },
+      { name: "Cartão", val: cartaoMes(m), color: "#15c266" },
       { name: "Débitos Dia a Dia", val: diariaMes(m), color: "#f5a623" },
     ].filter(p => p.val > 0);
     const tc = parts.reduce((s, p) => s + p.val, 0);
@@ -4273,7 +4284,6 @@ function updateImpact(isExpense, oldVal) {
 
 // mês absoluto de HOJE (índice a partir de Jan do DATA.year)
 const realMesAbs = () => (REAL_TODAY.getFullYear() - DATA.year) * 12 + REAL_TODAY.getMonth();
-const metLabel = (mt) => mt === "pix" ? "⚡ PIX" : "💳 Débito";
 
 // ---- Seletores de Mês/Dia (compartilhados por todos os formulários com "+") ----
 // meses agrupados por ano em <optgroup> → no iOS abre o picker nativo (roda)
@@ -4313,12 +4323,6 @@ function showChooser(title, opts) {
   setTimeout(() => document.addEventListener("click", onDoc, true), 0);
   $$(".mp-opt", pop).forEach(b => b.onclick = () => { close(); opts[+b.dataset.i].fn(); });
 }
-function openDiariaChooser() {
-  showChooser("Como você pagou?", [
-    { ic: "⚡", label: "PIX", cls: "pix", fn: () => openDiariaModal(null, "pix") },
-    { ic: "💳", label: "Débito", cls: "debito", fn: () => openDiariaModal(null, "debito") },
-  ]);
-}
 function openCartaoChooser() {
   showChooser("O que você quer lançar?", [
     { ic: "🛒", label: "Nova compra", cls: "debito", fn: () => openCartaoModal() },
@@ -4326,63 +4330,6 @@ function openCartaoChooser() {
   ]);
 }
 
-// Fecha a folha do Débito. Como ela NÃO é .modal, não há scroll-lock pra desfazer; só esconde,
-// limpa o form (pra não duplicar os IDs #f_* com o #modal) e re-avalia a barra (caso teclado tenha aberto).
-function closeDiariaSheet() {
-  const sh = $("#diariaSheet"); if (sh) sh.classList.add("hidden");
-  const f = $("#diariaForm"); if (f) f.innerHTML = "";
-  try { if (window.__revealBars) window.__revealBars(); } catch (e) {}
-}
-// REFEITO DO ZERO (isolado do #modal): abre a folha #diariaSheet. Sem scroll-lock e sem mexer na
-// tabbar/FAB → a barra de baixo não tem como "subir" ao abrir/fechar/salvar/cancelar no Débito.
-function openDiariaModal(idx, method) {
-  const isNew = idx == null, d = isNew ? null : DATA.diaria[idx];
-  let metodo = method || (d && d.metodo) || "debito";
-  const mesSel = isNew ? curMonth : (d.mes != null ? d.mes : curMonth);
-  $("#entryForm").innerHTML = "";              // garante que os IDs #f_* existam SÓ na folha (sem duplicar)
-  $("#dsTitle").textContent = (isNew ? "Nova " : "Editar ") + "compra no débito";
-  $("#diariaForm").innerHTML = `
-    <div class="seg" id="f_seg" role="tablist">
-      <button type="button" class="seg-btn${metodo === "debito" ? " active" : ""}" data-met="debito">💳 Débito</button>
-      <button type="button" class="seg-btn${metodo === "pix" ? " active" : ""}" data-met="pix">⚡ PIX</button>
-    </div>
-    <label class="field"><span>Descrição</span><input id="f_desc" type="text" value="${isNew ? "" : esc(d.desc)}" required placeholder="Ex.: Mercado" /></label>
-    <label class="field"><span>Categoria</span><select id="f_catId" class="sel">${catSelectHTML(isNew ? null : entryCatId(d))}</select></label>
-    <label class="field"><span>Valor (R$)</span><input id="f_val" class="money" value="${isNew ? "" : d.valor}" placeholder="0,00" required /></label>    <div class="field-row">
-      <label class="field"><span>Mês</span><select id="f_mes" class="sel">${monthOptionsHTML(mesSel)}</select></label>
-      <label class="field"><span>Dia</span><select id="f_dia" class="sel"></select></label>
-    </div>
-    <p class="hint" style="text-align:left">📌 Escolha o <b>mês</b> aqui — o gasto vai pro mês certo mesmo que você esteja vendo outro.</p>
-    <div id="f_impact" class="impact"></div>`;
-  const diaDefault = isNew ? (mesSel === realMesAbs() ? REAL_TODAY.getDate() : null) : (d.dia || null);
-  fillDaySelect("f_dia", "f_mes", diaDefault);
-  const oldValD = isNew ? 0 : (Number(d.valor) || 0);
-  const fvd = $("#f_val"); if (fvd) fvd.oninput = () => updateImpact(true, oldValD);
-  $("#f_mes").onchange = () => { fillDaySelect("f_dia", "f_mes"); updateImpact(true, oldValD); };
-  $$("#f_seg .seg-btn").forEach(b => b.onclick = () => { $$("#f_seg .seg-btn").forEach(x => x.classList.toggle("active", x === b)); metodo = b.dataset.met; });
-  updateImpact(true, oldValD);
-  const del = $("#dsDelete");
-  del.classList.toggle("hidden", isNew);
-  del.onclick = () => modalConfirm("Excluir esta compra?", () => { tombstone(DATA.diaria[idx].id); DATA.diaria.splice(idx, 1); persist(); closeDiariaSheet(); toast("Excluído"); }, "Excluir");
-  $("#diariaForm").onsubmit = (e) => {
-    e.preventDefault();
-    const val = moneyVal($("#f_val")), mes = +$("#f_mes").value;
-    const catId = $("#f_catId") ? ($("#f_catId").value || null) : null;
-    const o = { desc: $("#f_desc").value.trim(), valor: val, dia: parseInt($("#f_dia").value) || null, catId, categoria: catId ? ((catById(catId) || {}).nome || "Geral") : "Geral", metodo };
-    if (isNew) DATA.diaria.push({ id: uid(), mes, ...o, m: nowMs() });
-    else { Object.assign(d, o); d.mes = mes; d.m = nowMs(); }
-    persist(); closeDiariaSheet();
-    const sa = disponivelMes(mes) - despesaMes(mes);
-    if (val > 0 && sa < 0) toast(`⚠️ ${mLong(mes)} ficou no vermelho (${brl(sa)}) · Ctrl+Z desfaz`);
-    else toast(`${isNew ? "Adicionado" : "Salvo"} em ${mLong(mes)} ✓`);
-  };
-  $("#dsCancel").onclick = closeDiariaSheet;
-  $("#dsClose").onclick = closeDiariaSheet;
-  const sh = $("#diariaSheet");
-  sh.onclick = (e) => { if (e.target === sh) closeDiariaSheet(); };   // toque no fundo fecha
-  sh.classList.remove("hidden");
-  bindMoneyAll(sh);
-}
 
 /* ---------- Categorias e orçamento (gerenciador no menu) ---------- */
 function openCategoriasModal() { markExplored("categorias"); renderCatMgr(); showModal("#catModal"); }
@@ -4609,7 +4556,7 @@ function renderOrcRealChart(m) {
 
 /* ---------- Infra ---------- */
 let _entryBusy = false;             // trava anti-duplo-toque enquanto o salvar aguarda o teclado descer
-function showModal(s) { _entryBusy = false; const df = $("#diariaForm"); if (df) df.innerHTML = ""; const el = $(s); el.classList.remove("hidden"); bindMoneyAll(el); }
+function showModal(s) { _entryBusy = false; const el = $(s); el.classList.remove("hidden"); bindMoneyAll(el); }
 function closeModal() { _entryBusy = false; $("#modal").classList.add("hidden"); }
 // Executa `fn` SÓ depois que o teclado do iOS descer E a viewport ASSENTAR. Tira o foco (some o
 // teclado), espera o visualViewport voltar (gap<=120) e dá um respiro extra (SETTLE) antes de
@@ -7167,7 +7114,7 @@ function refreshInPlace() {
   // todos os .modal; somamos menu, onboarding e a tela de código.
   const bloqueado = () =>
     document.body.classList.contains("scroll-locked")
-    || !!document.querySelector(".menu-drawer:not(.hidden), .onb:not(.hidden), #lockScreen:not(.hidden), #unlockReveal, #diariaSheet:not(.hidden)")
+    || !!document.querySelector(".menu-drawer:not(.hidden), .onb:not(.hidden), #lockScreen:not(.hidden), #unlockReveal")
     || document.body.classList.contains("kbd-open");
   const cancelPTR = () => { pulling = false; ptr.style.height = "0"; ptr.style.opacity = "0"; };
   window.addEventListener("touchstart", (e) => {
