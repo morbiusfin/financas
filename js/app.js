@@ -1,12 +1,21 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.13.99";
-const VERSION_NOTES = "🔔 Tocar numa conta a vencer abre pra editar · 📊 novo gráfico de Saldo que sobra por mês (barras) · ⚙️ Saldo inicial com formatação automática (. ,) + explicado no tutorial · 🔒 faixa do rodapé na tela de senha agora fica na cor do fundo";
+const APP_VERSION = "3.14.0";
+const VERSION_NOTES = "📸 Ajuste da foto cabe na tela sem rolar (zoom + girar juntos) e novo botão Editar foto (sem reimportar) · ❓ pergunta da recuperação maior e mais legível · 🚪 botão Sair no topo do menu";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.14.0",
+    bullets: [
+      "No <b>ajuste da foto de perfil</b>, as barras de <b>zoom</b> e de <b>girar</b> agora cabem na tela <b>sem precisar rolar</b>.",
+      "Novo botão <b>✏️ Editar foto</b>: dá pra <b>reenquadrar e girar a foto que você já escolheu</b> sem precisar importar de novo.",
+      "A <b>pergunta de segurança</b> (no “Esqueci minha senha”) ficou <b>maior e mais fácil de ler</b>.",
+      "O botão <b>🚪 Sair</b> agora fica <b>no topo do menu</b>, mais à mão.",
+    ],
+  },
   {
     version: "3.13.99",
     bullets: [
@@ -4965,6 +4974,7 @@ function closeMenu() { const m = $("#menuDrawer"); if (m) m.classList.add("hidde
 const _onbHide = () => { const o = $("#onboarding"); if (o) o.classList.add("hidden"); };
 $("#btnMenu").onclick = openMenu;
 $("#menuClose").onclick = closeMenu;
+{ const mlt = $("#menuLogout"); if (mlt) mlt.onclick = () => { closeMenu(); logoutConfirm(); }; }   // Sair no topo do menu
 $("#menuDrawer").onclick = (e) => { if (e.target.id === "menuDrawer") closeMenu(); };
 { const mu = $("#miUpdate"); if (mu) mu.onclick = updateNow; }
 { const ma = $("#miAdmin"); if (ma) ma.onclick = () => { closeMenu(); openAdminPanel(); }; }
@@ -5586,6 +5596,8 @@ function openProfile() {
     tgEmpty(); nasc.oninput = tgEmpty; nasc.onchange = tgEmpty;
   }
   _profFotoTmp = p.foto || "";
+  // fonte pra RE-EDITAR a foto sem reimportar (a foto salva já é a recortada; nesta sessão usamos a original)
+  window._profCropSrc = (typeof _profFotoTmp === "string" && _profFotoTmp.indexOf("data:") === 0) ? _profFotoTmp : null;
   _profTipo = p.tipo === "conjunta" ? "conjunta" : "pessoal";
   refreshProfPhoto(); refreshProfTipo();
   const nm = $("#profNome"); if (nm) nm.oninput = () => { if (!_profFotoTmp) refreshProfPhoto(); };   // avatar padrão acompanha o nome
@@ -5603,7 +5615,9 @@ function refreshProfPhoto() {
   const nome = ($("#profNome") && $("#profNome").value) || "";
   ph.classList.remove("empty");
   setAvatarInto(img, _profFotoTmp, nome);                            // bichinho animado ou foto importada
+  const isPhoto = typeof _profFotoTmp === "string" && _profFotoTmp.indexOf("data:") === 0;
   $("#profPhotoRemove").classList.toggle("hidden", !_profFotoTmp);   // "Remover" só quando há foto escolhida
+  const ed = $("#profPhotoEdit"); if (ed) ed.classList.toggle("hidden", !isPhoto);   // "Editar" só pra foto importada (não pra bichinho)
   renderAvatarPicker();
 }
 function renderAvatarPicker() {
@@ -5630,7 +5644,8 @@ function saveProfile() {
   const c = $("#profClose"); if (c) c.onclick = () => $("#profileModal").classList.add("hidden");
   const m = $("#profileModal"); if (m) m.onclick = (e) => { if (e.target === m) m.classList.add("hidden"); };
   const pb = $("#profPhotoBtn"); if (pb) pb.onclick = () => $("#profFile").click();
-  const rm = $("#profPhotoRemove"); if (rm) rm.onclick = () => { _profFotoTmp = ""; refreshProfPhoto(); };
+  const rm = $("#profPhotoRemove"); if (rm) rm.onclick = () => { _profFotoTmp = ""; window._profCropSrc = null; refreshProfPhoto(); };
+  const ed = $("#profPhotoEdit"); if (ed) ed.onclick = () => { if (window._profCropSrc) openCropper(window._profCropSrc); else if (typeof _profFotoTmp === "string" && _profFotoTmp.indexOf("data:") === 0) openCropper(_profFotoTmp); else $("#profFile").click(); };
   $$("#profTipoSeg .seg-btn").forEach(b => b.onclick = () => { _profTipo = b.dataset.tipo; refreshProfTipo(); });
   const pair = $("#profPair"); if (pair) pair.onclick = () => openPairModal();
   const sh = $("#profSyncHelp"); if (sh) sh.onclick = () => openSyncHelp();
@@ -5640,7 +5655,7 @@ function saveProfile() {
   const f = $("#profFile"); if (f) f.onchange = (e) => {
     const file = e.target.files && e.target.files[0]; if (!file) return;
     const r = new FileReader();
-    r.onload = () => openCropper(r.result);
+    r.onload = () => { window._profCropSrc = r.result; openCropper(r.result); };   // guarda a original p/ reeditar sem reimportar
     r.readAsDataURL(file);
     e.target.value = "";   // permite reescolher o mesmo arquivo depois
   };
@@ -6512,8 +6527,8 @@ function renderRec() {
   const opts = _shuffle(rec.opts);
   m.innerHTML = '<div class="modal-card greet-card"><button type="button" class="sheet-x" id="recClose">✕</button>'
     + '<div class="greet-emoji">' + animEmoji("interrogacao", "❓", "greet-emoji-img") + '</div>'
-    + '<h2 style="text-align:center;margin:6px 0 4px">Recuperar acesso</h2>'
-    + '<p class="hint" style="text-align:center;margin:0 0 12px">' + esc(rec.q) + '</p>'
+    + '<h2 style="text-align:center;margin:6px 0 10px">Recuperar acesso</h2>'
+    + '<p class="rec-q">' + esc(rec.q) + '</p>'
     + '<div class="rec-opts" id="recOpts">' + opts.map(o => '<button type="button" class="btn ghost rec-opt">' + esc(o) + '</button>').join("") + '</div>'
     + '<div id="recMsg" class="rec-msg"></div>'
     + '<div class="modal-actions"><button type="button" class="btn ghost" id="recClose2">Voltar ao código</button></div></div>';

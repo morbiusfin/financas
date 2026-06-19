@@ -118,7 +118,10 @@
           <span class="prof-photo-inner" aria-hidden="true"><span class="prof-photo-img"></span></span>
           <span class="prof-photo-cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M20 5h-3.2l-1.1-1.6A1 1 0 0 0 14.9 3H9.1a1 1 0 0 0-.8.4L7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm-8 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg></span>
         </button>
-        <button type="button" id="profPhotoRemove" class="prof-rm hidden">Remover foto</button>
+        <div class="prof-photo-acts">
+          <button type="button" id="profPhotoEdit" class="prof-rm prof-edit hidden">✏️ Editar foto</button>
+          <button type="button" id="profPhotoRemove" class="prof-rm hidden">Remover foto</button>
+        </div>
       </div>
       <div class="avatar-pick-wrap">
         <div class="avatar-pick-label">Escolha um avatar ou importe sua foto</div>
@@ -179,7 +182,7 @@
   <!-- MENU LATERAL (☰) -->
   <div id="menuDrawer" class="menu-drawer hidden" role="dialog" aria-modal="true" aria-label="Menu">
     <nav class="menu-panel">
-      <div class="menu-head"><span>Menu</span><button id="menuClose" class="menu-x" aria-label="Fechar">✕</button></div>
+      <div class="menu-head"><span>Menu</span><div class="menu-head-actions"><button id="menuLogout" class="menu-exit" type="button" aria-label="Sair do app">🚪 Sair</button><button id="menuClose" class="menu-x" aria-label="Fechar">✕</button></div></div>
       <div id="exploreWidget"></div>
       <button class="menu-item mi-update hidden" id="miUpdate"><span class="mi-ic">✨</span><span><b>Atualizar o app</b><i id="miUpdateSub">nova versão disponível</i></span></button>
       <button class="menu-item" id="miPerfil"><span class="mi-ic">👤</span><span><b>Editar perfil</b></span></button>
@@ -195,7 +198,7 @@
       <button class="menu-item" id="miAviso"><span class="mi-ic">🔔</span><span><b>Aviso de vencimento</b></span></button>
       <button class="menu-item" id="miTema"><span class="mi-ic">🌗</span><span><b>Tema</b></span></button>
       <button class="menu-item danger" id="miZero"><span class="mi-ic">🏁</span><span><b>Começar do zero</b></span></button>
-      <button class="menu-item" id="miLogout"><span class="mi-ic">🚪</span><span><b>Sair do app</b></span></button>
+      <button class="menu-item hidden" id="miLogout"><span class="mi-ic">🚪</span><span><b>Sair do app</b></span></button>
       <button class="menu-item mi-admin hidden" id="miAdmin"><span class="mi-ic">🛡️</span><span><b>Admin</b></span></button>
       <div class="menu-foot" id="menuFoot">MorbiusFin · v<span id="menuVer"></span></div>
     </nav>
