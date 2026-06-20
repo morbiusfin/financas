@@ -673,11 +673,14 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .planos-sub { font-size: 12.5px; color: var(--muted); text-align: center; margin: 0 0 16px; }
 .plan-toggle { display: flex; gap: 4px; background: var(--card-2); border-radius: 12px; padding: 4px; margin: 0 0 16px; }
 .plan-tog-btn { flex: 1; padding: 8px 0; border: none; border-radius: 9px; background: none; font: inherit; font-size: 13.5px; font-weight: 700; color: var(--muted); cursor: pointer; transition: background .15s, color .15s; }
-.plan-tog-btn.active { background: var(--card); color: var(--ink); box-shadow: 0 1px 6px rgba(0,0,0,.10); }
+.plan-tog-btn.active { background: linear-gradient(135deg, var(--green-2), var(--accent)); color: #fff; box-shadow: 0 4px 14px rgba(11,61,46,.35); }
 .planos-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
-.plan-card { position: relative; border: 2px solid var(--line); border-radius: 18px; padding: 16px 16px 14px; transition: transform .25s ease, box-shadow .25s ease; }
+.plan-card { position: relative; border: 2px solid var(--line); border-radius: 18px; padding: 16px 16px 14px; transition: transform .25s ease, box-shadow .25s ease; animation: planIn .32s ease both; }
+/* entrada suave dos cards ao trocar Mensal/Anual */
+@keyframes planIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes planInRec { from { opacity: 0; } to { opacity: 1; } }
 /* melhor escolha (muda entre Mensal/Anual) — borda viva, glow pulsante e leve destaque */
-.plan-rec { transform: scale(1.025); z-index: 1; animation: planGlow 1.9s ease-in-out infinite; }
+.plan-rec { transform: scale(1.025); z-index: 1; animation: planGlow 1.9s ease-in-out infinite, planInRec .32s ease both; }
 @keyframes planGlow {
   0%, 100% { box-shadow: 0 0 0 1px var(--glow), 0 0 12px -4px var(--glow); }
   50%      { box-shadow: 0 0 0 2px var(--glow), 0 0 26px 0 var(--glow); }
@@ -685,7 +688,7 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .plan-badge { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 11.5px; font-weight: 800; letter-spacing: .2px; padding: 4px 13px; border-radius: 999px; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.4); animation: planBadge 1.9s ease-in-out infinite; }
 @keyframes planBadge { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.06); } }
 .plan-econ { font-size: 12px; font-weight: 700; margin: -4px 0 11px; }
-@media (prefers-reduced-motion: reduce) { .plan-rec, .plan-badge { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .plan-card, .plan-rec, .plan-badge { animation: none; } }
 .plan-name { font-size: 17px; font-weight: 800; margin: 0 0 4px; }
 .plan-desc { font-size: 13px; color: var(--muted); margin: 0 0 8px; line-height: 1.45; }
 .plan-price { font-size: 15px; font-weight: 800; color: var(--ink); margin: 0 0 12px; }
