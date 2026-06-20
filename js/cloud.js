@@ -55,7 +55,7 @@
     var r = await sb.auth.signUp({ email: email, password: senha });
     if (r.error) return { ok: false, reason: r.error.message };
     var built = await _buildVault(senha, data);
-    window.CLOUD.dek = built.dek; window.CLOUD.email = email;
+    window.CLOUD.dek = built.dek; window.CLOUD.email = email; window.CLOUD.salt = built.salt; window.CLOUD.wrapped = built.wrapped_dek;
     var row = { wrapped_dek: built.wrapped_dek, salt: built.salt, ct: built.ct };
     if (r.data && r.data.session && r.data.user) {                 // já logado (confirm-email OFF)
       var ins = await sb.from("vaults").upsert(Object.assign({ user_id: r.data.user.id }, row));
@@ -82,7 +82,7 @@
     var kek = await window.deriveKey(senha, row.salt);
     var dekObj; try { dekObj = await _decKey(kek.key, JSON.parse(row.wrapped_dek)); } catch (e) { return { ok: false, reason: "senha-errada" }; }
     var dek = _cub64(dekObj.dek);
-    window.CLOUD.dek = dek; window.CLOUD.email = email;
+    window.CLOUD.dek = dek; window.CLOUD.email = email; window.CLOUD.salt = row.salt; window.CLOUD.wrapped = row.wrapped_dek;
     var data = null;
     try { var dekKey = await _importDEK(dek); data = await _decKey(dekKey, JSON.parse(row.ct)); } catch (e) { return { ok: false, reason: "cofre-corrompido" }; }
     return { ok: true, data: data };
@@ -108,9 +108,31 @@
   async function cloudSession() { var sb = sbClient(); if (!sb) return null; var r = await sb.auth.getSession(); return (r.data && r.data.session) ? r.data.session : null; }
   async function cloudResetSenha(email) { var sb = sbClient(); if (!sb) return { ok: false, reason: "sdk" }; var r = await sb.auth.resetPasswordForEmail((email || "").trim().toLowerCase(), { redirectTo: "https://morbiusfin.github.io" }); return { ok: !r.error, reason: r.error && r.error.message }; }
 
+  // ---- cache local p/ abrir OFFLINE (tudo só abre com a senha) ----
+  async function cloudMakeCt(data) {
+    if (!window.CLOUD.dek) return null;
+    var dekKey = await _importDEK(window.CLOUD.dek);
+    return JSON.stringify(await _encKey(dekKey, data));
+  }
+  function cloudSnapshot(ctStr) {
+    return JSON.stringify({ v: 1, email: window.CLOUD.email, salt: window.CLOUD.salt, wrapped_dek: window.CLOUD.wrapped, ct: ctStr });
+  }
+  async function cloudOfflineUnlock(senha, snapStr) {
+    try {
+      var snap = JSON.parse(snapStr);
+      var kek = await window.deriveKey(senha, snap.salt);
+      var dekObj = await _decKey(kek.key, JSON.parse(snap.wrapped_dek));
+      var dek = _cub64(dekObj.dek);
+      var data = await _decKey(await _importDEK(dek), JSON.parse(snap.ct));
+      window.CLOUD.dek = dek; window.CLOUD.email = snap.email; window.CLOUD.salt = snap.salt; window.CLOUD.wrapped = snap.wrapped_dek;
+      return { ok: true, data: data };
+    } catch (e) { return { ok: false, reason: "senha-errada" }; }
+  }
+
   window.MFCloud = {
     configured: cloudConfigured,
     signUp: cloudSignUp, signIn: cloudSignIn, push: cloudPush, pull: cloudPull,
     signOut: cloudSignOut, session: cloudSession, reset: cloudResetSenha,
+    makeCt: cloudMakeCt, snapshot: cloudSnapshot, offlineUnlock: cloudOfflineUnlock,
   };
 })();

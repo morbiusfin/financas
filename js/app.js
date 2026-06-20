@@ -1,12 +1,20 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.16.0";
-const VERSION_NOTES = "☁️ NOVO: Conta na nuvem (email + senha) — crie conta e acesse seus dados em outro aparelho, tudo cifrado de ponta a ponta (E2E, só você abre com a senha). Opcional, no menu ☰ → Conta na nuvem. Seu PIN segue destravando o dia a dia.";
+const APP_VERSION = "3.17.0";
+const VERSION_NOTES = "🔐 Agora você entra no app com EMAIL e SENHA, direto na tela inicial (com 'esqueci minha senha' e 'criar conta'). Seus dados migram pra conta cifrados (E2E) e você acessa de qualquer aparelho. Em teste no /financas antes da produção.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.17.0",
+    bullets: [
+      "Agora você <b>entra no app com email e senha</b>, direto na tela inicial — com <b>“esqueci minha senha”</b> e <b>“criar uma nova conta”</b> no mesmo lugar.",
+      "Seus dados <b>migram para a conta cifrados</b> (de ponta a ponta) — e você acessa de <b>qualquer aparelho</b>.",
+      "Mais simples: <b>sem PIN</b>. A senha da conta abre tudo.",
+    ],
+  },
   {
     version: "3.16.0",
     bullets: [
@@ -4940,7 +4948,7 @@ function persist() {
   // gravar/sincronizar FORA do caminho síncrono do fechar-modal (no modo teste isso é leve/pulado;
   // aqui garantimos o MESMO comportamento) e blindado por try — nada do salvar pode travar a barra
   // de baixo ao fechar o modal no iPhone (o bug do Débito só no modo real). cpSend = parceiro ao vivo.
-  setTimeout(() => { try { saveData(DATA); } catch (e) {} try { pushSync(); } catch (e) {} try { cpSend(); } catch (e) {} try { if (window.CLOUD && window.CLOUD.dek && window.MFCloud) MFCloud.push(DATA); } catch (e) {} }, 0);
+  setTimeout(() => { try { saveData(DATA); } catch (e) {} try { pushSync(); } catch (e) {} try { cpSend(); } catch (e) {} try { if (window.CLOUD && window.CLOUD.dek && window.MFCloud) { MFCloud.push(DATA); MFCloud.makeCt(DATA).then(ct => { if (ct) localStorage.setItem(CLOUD_LOCAL_KEY, MFCloud.snapshot(ct)); }).catch(() => {}); } } catch (e) {} }, 0);
 }
 function undo() {
   if (!history.length) { toast("Nada para desfazer"); return; }
@@ -5117,31 +5125,19 @@ function logoutSequence() {
     setTimeout(() => { try { ov.remove(); } catch (e) {} }, 640);
   }, 3420);
 }
-// Tela de entrada: foto/bichinho da conta + ENTRAR (pede PIN se houver) + criar nova conta.
-// COLD OPEN (abrir o app pelo ícone): mostra a abertura com o nome ~1.4s e a cortina REVELA o login.
-// LOGOUT (já dentro do app): vem direto (a animação de saída já fez o crossfade).
+// TELA DE LOGIN (gate do app): nome + avatar + EMAIL e SENHA na própria tela + esqueci + criar conta.
+// Conta na nuvem (E2E) é o acesso. COLD OPEN mostra a abertura (~1,4s) e a cortina revela o login.
+const CLOUD_LOCAL_KEY = "financas2026.cloudLocal", CLOUD_EMAIL_KEY = "financas2026.cloudEmail";
+let _welMode = "login";
 function showWelcome() {
-  document.body.classList.add("welcome-on");   // faixa do rodapé/safe-area na MESMA cor do fundo (qualquer tema)
-  const p = getPerfil();
+  document.body.classList.add("welcome-on");
   let w = document.getElementById("welcomeScreen");
   if (!w) { w = document.createElement("div"); w.id = "welcomeScreen"; w.className = "welcome-screen"; document.body.appendChild(w); }
-  w.innerHTML = '<div class="wel-brand">MorbiusFin</div>'
-    + '<div class="wel-inner">'
-    + '<div class="wel-avatar" id="welAvatar" aria-hidden="true"></div>'
-    + '<div class="wel-name">' + (p.nome ? esc(p.nome) : "Bem-vindo de volta") + '</div>'
-    + '<div class="wel-sub">Sua conta neste aparelho</div>'
-    + '<button type="button" class="btn primary wel-enter" id="welEnter">Entrar</button>'
-    + '<div class="wel-sep"><span>ou</span></div>'
-    + '<button type="button" class="btn ghost wel-new" id="welNew">Criar uma nova conta</button>'
-    + '<p class="wel-newhint">Começa do zero. Seus dados atuais só são apagados se você confirmar.</p>'
-    + '</div>'
-    + '<div class="wel-copy">© ' + new Date().getFullYear() + ' MorbiusFin · Todos os direitos reservados.<br>Feito com carinho para suas finanças.</div>';
-  setAvatarInto(w.querySelector("#welAvatar"), p.foto, p.nome);
+  _welMode = "login";
+  renderWelcome(w);
   w.classList.remove("hidden");
   const sp = document.getElementById("splash");
   if (sp && !window.__splashDone) {
-    // ABERTURA: o splash com o nome aparece ~1,4s; depois o spinner sai e a CORTINA desce
-    // revelando a tela de login esmaecendo (transição criativa, sem flash).
     window.__splashDone = true;
     setTimeout(() => {
       sp.classList.add("loading-out");
@@ -5156,36 +5152,116 @@ function showWelcome() {
     document.body.classList.remove("splash-on");
     requestAnimationFrame(() => w.classList.add("show"));
   }
-  const leave = (after) => { w.classList.remove("show"); document.body.classList.remove("welcome-on"); setTimeout(() => { try { w.remove(); } catch (e) {} after(); }, 300); };
-  w.querySelector("#welEnter").onclick = () => {
-    localStorage.removeItem(LOGGED_OUT_KEY);
-    // Se há dados protegidos (PIN/senha), mostra o CADEADO já por cima (z-index 1000 > welcome 80):
-    // o app nunca aparece no meio. Sem isso, o fade de 300ms do welcome revelava o app antes da
-    // tela de senha = o "flash" entre Entrar e a senha. #bugfix
-    let parsed = null;
-    try { const raw = localStorage.getItem(STORE_KEY) || localStorage.getItem("financas2026.v1"); parsed = raw ? JSON.parse(raw) : null; } catch (e) {}
-    if (parsed && parsed.enc) {
-      showLock(parsed);
-      w.classList.remove("show"); document.body.classList.remove("welcome-on");
-      setTimeout(() => { try { w.remove(); } catch (e) {} }, 300);
-    } else {
-      leave(resumeBoot);   // sem proteção: revela o app (destino final, sem flash)
-    }
-  };
-  w.querySelector("#welNew").onclick = () => {
-    modalConfirm("Criar uma conta nova? Isso apaga os lançamentos atuais deste aparelho. Exporte um backup antes, se quiser guardar.", () => {
-      window.CRYPTO_KEY = null;
-      // RESET intencional: pode substituir um blob cifrado por uma conta nova SEM senha. A blindagem do
-      // saveData (não rebaixar cifrado→texto puro) é liberada só aqui, durante esta troca confirmada.
-      window.__forcePlain = true;
-      DATA = (typeof emptyData === "function") ? emptyData() : buildSeed();
-      localStorage.removeItem("financas2026.isSeed"); localStorage.removeItem(LOGGED_OUT_KEY);
-      try { saveData(DATA); } catch (e) {}
-      window.__forcePlain = false;
-      lastSnap = JSON.stringify(DATA);
-      leave(() => { window.__eraSeedNovo = true; startApp(); });   // conta nova → entra e oferece onboarding
-    }, "Apagar e começar");
-  };
+}
+function leaveWelcome(after) {
+  const w = document.getElementById("welcomeScreen");
+  document.body.classList.remove("welcome-on");
+  if (!w) { if (after) after(); return; }
+  w.classList.remove("show");
+  setTimeout(() => { try { w.remove(); } catch (e) {} if (after) after(); }, 300);
+}
+function welMsg(t, bad) { const m = $("#welMsg"); if (m) { m.textContent = t || ""; m.className = "wel-msg" + (bad ? " bad" : ""); } }
+function renderWelcome(w) {
+  w = w || document.getElementById("welcomeScreen"); if (!w) return;
+  const p = getPerfil();
+  const lastEmail = localStorage.getItem(CLOUD_EMAIL_KEY) || "";
+  if (!window.MFCloud) {   // cloud.js/supabase ainda carregando (scripts defer) → mostra "carregando" e tenta de novo
+    w.innerHTML = `<div class="wel-brand">MorbiusFin</div><div class="wel-inner"><div class="wel-avatar" id="welAvatar" aria-hidden="true"></div><div class="wel-sub" style="margin-top:10px">Carregando…</div></div>`;
+    setAvatarInto(w.querySelector("#welAvatar"), p.foto, p.nome);
+    clearTimeout(window.__welT); window.__welT = setTimeout(() => renderWelcome(), 350);
+    return;
+  }
+  let inner;
+  if (_welMode === "signup") {
+    let raw = null; try { raw = JSON.parse(localStorage.getItem(STORE_KEY) || localStorage.getItem("financas2026.v1") || "null"); } catch (e) {}
+    const needPin = !!(raw && raw.enc);
+    inner = `<div class="wel-name">Criar sua conta</div>
+      <div class="wel-sub">Email + senha · seus dados ficam cifrados (só você abre)</div>
+      <label class="wel-field"><span>Email</span><input id="welEmail" type="email" inputmode="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(lastEmail)}" placeholder="voce@email.com"></label>
+      <label class="wel-field"><span>Senha</span><input id="welSen" type="password" autocomplete="new-password" placeholder="crie uma senha (mín. 6)"></label>
+      <label class="wel-field"><span>Repita a senha</span><input id="welSen2" type="password" autocomplete="new-password" placeholder="repita a senha"></label>
+      ${needPin ? `<label class="wel-field"><span>🔒 Seu PIN atual (só pra trazer seus dados de hoje)</span><input id="welPin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"></label>` : ""}
+      <div id="welMsg" class="wel-msg"></div>
+      <button type="button" class="btn primary wel-enter" id="welGo">Criar conta</button>
+      <button type="button" class="wel-link" id="welBack">← Já tenho conta</button>`;
+  } else {
+    inner = `<div class="wel-name">${p.nome ? ("Olá, " + esc(p.nome)) : "Bem-vindo"}</div>
+      <div class="wel-sub">Entre com seu email e senha</div>
+      <label class="wel-field"><span>Email</span><input id="welEmail" type="email" inputmode="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(lastEmail)}" placeholder="voce@email.com"></label>
+      <label class="wel-field"><span>Senha</span><input id="welSen" type="password" autocomplete="current-password" placeholder="sua senha"></label>
+      <div id="welMsg" class="wel-msg"></div>
+      <button type="button" class="btn primary wel-enter" id="welGo">Entrar</button>
+      <button type="button" class="wel-link" id="welForgot">Esqueci minha senha</button>
+      <div class="wel-sep"><span>ou</span></div>
+      <button type="button" class="btn ghost wel-new" id="welNew">Criar uma nova conta</button>`;
+  }
+  w.innerHTML = `<div class="wel-brand">MorbiusFin</div>
+    <div class="wel-inner">
+      <div class="wel-avatar" id="welAvatar" aria-hidden="true"></div>
+      ${inner}
+    </div>
+    <div class="wel-copy">© ${new Date().getFullYear()} MorbiusFin · Todos os direitos reservados.<br>Feito com carinho para suas finanças.</div>`;
+  setAvatarInto(w.querySelector("#welAvatar"), p.foto, p.nome);
+  const go = $("#welGo"); if (go) go.onclick = (_welMode === "signup") ? welDoSignup : welDoLogin;
+  const fg = $("#welForgot"); if (fg) fg.onclick = welDoForgot;
+  const nw = $("#welNew"); if (nw) nw.onclick = () => { _welMode = "signup"; renderWelcome(); };
+  const bk = $("#welBack"); if (bk) bk.onclick = () => { _welMode = "login"; renderWelcome(); };
+  const rt = $("#welRetry"); if (rt) rt.onclick = () => renderWelcome();
+  const se = $("#welSen"); if (se) se.onkeydown = (e) => { if (e.key === "Enter" && go) go.click(); };
+}
+async function welDoLogin() {
+  const email = ($("#welEmail").value || "").trim(), senha = $("#welSen").value || "";
+  if (!/.+@.+\..+/.test(email)) { welMsg("Digite um email válido", true); return; }
+  if (!senha) { welMsg("Digite a senha", true); return; }
+  welMsg("Entrando…");
+  let r = null; try { r = await MFCloud.signIn(email, senha); } catch (e) { r = { ok: false, reason: "net" }; }
+  if (!r.ok && /net|sdk|fetch|network|failed/i.test(r.reason || "")) {           // offline → abre do cache local com a senha
+    const snap = localStorage.getItem(CLOUD_LOCAL_KEY);
+    if (snap) { const o = await MFCloud.offlineUnlock(senha, snap); if (o.ok) { welMsg(""); return welApply(o.data, email); } welMsg("Sem internet e a senha não confere", true); return; }
+    welMsg("Sem conexão agora — entre com internet na 1ª vez", true); return;
+  }
+  if (!r.ok) { welMsg(cloudErr(r.reason), true); return; }
+  localStorage.setItem(CLOUD_EMAIL_KEY, email);
+  welApply(r.data, email);
+}
+async function welMigrationData(pin) {
+  let raw = localStorage.getItem(STORE_KEY) || localStorage.getItem("financas2026.v1"), parsed = null;
+  try { parsed = raw ? JSON.parse(raw) : null; } catch (e) {}
+  if (!parsed) return (DATA && typeof DATA === "object") ? DATA : buildSeed();
+  if (!parsed.enc) return migrate(parsed);
+  if (!pin) throw { needPin: true };
+  const k = await deriveKey(pin, parsed.salt);
+  const obj = await decryptEnvelope(k, parsed);                                  // lança se PIN errado
+  return migrate(obj);
+}
+async function welDoSignup() {
+  const email = ($("#welEmail").value || "").trim(), s1 = $("#welSen").value || "", s2 = $("#welSen2").value || "";
+  if (!/.+@.+\..+/.test(email)) { welMsg("Digite um email válido", true); return; }
+  if (s1.length < 6) { welMsg("Senha de pelo menos 6 caracteres", true); return; }
+  if (s1 !== s2) { welMsg("As senhas não batem", true); return; }
+  let data; try { data = await welMigrationData($("#welPin") ? ($("#welPin").value || "") : ""); }
+  catch (e) { welMsg(e && e.needPin ? "Digite seu PIN atual pra trazer seus dados" : "PIN incorreto", true); return; }
+  welMsg("Criando conta…");
+  const r = await MFCloud.signUp(email, s1, data);
+  if (!r.ok) { welMsg(cloudErr(r.reason), true); return; }
+  localStorage.setItem(CLOUD_EMAIL_KEY, email);
+  if (r.confirm) {
+    const w = document.getElementById("welcomeScreen"), inner = w && w.querySelector(".wel-inner");
+    if (inner) { inner.innerHTML = `<div class="wel-avatar" id="welAvatar" aria-hidden="true"></div><div class="wel-name">Confirme seu email 📧</div><div class="wel-sub">Mandamos um link para<br><b>${esc(email)}</b>.<br>Confirme (veja o spam) e volte pra entrar.</div><button type="button" class="btn primary wel-enter" id="welToLogin">Já confirmei — Entrar</button>`; setAvatarInto(inner.querySelector("#welAvatar"), getPerfil().foto, getPerfil().nome); $("#welToLogin").onclick = () => { _welMode = "login"; renderWelcome(); }; }
+  } else { welApply(data, email); }
+}
+async function welApply(data, email) {
+  if (data) { try { DATA = migrate(data); } catch (e) {} }
+  lastSnap = JSON.stringify(DATA);
+  try { const ct = await MFCloud.makeCt(DATA); if (ct) localStorage.setItem(CLOUD_LOCAL_KEY, MFCloud.snapshot(ct)); } catch (e) {}
+  localStorage.removeItem(LOGGED_OUT_KEY);
+  leaveWelcome(startApp);
+}
+async function welDoForgot() {
+  const email = ($("#welEmail").value || "").trim();
+  if (!/.+@.+\..+/.test(email)) { welMsg("Digite seu email acima e toque de novo", true); return; }
+  welMsg("Enviando…"); const r = await MFCloud.reset(email);
+  welMsg(r.ok ? "Link de recuperação enviado (veja a caixa/spam)" : cloudErr(r.reason), !r.ok);
 }
 function goSimulador() {
   closeMenu(); markExplored("simulador");
@@ -6519,9 +6595,11 @@ async function cloudDoReset() {
   cloudMsg(r.ok ? "Email de recuperação enviado (veja a caixa/spam)" : cloudErr(r.reason), !r.ok);
 }
 function cloudDoLogout() {
-  modalConfirm("Sair da conta na nuvem neste aparelho? Os dados locais continuam aqui.", async () => {
-    await MFCloud.signOut(); try { localStorage.removeItem("financas2026.cloudDek"); } catch (e) {}
-    toast("Saiu da conta"); renderCloud();
+  modalConfirm("Sair da conta neste aparelho? Você vai precisar entrar com email e senha de novo.", async () => {
+    try { await MFCloud.signOut(); } catch (e) {}
+    try { localStorage.removeItem("financas2026.cloudDek"); localStorage.removeItem(CLOUD_LOCAL_KEY); } catch (e) {}
+    window.CLOUD = { dek: null, email: null };
+    location.reload();
   }, "Sair");
 }
 // embrulha o DEK pelo PIN (quick-unlock depois). Só com PIN ativo.
@@ -7566,9 +7644,7 @@ async function boot() {
   // COLD START (app aberto do zero / tirado do 2º plano): se já existe conta neste aparelho, SEMPRE
   // começa pela tela de LOGIN → senha → app. boot() roda só no carregamento da página; voltar do 2º
   // plano (sem o iOS matar o app) NÃO chama boot() → o app fica onde estava. É o que o Kaick pediu.
-  const hasAccount = !!(localStorage.getItem(STORE_KEY) || localStorage.getItem("financas2026.v1"));
-  if (hasAccount) { showWelcome(); return; }   // tem conta → login (Entrar → senha, se houver → app)
-  resumeBoot();                                // 1ª vez no aparelho (sem dados) → segue pro onboarding
+  showWelcome();   // gate único: login email+senha (Entrar) ou criar conta. 1ª vez também passa por aqui.
 }
 // Entrada real no app (sem demo/teste/landing): decide PIN vs abrir direto. Reutilizado pelo "Entrar" da landing.
 function resumeBoot() {

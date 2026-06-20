@@ -615,28 +615,32 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 @keyframes lfPop { 0% { transform: scale(.55); opacity: 0; } 45% { transform: scale(1.07); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
 
 /* ===== Tela de entrada (landing após sair) ===== */
-.welcome-screen { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center;
-  background: var(--bg); padding: calc(24px + var(--safe-top)) 26px calc(24px + var(--safe-bottom));
-  opacity: 0; transition: opacity .45s ease; }
+.welcome-screen { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--bg); padding: calc(18px + var(--safe-top)) 26px calc(18px + var(--safe-bottom));
+  opacity: 0; transition: opacity .45s ease; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .welcome-screen.show { opacity: 1; }
-.wel-inner { width: 100%; max-width: 340px; text-align: center; display: flex; flex-direction: column; align-items: center; }
-.wel-avatar { width: 148px; height: 148px; aspect-ratio: 1; border-radius: 50%; overflow: hidden; margin-bottom: 18px; flex: 0 0 auto;
+.wel-brand { font-size: 27px; font-weight: 800; letter-spacing: -.4px; color: var(--accent); margin: 0 0 16px; flex: 0 0 auto; text-align: center; }
+.wel-inner { width: 100%; max-width: 340px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; }
+.wel-avatar { width: 112px; height: 112px; aspect-ratio: 1; border-radius: 50%; overflow: hidden; margin-bottom: 14px; flex: 0 0 auto;
   background-size: cover; background-position: center;   /* foto importada */
   box-shadow: 0 0 0 4px rgba(33,194,102,.30), 0 14px 40px rgba(0,0,0,.4); }
 /* emoji-gif PERFEITAMENTE centrado no círculo (entrada e saída) */
 .wel-avatar .animal-anim, .wel-avatar .animal-svg, .lf-avatar .animal-anim, .lf-avatar .animal-svg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .wel-avatar .animal-anim .emoji-anim, .lf-avatar .animal-anim .emoji-anim { width: 86%; height: 86%; object-fit: contain; margin: 0; display: block; }
-.wel-name { font-size: 22px; font-weight: 800; letter-spacing: -.4px; color: var(--ink); }
-.wel-sub { font-size: 13px; color: var(--muted); margin: 2px 0 24px; }
-.wel-enter { width: 100%; padding: 15px; border-radius: 16px; font-weight: 800; font-size: 16px; box-shadow: 0 14px 30px rgba(11,61,46,.4); }
-.wel-sep { display: flex; align-items: center; gap: 10px; width: 100%; color: var(--muted); font-size: 12px; margin: 18px 0; }
+.wel-name { font-size: 21px; font-weight: 800; letter-spacing: -.4px; color: var(--ink); }
+.wel-sub { font-size: 13px; color: var(--muted); margin: 3px 0 18px; line-height: 1.45; }
+.wel-field { display: block; width: 100%; text-align: left; margin-bottom: 11px; }
+.wel-field span { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; font-weight: 700; }
+.wel-field input { width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 13px; font-size: 16px; background: var(--card-2); color: var(--ink); font-family: var(--font); }
+.wel-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--ring); }
+.wel-msg { min-height: 18px; font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 2px 0 8px; text-align: center; }
+.wel-msg.bad { color: #ff6b6b; }
+.wel-enter { width: 100%; padding: 15px; border-radius: 16px; font-weight: 800; font-size: 16px; box-shadow: 0 14px 30px rgba(11,61,46,.4); margin-top: 4px; }
+.wel-link { width: 100%; background: 0; border: 0; color: var(--accent-2); font-family: var(--font); font-weight: 700; font-size: 13.5px; padding: 12px 0 2px; cursor: pointer; }
+.wel-sep { display: flex; align-items: center; gap: 10px; width: 100%; color: var(--muted); font-size: 12px; margin: 14px 0; }
 .wel-sep::before, .wel-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .wel-new { width: 100%; }
-.wel-newhint { font-size: 11.5px; color: var(--muted); margin: 8px 0 0; line-height: 1.45; }
-.wel-brand { position: absolute; top: calc(var(--safe-top) + 12vh); left: 0; right: 0; text-align: center;
-  font-size: 27px; font-weight: 800; letter-spacing: -.4px; color: var(--accent); }
-.wel-copy { position: absolute; bottom: calc(20px + var(--safe-bottom)); left: 0; right: 0; text-align: center;
-  font-size: 11px; color: var(--muted); line-height: 1.5; padding: 0 24px; }
+.wel-copy { font-size: 11px; color: var(--muted); line-height: 1.5; padding: 0 24px; margin: 18px 0 0; flex: 0 0 auto; text-align: center; }
 
 /* ===== Recuperação por pergunta secreta ===== */
 .lock-forgot { display: block; width: 100%; margin: 12px auto 0; background: none; border: 0; color: rgba(255,255,255,.82); font: inherit; font-size: 13px; font-weight: 700; text-decoration: underline; cursor: pointer; }
