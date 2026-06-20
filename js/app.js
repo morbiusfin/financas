@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.19.4";
-const VERSION_NOTES = "App se atualiza sozinho pra todos (até na tela de início) + versão no login.";
+const APP_VERSION = "3.19.5";
+const VERSION_NOTES = "Tela de login mais limpa e textos legais no nome MorbiusFin.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.19.5",
+    bullets: [
+      "Tela de login mais enxuta e textos de Privacidade/Termos padronizados no nome <b>MorbiusFin</b>.",
+    ],
+  },
   {
     version: "3.19.4",
     bullets: [
@@ -5318,7 +5324,6 @@ function renderWelcome(w) {
       <button type="button" class="wel-link" id="welBack">← Já tenho conta</button>`;
   } else {
     inner = `<div class="wel-name">${p.nome ? ("Olá, " + esc(p.nome)) : "Bem-vindo"}</div>
-      <div class="wel-sub">Entre com seu email e senha</div>
       <label class="wel-field"><span>Email</span><input id="welEmail" type="email" inputmode="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(lastEmail)}" placeholder="voce@email.com"></label>
       <label class="wel-field"><span>Senha</span><input id="welSen" type="password" autocomplete="current-password" placeholder="sua senha"></label>
       <div id="welMsg" class="wel-msg"></div>
