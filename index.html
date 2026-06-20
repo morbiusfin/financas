@@ -44,7 +44,7 @@
         <button id="btnUndo" class="icon-btn" aria-label="Desfazer" title="Desfazer (Ctrl+Z)">↩︎</button>
         <button id="btnRedo" class="icon-btn" aria-label="Refazer" title="Refazer (Ctrl+Y)">↪︎</button>
         <button id="btnWhatsNew" class="icon-btn wn-btn hidden" title="Novidades disponíveis" aria-label="Novidades"><img class="emoji-anim hdr-emoji" src="emoji/brilho.webp" alt="" aria-hidden="true" draggable="false" /><span class="wn-dot" aria-hidden="true"></span></button>
-        <button id="btnProfile" class="avatar-btn" title="Meu perfil" aria-label="Meu perfil"><span class="avatar-img" aria-hidden="true"></span><span class="avatar-ini" aria-hidden="true">👤</span></button>
+        <button id="btnProfile" class="avatar-btn" title="Meu perfil" aria-label="Meu perfil"><span id="hdrPlan" class="hdr-plan hidden" aria-hidden="true"></span><span class="avatar-img" aria-hidden="true"></span><span class="avatar-ini" aria-hidden="true">👤</span></button>
       </div>
     </div>
     <div class="month-wrap">
@@ -182,8 +182,9 @@
   <!-- MENU LATERAL (☰) -->
   <div id="menuDrawer" class="menu-drawer hidden" role="dialog" aria-modal="true" aria-label="Menu">
     <nav class="menu-panel">
-      <div class="menu-head"><span>Menu</span><span id="menuPlan" class="menu-plan hidden" role="button" tabindex="0" aria-label="Seu plano"></span><div class="menu-head-actions"><button id="menuLogout" class="menu-exit" type="button" aria-label="Sair do app">🚪 Sair</button><button id="menuClose" class="menu-x" aria-label="Fechar">✕</button></div></div>
+      <div class="menu-head"><span>Menu</span><div class="menu-head-actions"><button id="menuLogout" class="menu-exit" type="button" aria-label="Sair do app">🚪 Sair</button><button id="menuClose" class="menu-x" aria-label="Fechar">✕</button></div></div>
       <div id="exploreWidget"></div>
+      <button id="menuPlanCard" class="menu-plan-card hidden" type="button" aria-label="Seu plano"></button>
       <button class="menu-item mi-update hidden" id="miUpdate"><span class="mi-ic">✨</span><span><b>Atualizar o app</b><i id="miUpdateSub">nova versão disponível</i></span></button>
       <button class="menu-item" id="miPerfil"><span class="mi-ic">👤</span><span><b>Editar perfil</b></span></button>
       <button class="menu-item" id="miTutorial"><span class="mi-ic">🎓</span><span><b>Tutorial rápido</b></span></button>

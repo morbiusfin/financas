@@ -729,14 +729,25 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .menu-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 6px 12px; margin-bottom: 2px; }
 .menu-head span { font-size: 20px; font-weight: 800; color: var(--ink); letter-spacing: -.3px; }
 .menu-head-actions { display: flex; align-items: center; gap: 8px; }
-/* badge do plano atual no topo do menu */
-.menu-head .menu-plan { font-size: 12px; font-weight: 800; letter-spacing: .2px; line-height: 1; padding: 5px 11px; border-radius: 999px; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
-.menu-plan.hidden { display: none; }
-.menu-plan:active { transform: scale(.94); }
-.menu-plan.plan-teste    { color: #f5a623; background: rgba(245,166,35,.13); border-color: rgba(245,166,35,.4); }
-.menu-plan.plan-plus     { color: #15c266; background: rgba(21,194,102,.13); border-color: rgba(21,194,102,.42); }
-.menu-plan.plan-pro      { color: #3aa0d8; background: rgba(58,160,216,.15); border-color: rgba(58,160,216,.42); }
-.menu-plan.plan-ultimate { color: #a987f5; background: rgba(124,58,237,.17); border-color: rgba(124,58,237,.46); }
+/* pílula do plano no header (acima da foto do perfil) */
+.avatar-btn { position: relative; overflow: visible; }
+.hdr-plan { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); z-index: 3;
+  font-size: 9.5px; font-weight: 800; letter-spacing: .3px; line-height: 1; padding: 3px 7px; border-radius: 999px;
+  white-space: nowrap; pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.hdr-plan.hidden { display: none; }
+.hdr-plan.plan-teste    { color: #2a1c02; background: #f5a623; }
+.hdr-plan.plan-plus     { color: #04231a; background: #15c266; }
+.hdr-plan.plan-pro      { color: #06283a; background: #46b4ea; }
+.hdr-plan.plan-ultimate { color: #1c0f3a; background: #b59bf7; }
+/* card vermelho do plano no corpo do menu */
+.menu-plan-card { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left;
+  margin: 6px 0 10px; padding: 11px 14px; border-radius: 14px; background: rgba(229,72,77,.12);
+  border: 1px solid rgba(229,72,77,.42); color: #ff8a8a; font-family: var(--font); cursor: pointer; }
+.menu-plan-card.hidden { display: none; }
+.menu-plan-card:active { transform: scale(.98); }
+.menu-plan-card .mpc-l { font-size: 13.5px; }
+.menu-plan-card .mpc-l b { font-weight: 800; }
+.menu-plan-card .mpc-go { font-size: 12.5px; font-weight: 800; opacity: .9; white-space: nowrap; }
 .menu-exit { display: inline-flex; align-items: center; gap: 5px; background: rgba(229,72,77,.14); border: 1px solid rgba(229,72,77,.32); color: #ff6b6b; font-family: var(--font); font-weight: 800; font-size: 13px; padding: 7px 11px; border-radius: 10px; cursor: pointer; }
 .menu-exit:active { transform: scale(.95); }
 /* itens entram em sequência (cascata) ao abrir o menu + o ícone dá um "pop" */

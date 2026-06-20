@@ -1,16 +1,17 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.18.6";
-const VERSION_NOTES = "Seu plano atual aparece no topo do menu.";
+const APP_VERSION = "3.18.7";
+const VERSION_NOTES = "Plano aparece acima da foto; no menu, plano + dias restantes em destaque.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
   {
-    version: "3.18.6",
+    version: "3.18.7",
     bullets: [
-      "Agora dá pra ver <b>seu plano atual</b> ali no topo do menu (Teste, Plus, Pro ou Ultimate) — com os dias restantes. Toque pra ver os planos.",
+      "Seu <b>plano</b> agora aparece como uma etiqueta <b>acima da sua foto</b> (canto superior direito).",
+      "No menu, um destaque mostra <b>seu plano e os dias restantes</b> — toque pra ver/trocar de plano.",
     ],
   },
   {
@@ -5105,32 +5106,42 @@ function openMenu() {
     let em = ""; try { em = (window.CLOUD && window.CLOUD.email) || localStorage.getItem(CLOUD_EMAIL_KEY) || ""; } catch (e) {}
     foot.innerHTML = "MorbiusFin · v" + esc(APP_VERSION) + (em ? '<br><span class="menu-foot-email">' + esc(em) + "</span>" : "");
   }
-  const planEl = $("#menuPlan");                                             // badge do plano atual (ao lado de "Menu")
-  if (planEl) {
+  updateHdrPlan();                                                           // pílula do plano no header (acima da foto)
+  const planCard = $("#menuPlanCard");                                       // card vermelho do plano (corpo do menu)
+  if (planCard) {
     const info = currentPlanInfo();
-    if (info) { planEl.className = "menu-plan plan-" + info.key; planEl.textContent = info.label; planEl.onclick = () => { closeMenu(); openPlanosModal(); }; }
-    else planEl.className = "menu-plan hidden";
+    if (info) {
+      const right = info.vitalicio ? "vitalício" : (info.dias != null ? (info.dias <= 1 ? "último dia" : "faltam " + info.dias + " dias") : "");
+      planCard.innerHTML = '<span class="mpc-l">📋 <b>Plano ' + esc(info.tier) + "</b>" + (right ? " · " + esc(right) : "") + '</span><span class="mpc-go">Ver planos ›</span>';
+      planCard.classList.remove("hidden");
+      planCard.onclick = () => { closeMenu(); openPlanosModal(); };
+    } else planCard.classList.add("hidden");
   }
   renderExploreWidget();                                                     // % de exploração no topo
   m.classList.remove("hidden");
   $$(".menu-item", m).forEach((it, i) => it.style.setProperty("--mi", i));   // entrada em sequência (stagger)
 }
 function closeMenu() { const m = $("#menuDrawer"); if (m) m.classList.add("hidden"); }
-// Plano atual da conta (pra badge do menu). Lê window.CLOUD (preenchido no login/checkLicenca).
+// Plano atual da conta. Lê window.CLOUD (preenchido no login/checkLicenca).
 function currentPlanInfo() {
   let plano = null, validade = null;
   try { plano = window.CLOUD && window.CLOUD.plano; validade = window.CLOUD && window.CLOUD.validade; } catch (e) {}
   if (!plano && window.CLOUD && window.CLOUD.email) plano = "teste";   // logado mas sem leitura ainda → assume teste
   if (!plano) return null;
   const nomes = { teste: "Teste", plus: "Plus", pro: "Pro", ultimate: "Ultimate" };
-  const nome = nomes[plano] || plano;
-  let extra = "";
-  if (plano === "ultimate") extra = " · vitalício";
-  else if (validade) {
-    const d = Math.ceil((new Date(validade) - new Date()) / 86400000);
-    if (d >= 0) extra = " · " + (d <= 1 ? "último dia" : d + "d");
-  }
-  return { key: nomes[plano] ? plano : "teste", label: nome + extra };
+  const key = nomes[plano] ? plano : "teste";
+  const tier = nomes[plano] || plano;
+  const vitalicio = (plano === "ultimate");
+  let dias = null;
+  if (!vitalicio && validade) { const d = Math.ceil((new Date(validade) - new Date()) / 86400000); dias = d >= 0 ? d : 0; }
+  return { key, tier, vitalicio, dias };
+}
+// Pílula do plano no header (acima da foto do perfil).
+function updateHdrPlan() {
+  const el = $("#hdrPlan"); if (!el) return;
+  const info = currentPlanInfo();
+  if (info) { el.className = "hdr-plan plan-" + info.key; el.textContent = info.tier; }
+  else el.className = "hdr-plan hidden";
 }
 const _onbHide = () => { const o = $("#onboarding"); if (o) o.classList.add("hidden"); };
 $("#btnMenu").onclick = openMenu;
@@ -7608,6 +7619,7 @@ function startApp() {
   lastSnap = JSON.stringify(DATA);
   forceAnimOnce = true;        // só a abertura tem a animação de entrada (intro); o resto é estático
   renderAvatar();              // 👤 mostra a foto/inicial do perfil no header
+  updateHdrPlan();             // pílula do plano acima da foto
   render();
   if (curTab === "resumo" && !annual) renderCharts();
   checkAndNotify(); checkVersion();
