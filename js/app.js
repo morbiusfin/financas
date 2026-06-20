@@ -1,8 +1,8 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.18.7";
-const VERSION_NOTES = "Plano aparece acima da foto; no menu, plano + dias restantes em destaque.";
+const APP_VERSION = "3.18.8";
+const VERSION_NOTES = "Foto do perfil voltou a ficar redonda; etiqueta do plano ajustada.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
