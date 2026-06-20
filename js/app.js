@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.18.1";
-const VERSION_NOTES = "Bloqueio/liberação de acesso aplica ao reabrir o app.";
+const APP_VERSION = "3.18.2";
+const VERSION_NOTES = "Tela de acesso bloqueado/expirado mais bonita e organizada.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.18.2",
+    bullets: [
+      "Tela de <b>acesso expirado/bloqueado</b> repaginada: agora num cartão organizado, com ícone, mensagem clara e atalho pros planos. Bem mais bonita.",
+    ],
+  },
   {
     version: "3.18.1",
     bullets: [
@@ -5279,25 +5285,21 @@ function showWelcomeLicFail(reason) {
   w.classList.remove("hidden");
   renderWelcome(w);
 }
-// Markup da tela de bloqueio/expiração — mensagem clara + botão de planos + suporte.
+// Tela de bloqueio/expiração — card com ícone de status, mensagem clara, planos e suporte.
 function renderWelBlocked(w, reason) {
-  const p = getPerfil();
   const isBlocked = reason === "bloqueado";
   w.innerHTML = `<div class="wel-brand">MorbiusFin</div>
-    <div class="wel-inner">
-      <div class="wel-avatar" id="welAvatar" aria-hidden="true"></div>
+    <div class="wel-inner wel-blocked">
+      <div class="wel-status-ic ${isBlocked ? "danger" : "warn"}">${isBlocked ? "🔒" : "⏳"}</div>
       <div class="wel-name">${isBlocked ? "Acesso bloqueado" : "Seu acesso expirou"}</div>
       <div class="wel-sub">${isBlocked
-        ? "Sua conta foi bloqueada pelo administrador."
-        : "O período de teste ou a assinatura chegou ao fim."}</div>
+        ? "Sua conta foi bloqueada pelo administrador. Fale com o suporte pra regularizar."
+        : "Seu teste grátis ou a assinatura chegou ao fim. Escolha um plano pra continuar usando."}</div>
       <button type="button" class="btn primary wel-enter" id="welVerPlanos">Ver planos</button>
-      <div class="wel-msg" style="margin-top:12px;text-align:center;font-size:13px;color:var(--muted)">
-        Já pagou? Seu acesso será liberado em alguns minutos.<br>
-        Suporte: <a href="mailto:morbiusfin@gmail.com" style="color:var(--accent-2)">morbiusfin@gmail.com</a>
-      </div>
+      <div class="wel-note">Já pagou? Seu acesso libera em alguns minutos.<br>Suporte: <a href="mailto:morbiusfin@gmail.com">morbiusfin@gmail.com</a></div>
       <button type="button" class="wel-link" id="welVoltarLogin">← Voltar ao login</button>
-    </div>`;
-  setAvatarInto(w.querySelector("#welAvatar"), p.foto, p.nome);
+    </div>
+    <div class="wel-copy">© ${new Date().getFullYear()} MorbiusFin · Todos os direitos reservados.<br><a href="privacidade.html">Privacidade</a> · <a href="termos.html">Termos de Uso</a></div>`;
   const bp = w.querySelector("#welVerPlanos"); if (bp) bp.onclick = () => openPlanosModal();
   const bv = w.querySelector("#welVoltarLogin"); if (bv) bv.onclick = () => { _welBlocked = null; _welMode = "login"; renderWelcome(); };
 }

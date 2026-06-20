@@ -645,6 +645,14 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 /* botão "Ver planos" no rodapé do login — inline como link */
 .wel-plans-link { background: none; border: none; padding: 0; font: inherit; font-size: 11px; font-weight: 700; color: var(--accent-2); cursor: pointer; text-decoration: none; }
 .wel-plans-link:active { opacity: .7; }
+/* tela de acesso bloqueado/expirado — card centrado, ícone de status */
+.wel-inner.wel-blocked { background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 32px 24px 22px; box-shadow: 0 28px 70px rgba(0,0,0,.5); }
+.wel-status-ic { width: 88px; height: 88px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 42px; line-height: 1; margin-bottom: 18px; flex: 0 0 auto; }
+.wel-status-ic.warn { background: radial-gradient(circle at 50% 32%, rgba(245,166,35,.22), rgba(245,166,35,.05)); box-shadow: inset 0 0 0 1.5px rgba(245,166,35,.32); }
+.wel-status-ic.danger { background: radial-gradient(circle at 50% 32%, rgba(255,107,107,.22), rgba(255,107,107,.05)); box-shadow: inset 0 0 0 1.5px rgba(255,107,107,.34); }
+.wel-blocked .wel-sub { margin: 4px 6px 20px; }
+.wel-note { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin: 16px 0 2px; text-align: center; }
+.wel-note a { color: var(--accent-2); font-weight: 700; text-decoration: none; }
 
 /* ===== Banner de trial ===== */
 .trial-banner {
