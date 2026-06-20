@@ -698,6 +698,12 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .info-msg { font-size: 14.5px; line-height: 1.55; color: var(--muted); margin: 0 0 18px; }
 .info-msg b { color: var(--ink); }
 .info-ok { width: 100%; }
+/* botão "ver senha" (👁) — vale pra qualquer input de senha */
+.pw-wrap { position: relative; display: block; width: 100%; }
+.pw-wrap input { width: 100%; padding-right: 44px !important; }
+.pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; margin: 0; color: var(--muted); cursor: pointer; border-radius: 9px; }
+.pw-eye:active { transform: translateY(-50%) scale(.9); }
+.pw-eye svg { display: block; }
 
 /* ===== Recuperação por pergunta secreta ===== */
 .lock-forgot { display: block; width: 100%; margin: 12px auto 0; background: none; border: 0; color: rgba(255,255,255,.82); font: inherit; font-size: 13px; font-weight: 700; text-decoration: underline; cursor: pointer; }

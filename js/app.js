@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.19.1";
-const VERSION_NOTES = "Observações em todo lançamento + aviso claro ao recuperar a senha.";
+const APP_VERSION = "3.19.2";
+const VERSION_NOTES = "Botão 👁 para ver a senha em todos os campos.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.19.2",
+    bullets: [
+      "Novo botão <b>👁 para ver a senha</b> enquanto você digita — em todos os campos de senha e PIN, pra conferir antes de enviar.",
+    ],
+  },
   {
     version: "3.19.1",
     bullets: [
@@ -6796,6 +6802,7 @@ function cloudErr(reason) {
   if (reason === "sem-cofre") return "Conta sem cofre ainda — confirme o email e entre";
   if (/already registered|already been registered/i.test(reason)) return "Esse email já tem conta — use Entrar";
   if (/invalid/i.test(reason) && /email/i.test(reason)) return "Email inválido";
+  if (/rate limit/i.test(reason)) return "Muitas tentativas agora. Aguarde 1–2 minutos e tente de novo.";
   if (reason === "cofre-corrompido") return "Não consegui abrir o cofre";
   if (reason === "sdk") return "Sem conexão com o servidor";
   return reason || "Não consegui agora";
@@ -7652,6 +7659,33 @@ window.addEventListener("pageshow", onAppFocus);   // iOS: app restaurado do seg
 // checa atualização ao abrir (após o splash) e a cada 5 min
 setTimeout(checkForUpdate, 6500);
 setInterval(checkForUpdate, 5 * 60 * 1000);
+
+/* ---------- "Ver senha" em TODOS os campos de senha (👁) ---------- */
+const PW_EYE = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+const PW_EYE_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+function attachPwEye(input) {
+  if (!input || input.dataset.eye) return;
+  input.dataset.eye = "1";
+  const p = input.parentNode; if (!p) return;
+  const w = document.createElement("span"); w.className = "pw-wrap";
+  p.insertBefore(w, input); w.appendChild(input);
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "pw-eye"; b.tabIndex = -1; b.setAttribute("aria-label", "Mostrar senha"); b.innerHTML = PW_EYE;
+  b.onmousedown = (e) => e.preventDefault();   // não rouba o foco do campo
+  b.onclick = () => {
+    const show = input.getAttribute("type") === "password";
+    input.setAttribute("type", show ? "text" : "password");
+    b.innerHTML = show ? PW_EYE_OFF : PW_EYE;
+    b.setAttribute("aria-label", show ? "Ocultar senha" : "Mostrar senha");
+  };
+  w.appendChild(b);
+}
+function scanPwEyes() { try { document.querySelectorAll('input[type="password"]').forEach(attachPwEye); } catch (e) {} }
+let _pwEyeT = null;
+try {
+  new MutationObserver(() => { clearTimeout(_pwEyeT); _pwEyeT = setTimeout(scanPwEyes, 150); }).observe(document.body, { childList: true, subtree: true });
+  scanPwEyes();
+} catch (e) {}
 
 /* ---------- Boot ---------- */
 // Migração segura do orçamento: o antigo por TIPO (DATA.metas) foi aposentado em favor do por
