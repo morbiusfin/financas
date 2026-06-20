@@ -1,12 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.19.3";
-const VERSION_NOTES = "Acesso liberado no admin volta sozinho no app, sem precisar relogar.";
+const APP_VERSION = "3.19.4";
+const VERSION_NOTES = "App se atualiza sozinho pra todos (até na tela de início) + versão no login.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.19.4",
+    bullets: [
+      "O app passa a se <b>atualizar sozinho pra todo mundo</b> — inclusive quem instalou na <b>tela de início</b>. Sem precisar reinstalar a cada versão.",
+      "A <b>versão do app</b> agora aparece embaixo na tela de login, pra você saber qual está rodando.",
+    ],
+  },
   {
     version: "3.19.3",
     bullets: [
@@ -5325,7 +5332,8 @@ function renderWelcome(w) {
       <div class="wel-avatar" id="welAvatar" aria-hidden="true"></div>
       ${inner}
     </div>
-    <div class="wel-copy">© ${new Date().getFullYear()} MorbiusFin · Todos os direitos reservados.<br><a href="privacidade.html">Privacidade</a> · <a href="termos.html">Termos de Uso</a> · <button type="button" class="wel-plans-link" id="welVerPlanos">Ver planos</button></div>`;
+    <div class="wel-copy">© ${new Date().getFullYear()} MorbiusFin · Todos os direitos reservados.<br><a href="privacidade.html">Privacidade</a> · <a href="termos.html">Termos de Uso</a> · <button type="button" class="wel-plans-link" id="welVerPlanos">Ver planos</button></div>
+    <div class="wel-ver">v${esc(APP_VERSION)}</div>`;
   setAvatarInto(w.querySelector("#welAvatar"), p.foto, p.nome);
   const go = $("#welGo"); if (go) go.onclick = (_welMode === "signup") ? welDoSignup : welDoLogin;
   const fg = $("#welForgot"); if (fg) fg.onclick = welDoForgot;
@@ -5897,7 +5905,11 @@ async function checkForUpdate() {
     const j = await r.json();
     if (j && j.version && j.version !== APP_VERSION) {
       showUpdateBanner(j.version);     // ✨ no cabeçalho + opção no menu (idempotente)
-      forceUpdatePrompt(j.version);    // FORÇA o alerta central (1x por sessão, quando não atrapalhar)
+      if (!window.__started) {         // tela de login / PWA na entrada → atualiza SOZINHO (nada a perder no login)
+        if (!window.__autoUpd) { window.__autoUpd = true; applyUpdate(null); }
+        return;
+      }
+      forceUpdatePrompt(j.version);    // dentro do app: FORÇA o alerta central (não recarrega no meio de uma edição)
     }
   } catch (e) {}
 }
@@ -7656,7 +7668,8 @@ function showBlockOverlay(reason) {
       <button type="button" class="btn primary wel-enter" id="boPlanos">Ver planos</button>
       <div class="wel-note">✅ Assim que liberarem, o acesso <b>volta sozinho</b> — pode deixar aberto.<br>Suporte: <a href="mailto:morbiusfin@gmail.com">morbiusfin@gmail.com</a></div>
       <button type="button" class="wel-link" id="boLogout">Sair da conta</button>
-    </div>`;
+    </div>
+    <div class="wel-ver">v${esc(APP_VERSION)}</div>`;
   const bp = o.querySelector("#boPlanos"); if (bp) bp.onclick = () => openPlanosModal();
   const bo = o.querySelector("#boLogout"); if (bo) bo.onclick = () => cloudDoLogout();
 }
@@ -8084,7 +8097,15 @@ function resumeBoot() {
 }
 
 window.addEventListener("load", () => { if (window.__started && curTab === "resumo" && !annual) renderCharts(); });
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").then((reg) => {
+    try { reg.update(); } catch (e) {}
+    setInterval(() => { try { reg.update(); } catch (e) {} }, 60000);   // re-checa o SW a cada 1 min → pega update até no PWA da tela de início
+    const upd = () => { if (document.visibilityState === "visible") { try { reg.update(); } catch (e) {} } };
+    window.addEventListener("focus", upd);
+    document.addEventListener("visibilitychange", upd);
+  }).catch(() => {});
+}
 
 /* Puxar-para-atualizar SEM sincronização (modo teste/sem nuvem): atualiza NO LUGAR — recalcula e
    redesenha a tela e checa se há versão nova (mostra o ✨), SEM recarregar/reiniciar o app. */
