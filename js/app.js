@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.17.3";
+const APP_VERSION = "3.17.4";
 const VERSION_NOTES = "🔐 Agora você entra no app com EMAIL e SENHA, direto na tela inicial (com 'esqueci minha senha' e 'criar conta'). Seus dados migram pra conta cifrados (E2E) e você acessa de qualquer aparelho.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
@@ -5226,6 +5226,9 @@ async function welDoLogin() {
   }
   if (!r.ok) { welMsg(cloudErr(r.reason), true); return; }
   localStorage.setItem(CLOUD_EMAIL_KEY, email);
+  try { if (window.MFCloud && MFCloud.registerLicenca) await MFCloud.registerLicenca(); } catch (e) {}   // garante a linha
+  var lic = (window.MFCloud && MFCloud.checkLicenca) ? await MFCloud.checkLicenca() : { ok: true };       // enforcement (fail-open)
+  if (!lic.ok) { try { await MFCloud.signOut(); } catch (e) {} welMsg(lic.reason === "expirado" ? "Seu acesso expirou — fale com o suporte." : "Conta bloqueada — fale com o suporte.", true); return; }
   welApply(r.data, email);
 }
 async function welMigrationData(pin) {

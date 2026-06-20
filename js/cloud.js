@@ -139,11 +139,30 @@
     } catch (e) {}
   }
 
+  // checa a licença no login. FAIL-OPEN: qualquer erro/sem linha/sem rede => libera (nunca trancar por bug).
+  // Só barra em caso EXPLÍCITO: status 'bloqueado' ou validade vencida.
+  async function cloudCheckLicenca() {
+    try {
+      var sb = sbClient(); if (!sb) return { ok: true };
+      var u = await sb.auth.getUser(); if (!u.data || !u.data.user) return { ok: true };
+      var q = await sb.from("licencas").select("status,plano,validade").eq("user_id", u.data.user.id).limit(1);
+      if (q.error) return { ok: true };
+      var l = q.data && q.data[0]; if (!l) return { ok: true };
+      if (l.status === "bloqueado") return { ok: false, reason: "bloqueado" };
+      if (l.validade) {
+        var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+        var v = new Date(String(l.validade) + "T00:00:00");
+        if (!isNaN(v.getTime()) && v < hoje) return { ok: false, reason: "expirado", validade: l.validade };
+      }
+      return { ok: true, plano: l.plano };
+    } catch (e) { return { ok: true }; }
+  }
+
   window.MFCloud = {
     configured: cloudConfigured,
     signUp: cloudSignUp, signIn: cloudSignIn, push: cloudPush, pull: cloudPull,
     signOut: cloudSignOut, session: cloudSession, reset: cloudResetSenha,
     makeCt: cloudMakeCt, snapshot: cloudSnapshot, offlineUnlock: cloudOfflineUnlock,
-    registerLicenca: cloudRegisterLicenca,
+    registerLicenca: cloudRegisterLicenca, checkLicenca: cloudCheckLicenca,
   };
 })();
