@@ -153,22 +153,25 @@
   // Lê plano e validade e expõe em window.CLOUD.plano / window.CLOUD.validade p/ a UI de trial/tier.
   async function cloudCheckLicenca() {
     try {
-      var sb = sbClient(); if (!sb) return { ok: true };
-      var u = await sb.auth.getUser(); if (!u.data || !u.data.user) return { ok: true };
-      var q = await sb.from("licencas").select("status,plano,validade").eq("user_id", u.data.user.id).limit(1);
-      if (q.error) return { ok: true };
-      var l = q.data && q.data[0]; if (!l) return { ok: true };
+      var sb = sbClient(); if (!sb) return { ok: true, err: true };
+      var u = await sb.auth.getUser(); if (!u.data || !u.data.user) return { ok: true, err: true };
+      // Consulta por E-MAIL (mesma chave que o painel admin gerencia) — robusto, evita problema de user_id.
+      var email = (u.data.user.email || "").toLowerCase().trim();
+      var q = await sb.from("licencas").select("status,plano,validade").eq("email", email).limit(1);
+      if (q.error) return { ok: true, err: true };
+      var l = q.data && q.data[0];
+      if (!l) return { ok: true, err: true };   // sem linha → incerto: não bloqueia nem libera à toa
       // Expõe plano e validade na sessão (pra UI do banner/tier)
       window.CLOUD.plano = l.plano || "teste";
       window.CLOUD.validade = l.validade || null;
-      if (l.status === "bloqueado") return { ok: false, reason: "bloqueado" };
+      if (l.status === "bloqueado") return { ok: false, reason: "bloqueado", plano: l.plano, validade: l.validade };
       if (l.validade) {
         var agora = new Date();
         var v = new Date(l.validade);
-        if (!isNaN(v.getTime()) && v < agora) return { ok: false, reason: "expirado", validade: l.validade };
+        if (!isNaN(v.getTime()) && v < agora) return { ok: false, reason: "expirado", plano: l.plano, validade: l.validade };
       }
       return { ok: true, plano: l.plano, validade: l.validade };
-    } catch (e) { return { ok: true }; }
+    } catch (e) { return { ok: true, err: true }; }
   }
 
   window.MFCloud = {

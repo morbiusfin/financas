@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.20.1";
-const VERSION_NOTES = "Acesso/plano sincroniza a cada 5 segundos.";
+const APP_VERSION = "3.20.2";
+const VERSION_NOTES = "Acesso/plano sincroniza AO VIVO a cada 5s (sem reabrir nem relogar).";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.20.2",
+    bullets: [
+      "Acesso e plano agora <b>sincronizam ao vivo a cada 5s</b> — o que o administrador definir entra <b>sozinho no app</b>, sem precisar reabrir nem sair e entrar.",
+    ],
+  },
   {
     version: "3.20.1",
     bullets: [
@@ -5390,7 +5396,7 @@ async function welDoLogin() {
   localStorage.setItem(CLOUD_EMAIL_KEY, email);
   try { if (window.MFCloud && MFCloud.registerLicenca) await MFCloud.registerLicenca(); } catch (e) {}   // garante a linha
   var lic = (window.MFCloud && MFCloud.checkLicenca) ? await MFCloud.checkLicenca() : { ok: true };       // enforcement (fail-open)
-  if (!lic.ok) { try { await MFCloud.signOut(); } catch (e) {} welMsg(""); showWelcomeLicFail(lic.reason); return; }   // bloqueado/expirado → tela de bloqueio no login
+  if (!lic.ok) { welMsg(""); _blockedNow = true; welApply(r.data, email); setTimeout(() => showBlockOverlay(lic.reason), 350); return; }   // entra com overlay de bloqueio → some sozinho quando liberarem
   welApply(r.data, email);
 }
 // Mensagens de erro de login amigáveis (sem vazar detalhe técnico do Supabase)
@@ -7659,47 +7665,61 @@ function onAppFocus() {
   clearTimeout(_focusSyncT);
   _focusSyncT = setTimeout(() => { if (syncCfg()) pullSync(false); checkForUpdate(); licenseSync(); }, 1200);
 }
-// Sincroniza a licença com a nuvem (admin escreve na tabela 'licencas'). Roda no foco e a cada 10s.
-// REGRA (pedido do Kaick): QUALQUER mudança no admin sobre o e-mail logado — bloqueio/expiração OU
-// troca de plano/validade — FECHA o app pro LOGIN na hora; ao entrar de novo já vem com a mudança
-// (ou o bloqueio). Fail-open: erro/sem rede não derruba ninguém.
-let _licChkBusy = false, _enteredSig = null;
-function _licSig(plano, validade) { return (plano || "") + "|" + (validade || ""); }
+// SINCRONIA AO VIVO da licença (o admin DITA). Roda no foco e a CADA 5s. checkLicenca consulta a
+// nuvem por E-MAIL (mesma chave que o painel admin gerencia). Aplica NO LUGAR, sem re-login:
+//   • bloqueado/expirado → overlay de bloqueio ao vivo (some sozinho quando liberarem)
+//   • plano/validade mudou → atualiza header + banner + menu na hora (+ aviso)
+// Fail-open: incerteza (erro/sem rede/sem linha) NÃO mexe no estado (não bloqueia nem libera à toa).
+let _licChkBusy = false, _curPlano = null, _blockedNow = false;
 async function licenseSync() {
   try {
     if (isTestMode()) return;
     if (!(window.CLOUD && window.CLOUD.dek)) return;          // só logado e dentro do app
-    if (document.getElementById("welcomeScreen")) return;     // já na tela de login
+    if (document.getElementById("welcomeScreen")) return;     // está na tela de login
     if (!(window.MFCloud && MFCloud.checkLicenca)) return;
-    if (navigator.onLine === false) return;                   // offline → fail-open
+    if (navigator.onLine === false) return;
     if (_licChkBusy) return; _licChkBusy = true;
-    let lic; try { lic = await MFCloud.checkLicenca(); } catch (e) { lic = { ok: true }; }
+    let lic; try { lic = await MFCloud.checkLicenca(); } catch (e) { lic = { ok: true, err: true }; }
     _licChkBusy = false;
-    if (lic && lic.ok === false) return kickToLogin();        // bloqueado/expirado → fecha pro login
-    const sig = _licSig(window.CLOUD.plano, window.CLOUD.validade);
-    if (_enteredSig === null) { _enteredSig = sig; applyPlanLive(); return; }   // baseline na 1ª checagem
-    if (sig !== _enteredSig) return kickToLogin();            // plano/validade mudou no admin → fecha pro login
-    applyPlanLive();                                          // sem mudança → mantém a UI do tier em dia
+    if (!lic || lic.err) return;                             // incerto → mantém o estado (não pisca)
+    if (lic.ok === false) { _blockedNow = true; showBlockOverlay(lic.reason); return; }   // bloqueia AO VIVO
+    if (_blockedNow) { _blockedNow = false; hideBlockOverlay(); try { toast("Acesso liberado ✓"); } catch (e) {} }   // libera AO VIVO
+    var p = (window.CLOUD && window.CLOUD.plano) || null;
+    applyPlanLive();                                          // header/banner/menu sempre em dia
+    if (_curPlano !== null && p && p !== _curPlano) {
+      var nomes = { teste: "Teste", plus: "Plus", pro: "Pro", ultimate: "Ultimate" };
+      try { toast("Seu plano agora é " + (nomes[p] || p) + " ✓"); } catch (e) {}
+    }
+    _curPlano = p;
   } catch (e) { _licChkBusy = false; }
 }
-// Mudança/bloqueio detectado com o app ABERTO → encerra a sessão e cai na tela de login.
-// Ao entrar de novo, o welDoLogin re-checa e já aplica o novo plano (ou mostra o bloqueio).
-function kickToLogin() {
-  try { stopLicensePoll(); } catch (e) {}
-  (async () => {
-    try { if (window.MFCloud && MFCloud.signOut) await MFCloud.signOut(); } catch (e) {}
-    try { localStorage.removeItem("financas2026.cloudDek"); localStorage.removeItem(CLOUD_LOCAL_KEY); } catch (e) {}
-    window.CLOUD = { dek: null, email: null };
-    location.reload();
-  })();
+// Overlay de bloqueio (SEM deslogar) — some sozinho quando o admin/pagamento liberar (poll de 5s).
+function showBlockOverlay(reason) {
+  const isBlocked = reason === "bloqueado";
+  let o = document.getElementById("blockOverlay");
+  if (!o) { o = document.createElement("div"); o.id = "blockOverlay"; o.className = "welcome-screen show"; document.body.appendChild(o); }
+  document.body.classList.add("welcome-on");
+  o.innerHTML = `<div class="wel-brand">MorbiusFin</div>
+    <div class="wel-inner wel-blocked">
+      <div class="wel-status-ic ${isBlocked ? "danger" : "warn"}">${isBlocked ? "🔒" : "⏳"}</div>
+      <div class="wel-name">${isBlocked ? "Acesso bloqueado" : "Seu acesso expirou"}</div>
+      <div class="wel-sub">${isBlocked ? "Sua conta foi bloqueada pelo administrador." : "Seu teste grátis ou a assinatura chegou ao fim. Escolha um plano pra continuar."}</div>
+      <button type="button" class="btn primary wel-enter" id="boPlanos">Ver planos</button>
+      <div class="wel-note">✅ Assim que liberarem, o acesso <b>volta sozinho</b> — pode deixar aberto.<br>Suporte: <a href="mailto:morbiusfin@gmail.com">morbiusfin@gmail.com</a></div>
+      <button type="button" class="wel-link" id="boLogout">Sair da conta</button>
+    </div>
+    <div class="wel-ver">v${esc(APP_VERSION)}</div>`;
+  const bp = o.querySelector("#boPlanos"); if (bp) bp.onclick = () => openPlanosModal();
+  const bo = o.querySelector("#boLogout"); if (bo) bo.onclick = () => cloudDoLogout();
 }
-// Mantém a UI do tier em dia (header + banner de trial + card do menu). Sem mudança = no-op visual.
+function hideBlockOverlay() { const o = document.getElementById("blockOverlay"); if (o) { try { o.remove(); } catch (e) {} } document.body.classList.remove("welcome-on"); }
+// Mantém a UI do tier em dia (header + banner de trial + card do menu).
 function applyPlanLive() {
   try { updateHdrPlan(); } catch (e) {}
   try { renderTrialBanner(); } catch (e) {}
   try { renderMenuPlanCard(); } catch (e) {}
 }
-// Poll da licença enquanto o app está aberto e visível.
+// Poll da licença enquanto o app está aberto e visível (a cada 5s).
 let _licPollT = null;
 const LICENSE_POLL_MS = 5000;
 function startLicensePoll() { stopLicensePoll(); _licPollT = setInterval(() => { if (document.visibilityState === "visible") licenseSync(); }, LICENSE_POLL_MS); }
@@ -7762,8 +7782,8 @@ function startApp() {
   forceAnimOnce = true;        // só a abertura tem a animação de entrada (intro); o resto é estático
   renderAvatar();              // 👤 mostra a foto/inicial do perfil no header
   updateHdrPlan();             // pílula do plano acima da foto
-  _enteredSig = null;          // re-baseline a cada entrada (1ª checagem do poll define o estado atual)
-  startLicensePoll();          // checa licença a cada 10s → mudança no admin fecha pro login na hora
+  _curPlano = (window.CLOUD && window.CLOUD.plano) || null;   // baseline do plano (evita aviso falso)
+  startLicensePoll();          // checa licença a cada 5s → admin reflete AO VIVO, sem re-login
   render();
   if (curTab === "resumo" && !annual) renderCharts();
   checkAndNotify(); checkVersion();
