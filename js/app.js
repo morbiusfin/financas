@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.18.0";
-const VERSION_NOTES = "Planos de assinatura, teste grátis de 3 dias e tela pra assinar.";
+const APP_VERSION = "3.18.1";
+const VERSION_NOTES = "Bloqueio/liberação de acesso aplica ao reabrir o app.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.18.1",
+    bullets: [
+      "Acesso mais ágil: ao <b>sair e voltar pro app</b>, ele confere seu plano na nuvem. Se a assinatura foi <b>liberada</b>, já entra; se foi <b>bloqueada</b>, já avisa — sem precisar deslogar.",
+    ],
+  },
   {
     version: "3.18.0",
     bullets: [
@@ -5154,6 +5160,7 @@ function logoutSequence() {
 // Conta na nuvem (E2E) é o acesso. COLD OPEN mostra a abertura (~1,4s) e a cortina revela o login.
 const CLOUD_LOCAL_KEY = "financas2026.cloudLocal", CLOUD_EMAIL_KEY = "financas2026.cloudEmail";
 let _welMode = "login";
+let _welBlocked = null;   // null = login normal; string (reason) = tela de acesso bloqueado/expirado
 function showWelcome() {
   document.body.classList.add("welcome-on");
   let w = document.getElementById("welcomeScreen");
@@ -5196,6 +5203,7 @@ function renderWelcome(w) {
     clearTimeout(window.__welT); window.__welT = setTimeout(() => renderWelcome(), 350);
     return;
   }
+  if (_welBlocked != null) { renderWelBlocked(w, _welBlocked); return; }   // estado autoritativo: bloqueio vence o re-render do login
   let inner;
   if (_welMode === "signup") {
     let raw = null; try { raw = JSON.parse(localStorage.getItem(STORE_KEY) || localStorage.getItem("financas2026.v1") || "null"); } catch (e) {}
@@ -5262,27 +5270,36 @@ function cloudErrLogin(reason) {
   if (reason === "sdk") return "Sem conexão com o servidor";
   return reason || "Não consegui agora";
 }
-// Tela de licença bloqueada/expirada — mensagem clara + botão de planos + suporte
+// Tela de licença bloqueada/expirada — entra no estado autoritativo e re-renderiza
+// (assim o re-render do login não sobrescreve a tela de bloqueio).
 function showWelcomeLicFail(reason) {
-  const w = document.getElementById("welcomeScreen"); if (!w) return;
-  const inner = w.querySelector(".wel-inner"); if (!inner) return;
+  _welBlocked = reason || "";
+  let w = document.getElementById("welcomeScreen");
+  if (!w) { document.body.classList.add("welcome-on"); w = document.createElement("div"); w.id = "welcomeScreen"; w.className = "welcome-screen show"; document.body.appendChild(w); }
+  w.classList.remove("hidden");
+  renderWelcome(w);
+}
+// Markup da tela de bloqueio/expiração — mensagem clara + botão de planos + suporte.
+function renderWelBlocked(w, reason) {
+  const p = getPerfil();
   const isBlocked = reason === "bloqueado";
-  inner.innerHTML = `
-    <div class="wel-name">${isBlocked ? "Acesso bloqueado" : "Seu acesso expirou"}</div>
-    <div class="wel-sub">${isBlocked
-      ? "Sua conta foi bloqueada pelo administrador."
-      : "O período de teste ou a assinatura chegou ao fim."
-    }</div>
-    <button type="button" class="btn primary wel-enter" id="welVerPlanos">Ver planos</button>
-    <div class="wel-msg" style="margin-top:12px;text-align:center;font-size:13px;color:var(--muted)">
-      Já pagou? Seu acesso será liberado em alguns minutos.<br>
-      Suporte: <a href="mailto:morbiusfin@gmail.com" style="color:var(--accent-2)">morbiusfin@gmail.com</a>
-    </div>
-    <button type="button" class="wel-link" id="welVoltarLogin">← Voltar ao login</button>`;
-  const bp = inner.querySelector("#welVerPlanos");
-  if (bp) bp.onclick = () => openPlanosModal();
-  const bv = inner.querySelector("#welVoltarLogin");
-  if (bv) bv.onclick = () => { _welMode = "login"; renderWelcome(); };
+  w.innerHTML = `<div class="wel-brand">MorbiusFin</div>
+    <div class="wel-inner">
+      <div class="wel-avatar" id="welAvatar" aria-hidden="true"></div>
+      <div class="wel-name">${isBlocked ? "Acesso bloqueado" : "Seu acesso expirou"}</div>
+      <div class="wel-sub">${isBlocked
+        ? "Sua conta foi bloqueada pelo administrador."
+        : "O período de teste ou a assinatura chegou ao fim."}</div>
+      <button type="button" class="btn primary wel-enter" id="welVerPlanos">Ver planos</button>
+      <div class="wel-msg" style="margin-top:12px;text-align:center;font-size:13px;color:var(--muted)">
+        Já pagou? Seu acesso será liberado em alguns minutos.<br>
+        Suporte: <a href="mailto:morbiusfin@gmail.com" style="color:var(--accent-2)">morbiusfin@gmail.com</a>
+      </div>
+      <button type="button" class="wel-link" id="welVoltarLogin">← Voltar ao login</button>
+    </div>`;
+  setAvatarInto(w.querySelector("#welAvatar"), p.foto, p.nome);
+  const bp = w.querySelector("#welVerPlanos"); if (bp) bp.onclick = () => openPlanosModal();
+  const bv = w.querySelector("#welVoltarLogin"); if (bv) bv.onclick = () => { _welBlocked = null; _welMode = "login"; renderWelcome(); };
 }
 async function welMigrationData(pin) {
   let raw = localStorage.getItem(STORE_KEY) || localStorage.getItem("financas2026.v1"), parsed = null;
@@ -7479,7 +7496,30 @@ function stopLiveSync() { if (liveT) { clearInterval(liveT); liveT = null; } }
 let _focusSyncT = null;
 function onAppFocus() {
   clearTimeout(_focusSyncT);
-  _focusSyncT = setTimeout(() => { if (syncCfg()) pullSync(false); checkForUpdate(); }, 1200);
+  _focusSyncT = setTimeout(() => { if (syncCfg()) pullSync(false); checkForUpdate(); licenseFocusCheck(); }, 1200);
+}
+// Re-checa a licença na nuvem ao voltar pro app (destrava tela / troca de aba / reabre).
+// Bloqueou no admin/webhook → grava na tabela 'licencas' (= nuvem) → aqui o app puxa fresco e,
+// se barrado, recarrega na tela de bloqueio. Fail-open: offline/erro → não tranca ninguém.
+let _licChkBusy = false;
+async function licenseFocusCheck() {
+  try {
+    if (isTestMode()) return;
+    if (!(window.CLOUD && window.CLOUD.dek)) return;          // só quando logado e dentro do app
+    if (document.getElementById("welcomeScreen")) return;     // já na tela de login/bloqueio
+    if (!(window.MFCloud && MFCloud.checkLicenca)) return;
+    if (navigator.onLine === false) return;                   // offline → fail-open
+    if (_licChkBusy) return; _licChkBusy = true;
+    let lic; try { lic = await MFCloud.checkLicenca(); } catch (e) { lic = { ok: true }; }
+    _licChkBusy = false;
+    if (lic && lic.ok === false) {
+      try { await MFCloud.signOut(); } catch (e) {}
+      try { localStorage.removeItem("financas2026.cloudDek"); localStorage.removeItem(CLOUD_LOCAL_KEY); } catch (e) {}
+      window.CLOUD = { dek: null, email: null };
+      try { sessionStorage.setItem("financas2026.licBlock", lic.reason || "1"); } catch (e) {}
+      location.reload();   // boot() detecta a flag e abre direto na tela de bloqueio
+    }
+  } catch (e) { _licChkBusy = false; }
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") onAppFocus(); });
 window.addEventListener("focus", onAppFocus);
@@ -7818,6 +7858,11 @@ async function boot() {
   // COLD START (app aberto do zero / tirado do 2º plano): se já existe conta neste aparelho, SEMPRE
   // começa pela tela de LOGIN → senha → app. boot() roda só no carregamento da página; voltar do 2º
   // plano (sem o iOS matar o app) NÃO chama boot() → o app fica onde estava. É o que o Kaick pediu.
+  // Veio de um bloqueio detectado no foreground (licenseFocusCheck) → abre direto na tela de bloqueio.
+  try {
+    const bl = sessionStorage.getItem("financas2026.licBlock");
+    if (bl) { sessionStorage.removeItem("financas2026.licBlock"); _welBlocked = (bl === "1" ? "" : bl); }
+  } catch (e) {}
   showWelcome();   // gate único: login email+senha (Entrar) ou criar conta. 1ª vez também passa por aqui.
 }
 // Entrada real no app (sem demo/teste/landing): decide PIN vs abrir direto. Reutilizado pelo "Entrar" da landing.
