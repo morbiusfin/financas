@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.19.2";
-const VERSION_NOTES = "Botão 👁 para ver a senha em todos os campos.";
+const APP_VERSION = "3.19.3";
+const VERSION_NOTES = "Acesso liberado no admin volta sozinho no app, sem precisar relogar.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.19.3",
+    bullets: [
+      "Acesso <b>bloqueado</b>? Agora aparece um aviso e, <b>assim que for liberado, o app volta sozinho</b> em segundos — sem precisar deslogar nem reabrir.",
+    ],
+  },
   {
     version: "3.19.2",
     bullets: [
@@ -5344,7 +5350,7 @@ async function welDoLogin() {
   localStorage.setItem(CLOUD_EMAIL_KEY, email);
   try { if (window.MFCloud && MFCloud.registerLicenca) await MFCloud.registerLicenca(); } catch (e) {}   // garante a linha
   var lic = (window.MFCloud && MFCloud.checkLicenca) ? await MFCloud.checkLicenca() : { ok: true };       // enforcement (fail-open)
-  if (!lic.ok) { try { await MFCloud.signOut(); } catch (e) {} showWelcomeLicFail(lic.reason); return; }
+  if (!lic.ok) { welMsg(""); enterBlocked(lic.reason, { data: r.data, email: email }); return; }   // mantém a sessão e libera sozinho quando o admin ativar
   welApply(r.data, email);
 }
 // Mensagens de erro de login amigáveis (sem vazar detalhe técnico do Supabase)
@@ -7607,33 +7613,72 @@ function stopLiveSync() { if (liveT) { clearInterval(liveT); liveT = null; } }
 let _focusSyncT = null;
 function onAppFocus() {
   clearTimeout(_focusSyncT);
-  _focusSyncT = setTimeout(() => { if (syncCfg()) pullSync(false); checkForUpdate(); licenseSync(); }, 1200);
+  _focusSyncT = setTimeout(() => { if (syncCfg()) pullSync(false); checkForUpdate(); licenseSync(); blockWatchTick(); }, 1200);
 }
 // Sincroniza a licença com a nuvem (admin/webhook escrevem na tabela 'licencas').
 // Roda: ao voltar pro app (focus) E a cada ~15s com o app aberto (poll) → mudança no admin
 // reflete em ≤15s, SEM o usuário precisar reabrir. Fail-open: offline/erro → não tranca.
-let _licChkBusy = false, _lastPlanoSeen = null;
+let _licChkBusy = false, _lastPlanoSeen = null, _blocked = false, _blockPending = null;
 async function licenseSync() {
   try {
+    if (_blocked) return;                                     // já bloqueado → o watch cuida da liberação
     if (isTestMode()) return;
     if (!(window.CLOUD && window.CLOUD.dek)) return;          // só quando logado e dentro do app
-    if (document.getElementById("welcomeScreen")) return;     // já na tela de login/bloqueio
+    if (document.getElementById("welcomeScreen")) return;     // na tela de login
     if (!(window.MFCloud && MFCloud.checkLicenca)) return;
     if (navigator.onLine === false) return;                   // offline → fail-open
     if (_licChkBusy) return; _licChkBusy = true;
     let lic; try { lic = await MFCloud.checkLicenca(); } catch (e) { lic = { ok: true }; }
     _licChkBusy = false;
-    if (lic && lic.ok === false) return applyLicBlock(lic.reason);   // bloqueado/expirado → tela de bloqueio
+    if (lic && lic.ok === false) return enterBlocked(lic.reason);    // bloqueado/expirado → overlay (sem deslogar)
     applyPlanLive();                                          // plano/validade podem ter mudado → atualiza UI ao vivo
   } catch (e) { _licChkBusy = false; }
 }
-// Bloqueio detectado ao vivo → encerra sessão e recarrega na tela de bloqueio.
-async function applyLicBlock(reason) {
-  try { await MFCloud.signOut(); } catch (e) {}
-  try { localStorage.removeItem("financas2026.cloudDek"); localStorage.removeItem(CLOUD_LOCAL_KEY); } catch (e) {}
-  window.CLOUD = { dek: null, email: null };
-  try { sessionStorage.setItem("financas2026.licBlock", reason || "1"); } catch (e) {}
-  location.reload();   // boot() detecta a flag e abre direto na tela de bloqueio
+// Bloqueio ao vivo: mostra overlay SEM deslogar e vigia a nuvem; quando liberarem (admin/pagamento),
+// volta sozinho — sem reabrir. pending = {data,email} quando o bloqueio acontece no login.
+function enterBlocked(reason, pending) {
+  if (_blocked && !pending) { showBlockOverlay(reason); return; }
+  _blocked = true; _blockPending = pending || null;
+  stopLicensePoll();                                          // o watch (mais rápido) assume
+  showBlockOverlay(reason);
+  startBlockWatch();
+}
+function showBlockOverlay(reason) {
+  const isBlocked = reason === "bloqueado";
+  let o = document.getElementById("blockOverlay");
+  if (!o) { o = document.createElement("div"); o.id = "blockOverlay"; o.className = "welcome-screen show"; document.body.appendChild(o); }
+  document.body.classList.add("welcome-on");
+  o.innerHTML = `<div class="wel-brand">MorbiusFin</div>
+    <div class="wel-inner wel-blocked">
+      <div class="wel-status-ic ${isBlocked ? "danger" : "warn"}">${isBlocked ? "🔒" : "⏳"}</div>
+      <div class="wel-name">${isBlocked ? "Acesso bloqueado" : "Seu acesso expirou"}</div>
+      <div class="wel-sub">${isBlocked ? "Sua conta foi bloqueada pelo administrador." : "Seu teste grátis ou a assinatura chegou ao fim. Escolha um plano pra continuar."}</div>
+      <button type="button" class="btn primary wel-enter" id="boPlanos">Ver planos</button>
+      <div class="wel-note">✅ Assim que liberarem, o acesso <b>volta sozinho</b> — pode deixar aberto.<br>Suporte: <a href="mailto:morbiusfin@gmail.com">morbiusfin@gmail.com</a></div>
+      <button type="button" class="wel-link" id="boLogout">Sair da conta</button>
+    </div>`;
+  const bp = o.querySelector("#boPlanos"); if (bp) bp.onclick = () => openPlanosModal();
+  const bo = o.querySelector("#boLogout"); if (bo) bo.onclick = () => cloudDoLogout();
+}
+function hideBlockOverlay() { const o = document.getElementById("blockOverlay"); if (o) { try { o.remove(); } catch (e) {} } document.body.classList.remove("welcome-on"); }
+let _blockWatchT = null;
+function startBlockWatch() { stopBlockWatch(); setTimeout(blockWatchTick, 2500); _blockWatchT = setInterval(blockWatchTick, 6000); }   // vigia a cada 6s
+function stopBlockWatch() { if (_blockWatchT) { clearInterval(_blockWatchT); _blockWatchT = null; } }
+async function blockWatchTick() {
+  if (!_blocked) return;
+  if (document.visibilityState !== "visible") return;
+  if (navigator.onLine === false) return;
+  if (!(window.MFCloud && MFCloud.checkLicenca)) return;
+  if (_licChkBusy) return; _licChkBusy = true;
+  let lic; try { lic = await MFCloud.checkLicenca(); } catch (e) { lic = null; }
+  _licChkBusy = false;
+  if (lic && lic.ok === true) releaseBlock();
+  else if (lic && lic.ok === false) showBlockOverlay(lic.reason);   // motivo pode mudar (expirou→bloqueado)
+}
+function releaseBlock() {
+  _blocked = false; stopBlockWatch(); hideBlockOverlay();
+  if (_blockPending) { const p = _blockPending; _blockPending = null; welApply(p.data, p.email); setTimeout(() => { try { toast("Acesso liberado ✓"); } catch (e) {} }, 700); }
+  else { _lastPlanoSeen = (window.CLOUD && window.CLOUD.plano) || null; applyPlanLive(); startLicensePoll(); try { toast("Acesso liberado ✓"); } catch (e) {} }
 }
 // Reflete o plano atual na UI (header + banner de trial + card do menu) e avisa quando muda.
 function applyPlanLive() {
