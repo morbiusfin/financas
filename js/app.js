@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.17.4";
+const APP_VERSION = "3.17.5";
 const VERSION_NOTES = "🔐 Agora você entra no app com EMAIL e SENHA, direto na tela inicial (com 'esqueci minha senha' e 'criar conta'). Seus dados migram pra conta cifrados (E2E) e você acessa de qualquer aparelho.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
@@ -5204,7 +5204,7 @@ function renderWelcome(w) {
       <div class="wel-avatar" id="welAvatar" aria-hidden="true"></div>
       ${inner}
     </div>
-    <div class="wel-copy">© ${new Date().getFullYear()} MorbiusFin · Todos os direitos reservados.<br>Feito com carinho para suas finanças.</div>`;
+    <div class="wel-copy">© ${new Date().getFullYear()} MorbiusFin · Todos os direitos reservados.<br><a href="privacidade.html">Privacidade</a> · <a href="termos.html">Termos de Uso</a></div>`;
   setAvatarInto(w.querySelector("#welAvatar"), p.foto, p.nome);
   const go = $("#welGo"); if (go) go.onclick = (_welMode === "signup") ? welDoSignup : welDoLogin;
   const fg = $("#welForgot"); if (fg) fg.onclick = welDoForgot;

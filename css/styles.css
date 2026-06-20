@@ -640,7 +640,8 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
 .wel-sep { display: flex; align-items: center; gap: 10px; width: 100%; color: var(--muted); font-size: 12px; margin: 14px 0; }
 .wel-sep::before, .wel-sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .wel-new { width: 100%; }
-.wel-copy { font-size: 11px; color: var(--muted); line-height: 1.5; padding: 0 24px; margin: 18px 0 0; flex: 0 0 auto; text-align: center; }
+.wel-copy { font-size: 11px; color: var(--muted); line-height: 1.6; padding: 0 24px; margin: 18px 0 0; flex: 0 0 auto; text-align: center; }
+.wel-copy a { color: var(--accent-2); font-weight: 700; text-decoration: none; }
 
 /* ===== Recuperação por pergunta secreta ===== */
 .lock-forgot { display: block; width: 100%; margin: 12px auto 0; background: none; border: 0; color: rgba(255,255,255,.82); font: inherit; font-size: 13px; font-weight: 700; text-decoration: underline; cursor: pointer; }
