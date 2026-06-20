@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.19.5";
-const VERSION_NOTES = "Tela de login mais limpa e textos legais no nome MorbiusFin.";
+const APP_VERSION = "3.19.6";
+const VERSION_NOTES = "Toda conta nova aparece no painel de acessos pra liberar.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.19.6",
+    bullets: [
+      "Toda <b>conta nova</b> já entra no sistema com o <b>teste grátis de 3 dias</b> ativo e aparece pro administrador liberar/gerenciar.",
+    ],
+  },
   {
     version: "3.19.5",
     bullets: [
