@@ -17,7 +17,23 @@
     _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     });
+    // Link de "esqueci minha senha" → o cliente troca o token na URL e dispara PASSWORD_RECOVERY.
+    // Marca o estado e avisa o app pra mostrar a tela de "definir nova senha".
+    try {
+      _sb.auth.onAuthStateChange(function (event) {
+        if (event === "PASSWORD_RECOVERY") { window.MFCLOUD_RECOVERY = true; try { if (typeof window.__onRecovery === "function") window.__onRecovery(); } catch (e) {} }
+      });
+    } catch (e) {}
     return _sb;
+  }
+  // Define a nova senha (fluxo de recuperação, com a sessão temporária do link).
+  async function cloudUpdatePassword(novaSenha) {
+    try {
+      var sb = sbClient(); if (!sb) return { ok: false, reason: "sdk" };
+      var r = await sb.auth.updateUser({ password: novaSenha });
+      if (r.error) return { ok: false, reason: r.error.message };
+      return { ok: true };
+    } catch (e) { return { ok: false, reason: "erro" }; }
   }
   function cloudConfigured() { return !!sbClient(); }
 
@@ -178,7 +194,11 @@
     configured: cloudConfigured,
     signUp: cloudSignUp, signIn: cloudSignIn, push: cloudPush, pull: cloudPull,
     signOut: cloudSignOut, session: cloudSession, reset: cloudResetSenha,
+    updatePassword: cloudUpdatePassword,
     makeCt: cloudMakeCt, snapshot: cloudSnapshot, offlineUnlock: cloudOfflineUnlock,
     registerLicenca: cloudRegisterLicenca, checkLicenca: cloudCheckLicenca,
   };
+  // Inicia o cliente já no carregamento → processa o token do link de recuperação (detectSessionInUrl)
+  // e registra o listener de PASSWORD_RECOVERY mesmo antes de qualquer login.
+  try { sbClient(); } catch (e) {}
 })();

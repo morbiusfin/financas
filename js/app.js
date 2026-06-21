@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.21.0";
-const VERSION_NOTES = "Conta nova abre tutorial rápido e, ao fim, o guia de instalação.";
+const APP_VERSION = "3.21.1";
+const VERSION_NOTES = "Recuperação de senha: tela pra definir a nova senha pelo link do e-mail.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.21.1",
+    bullets: [
+      "Recuperação de senha completa: ao abrir o link do e-mail, o app mostra uma tela pra você <b>definir a nova senha</b> e já entrar.",
+    ],
+  },
   {
     version: "3.21.0",
     bullets: [
@@ -5628,6 +5634,42 @@ function infoPopup(emoji, title, msg) {
   m.querySelector("#ipMsg").innerHTML = msg || "";
   m.classList.remove("hidden");
 }
+// Tela "definir nova senha" — abre quando o usuário chega pelo link de recuperação (PASSWORD_RECOVERY).
+function showResetPassword() {
+  if (document.getElementById("resetScreen")) return;
+  try { const lk = document.getElementById("lockScreen"); if (lk) lk.classList.add("hidden"); } catch (e) {}
+  const w = document.getElementById("welcomeScreen"); if (w) { try { w.remove(); } catch (e) {} }
+  document.body.classList.add("welcome-on");
+  const s = document.createElement("div"); s.id = "resetScreen"; s.className = "welcome-screen"; document.body.appendChild(s);
+  s.innerHTML = `<div class="wel-brand">MorbiusFin</div>
+    <div class="wel-inner">
+      <div class="wel-status-ic warn">🔑</div>
+      <div class="wel-name">Definir nova senha</div>
+      <div class="wel-sub">Crie uma senha nova pra sua conta.</div>
+      <label class="wel-field"><span>Nova senha</span><input id="rsP1" type="password" autocomplete="new-password" placeholder="mín. 6 caracteres"></label>
+      <label class="wel-field"><span>Repita a senha</span><input id="rsP2" type="password" autocomplete="new-password" placeholder="repita a senha"></label>
+      <div id="rsMsg" class="wel-msg"></div>
+      <button type="button" class="btn primary wel-enter" id="rsGo">Salvar nova senha</button>
+      <button type="button" class="wel-link" id="rsBack">← Voltar ao login</button>
+    </div>
+    <div class="wel-ver">v${esc(APP_VERSION)}</div>`;
+  requestAnimationFrame(() => s.classList.add("show"));
+  const msg = (t, bad) => { const m = document.getElementById("rsMsg"); if (m) { m.textContent = t || ""; m.className = "wel-msg" + (bad ? " bad" : ""); } };
+  const toLogin = () => { window.MFCLOUD_RECOVERY = false; try { s.remove(); } catch (e) {} document.body.classList.remove("welcome-on"); _welMode = "login"; showWelcome(); };
+  document.getElementById("rsBack").onclick = toLogin;
+  document.getElementById("rsGo").onclick = async () => {
+    const p1 = (document.getElementById("rsP1").value || ""), p2 = (document.getElementById("rsP2").value || "");
+    if (p1.length < 6) { msg("Senha de pelo menos 6 caracteres", true); return; }
+    if (p1 !== p2) { msg("As senhas não batem", true); return; }
+    msg("Salvando…");
+    let r = null; try { r = await MFCloud.updatePassword(p1); } catch (e) { r = { ok: false, reason: "erro" }; }
+    if (!r || !r.ok) { msg(cloudErr(r && r.reason), true); return; }
+    try { await MFCloud.signOut(); } catch (e) {}
+    msg("");
+    infoPopup("✅", "Senha alterada", "Pronto! Sua nova senha já está valendo. Entre com ela agora.");
+    toLogin();
+  };
+}
 function goSimulador() {
   closeMenu(); markExplored("simulador");
   curTab = "resumo"; resumoView = "graficos";
@@ -8101,6 +8143,9 @@ function enterDemo() {
 async function boot() {
   applyTheme();
   applyConfigLink();
+  // Chegou pelo link de "esqueci minha senha"? → tela de definir nova senha (antes de qualquer outra coisa).
+  window.__onRecovery = function () { try { showResetPassword(); } catch (e) {} };
+  if (window.MFCLOUD_RECOVERY || /type=recovery/.test(location.hash) || /[?&]type=recovery/.test(location.search)) { showResetPassword(); return; }
   if (!isProd() && /[?&]demo=1\b/.test(location.search)) { enterDemo(); return; }   // demo só fora da produção
   if (!isProd() && localStorage.getItem("financas2026.profile") === "test") { loadTestProfile(); return; }  // teste só fora da produção
   if (isProd() && localStorage.getItem("financas2026.profile") === "test") { try { localStorage.setItem("financas2026.profile", "real"); } catch (e) {} document.body.classList.remove("test-mode"); }  // se sobrou perfil de teste (localStorage é compartilhado com o /financas), na produção volta pro real
