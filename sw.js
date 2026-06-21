@@ -1,5 +1,5 @@
 /* Service Worker — network-first (sempre busca a versão nova; cache só offline) */
-const CACHE = "financas-v287";
+const CACHE = "financas-v288";
 const ASSETS = [
   "./", "./index.html", "./privacidade.html", "./termos.html",
   "./css/styles.css",
@@ -55,14 +55,17 @@ self.addEventListener("fetch", (e) => {
         return res;
       }).catch(() => caches.match(e.request).then(hit => hit || caches.match("./index.html")))
     );
-  } else {
-    // CDN (Chart.js versionado): cache-first
+  } else if (url.hostname === "cdn.jsdelivr.net") {
+    // SÓ o CDN versionado (Chart.js/qrcode) é cache-first — esses arquivos nunca mudam de conteúdo.
     e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
       return res;
     })));
   }
+  // QUALQUER outra origem (ex.: API REST do Supabase: licenças/cofre) → NÃO intercepta: vai direto pra rede,
+  // SEM cache. ERA O BUG: respostas da API caíam no cache-first cross-origin → o app lia o plano/licença VELHO
+  // pra sempre (só mudava quando o SW trocava de versão e o activate limpava o cache). Agora é sempre fresco.
 });
 self.addEventListener("message", (e) => { if (e.data === "skipWaiting") self.skipWaiting(); });
 
