@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.21.9";
+const APP_VERSION = "3.21.10";
 const VERSION_NOTES = "Sincronia de acesso/plano pela chave certa (user_id) — confiável.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
@@ -6012,6 +6012,14 @@ async function checkForUpdate() {
     if (j && j.version && j.version !== APP_VERSION) {
       showUpdateBanner(j.version);     // ✨ no cabeçalho + opção no menu (idempotente)
       if (!window.__started) {         // tela de login / PWA na entrada → atualiza SOZINHO (nada a perder no login)
+        // ANTI-LOOP (permanente): só auto-recarrega 1x por versão-alvo POR SESSÃO. Se já tentei e o app
+        // continua numa versão diferente — caso clássico do CDN do GitHub Pages servindo version.json e
+        // app.js DESSINCRONIZADOS por alguns minutos pós-deploy — NÃO recarrego de novo, senão fica
+        // "reiniciando sem parar na tela de login". O banner ✨ já apareceu; pega no próximo open/foco
+        // quando o CDN propagar (sessionStorage zera ao fechar o app de vez → tenta 1x na próxima sessão).
+        let _tried = ""; try { _tried = sessionStorage.getItem("financas2026.autoUpdTried") || ""; } catch (e) {}
+        if (_tried === j.version) return;                  // já tentei essa versão nesta sessão → não recarrega
+        try { sessionStorage.setItem("financas2026.autoUpdTried", j.version); } catch (e) {}
         if (!window.__autoUpd) { window.__autoUpd = true; applyUpdate(null); }
         return;
       }
