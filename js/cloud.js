@@ -169,29 +169,28 @@
   // checa a licença no login. FAIL-OPEN: qualquer erro/sem linha/sem rede => libera (nunca trancar por bug).
   // Só barra em caso EXPLÍCITO: status 'bloqueado' ou validade vencida (validade null = vitalício, nunca expira).
   // Lê plano e validade e expõe em window.CLOUD.plano / window.CLOUD.validade p/ a UI de trial/tier.
+  function _licDiag(d) { try { window.__lic = Object.assign({ t: Date.now() }, d); } catch (e) {} return d; }
   async function cloudCheckLicenca() {
     try {
-      var sb = sbClient(); if (!sb) return { ok: true, err: true };
-      // CHAVE = user_id (PK, NON-NULL, sempre = o usuário logado). E-mail é NULLABLE → não serve de chave.
-      // Pega o user_id SEM chamada de rede: 1º da sessão em memória, senão do getSession (local).
+      var sb = sbClient(); if (!sb) { _licDiag({ diag: "sem-sdk" }); return { ok: true, err: true, diag: "sem-sdk" }; }
+      // CHAVE = user_id (PK) OU email. user_id em memória (signIn) ou getSession (local, sem rede).
       var uid = (window.CLOUD && window.CLOUD.uid) ? window.CLOUD.uid : "";
       var email = (window.CLOUD && window.CLOUD.email ? window.CLOUD.email : "").toLowerCase().trim();
-      if (!uid || !email) { try { var s = await sb.auth.getSession(); if (s && s.data && s.data.session && s.data.session.user) { if (!uid) { uid = s.data.session.user.id; window.CLOUD.uid = uid; } if (!email) email = (s.data.session.user.email || "").toLowerCase().trim(); } } catch (e) {} }
-      if (!uid && !email) return { ok: true, err: true };
-      // CHAVE DUPLA: user_id (PK) OU email. Cobre linha cujo user_id ficou defasado (conta recriada em
-      // testes → novo uid, linha velha com uid antigo): o admin vê/edita pela linha, mas o app lê pelo uid
-      // logado. Se não bater por uid, casa por email (RLS lic_select_own permite ler a própria linha por email).
+      var hasSession = false;
+      try { var s = await sb.auth.getSession(); if (s && s.data && s.data.session && s.data.session.user) { hasSession = true; if (!uid) { uid = s.data.session.user.id; window.CLOUD.uid = uid; } if (!email) email = (s.data.session.user.email || "").toLowerCase().trim(); } } catch (e) {}
+      if (!uid && !email) { _licDiag({ diag: "sem-sessao", hasSession: hasSession }); return { ok: true, err: true, diag: "sem-sessao" }; }
+      // CHAVE DUPLA: user_id (PK) OU email. Cobre linha com user_id defasado (conta recriada em testes).
       var q;
       if (uid && email) q = await sb.from("licencas").select("user_id,status,plano,validade").or("user_id.eq." + uid + ",email.eq." + email).limit(1);
       else if (uid)     q = await sb.from("licencas").select("user_id,status,plano,validade").eq("user_id", uid).limit(1);
       else              q = await sb.from("licencas").select("user_id,status,plano,validade").eq("email", email).limit(1);
-      if (q.error) return { ok: true, err: true };
+      if (q.error) { _licDiag({ diag: "erro-leitura", erro: q.error.message, hasSession: hasSession, uid: uid }); return { ok: true, err: true, diag: "erro-leitura", erro: q.error.message }; }
       var l = q.data && q.data[0];
-      if (!l) return { ok: true, err: true };   // sem linha → incerto: não bloqueia nem libera à toa
+      if (!l) { _licDiag({ diag: "sem-linha", hasSession: hasSession, uid: uid, email: email }); return { ok: true, err: true, diag: "sem-linha" }; }   // leu mas RLS/escopo não devolveu linha (ou linha não existe)
       // Expõe plano e validade na sessão (pra UI do banner/tier)
       window.CLOUD.plano = l.plano || "teste";
       window.CLOUD.validade = l.validade || null;
-      try { window.__lic = { t: Date.now(), uid: uid, key: (l.user_id === uid ? "uid" : "email"), plano: l.plano, status: l.status, validade: l.validade }; } catch (e) {}
+      _licDiag({ diag: "ok", key: (l.user_id === uid ? "uid" : "email"), uid: uid, plano: l.plano, status: l.status, validade: l.validade });
       if (l.status === "bloqueado") return { ok: false, reason: "bloqueado", plano: l.plano, validade: l.validade };
       if (l.validade) {
         var agora = new Date();
@@ -199,7 +198,7 @@
         if (!isNaN(v.getTime()) && v < agora) return { ok: false, reason: "expirado", plano: l.plano, validade: l.validade };
       }
       return { ok: true, plano: l.plano, validade: l.validade };
-    } catch (e) { return { ok: true, err: true }; }
+    } catch (e) { _licDiag({ diag: "excecao", erro: String(e && e.message || e) }); return { ok: true, err: true, diag: "excecao" }; }
   }
 
   // REALTIME: o Supabase EMPURRA qualquer mudança na linha de licença do usuário (admin mexeu →

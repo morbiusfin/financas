@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.21.7";
+const APP_VERSION = "3.21.8";
 const VERSION_NOTES = "Sincronia de acesso/plano pela chave certa (user_id) — confiável.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
@@ -7793,8 +7793,23 @@ async function forceLicenseSync() {
         MFCloud.checkLicenca(),
         new Promise((res) => setTimeout(() => res({ ok: true, err: true }), 8000))
       ]);
-    } catch (e) { lic = { ok: true, err: true }; }
-    if (!lic || lic.err) { try { toast("Não consegui ler agora — tenta de novo 🔁"); } catch (e) {} return; }
+    } catch (e) { lic = { ok: true, err: true, diag: "excecao" }; }
+    if (!lic || lic.err) {
+      // DIAGNÓSTICO visível (1 print resolve): mostra POR QUE não confirmou o plano.
+      const d = (window.__lic) || {};
+      const motivo = (lic && lic.diag) || d.diag || "?";
+      const msg = "Não consegui confirmar o plano.\n\n"
+        + "motivo: " + motivo + "\n"
+        + (d.erro ? ("erro: " + d.erro + "\n") : "")
+        + "sessão: " + (d.hasSession ? "sim" : "NÃO") + "\n"
+        + "uid: " + String(d.uid || (window.CLOUD && window.CLOUD.uid) || "—").slice(0, 8) + "\n"
+        + "email: " + ((window.CLOUD && window.CLOUD.email) || "—") + "\n"
+        + "realtime: " + (window.__licRTStatus || "—") + "\n"
+        + "versão: v" + APP_VERSION + "\n\n"
+        + "Manda esse print pro suporte.";
+      try { alert(msg); } catch (e) { try { toast("Não consegui ler — " + motivo); } catch (e2) {} }
+      return;
+    }
     if (lic.ok === false) { _blockedNow = true; closeMenu(); showBlockOverlay(lic.reason); return; }
     if (_blockedNow) { _blockedNow = false; hideBlockOverlay(); }
     applyPlanLive();                                       // header + card do menu + banner na hora
