@@ -72,6 +72,7 @@
     if (r.error) return { ok: false, reason: r.error.message };
     var built = await _buildVault(senha, data);
     window.CLOUD.dek = built.dek; window.CLOUD.email = email; window.CLOUD.salt = built.salt; window.CLOUD.wrapped = built.wrapped_dek;
+    window.CLOUD.uid = (r.data && r.data.user) ? r.data.user.id : null;   // user_id (PK) p/ checar/assinar a licença
     var row = { wrapped_dek: built.wrapped_dek, salt: built.salt, ct: built.ct };
     if (r.data && r.data.session && r.data.user) {                 // já logado (confirm-email OFF)
       var ins = await sb.from("vaults").upsert(Object.assign({ user_id: r.data.user.id }, row));
@@ -99,6 +100,7 @@
     var dekObj; try { dekObj = await _decKey(kek.key, JSON.parse(row.wrapped_dek)); } catch (e) { return { ok: false, reason: "senha-errada" }; }
     var dek = _cub64(dekObj.dek);
     window.CLOUD.dek = dek; window.CLOUD.email = email; window.CLOUD.salt = row.salt; window.CLOUD.wrapped = row.wrapped_dek;
+    window.CLOUD.uid = uid;   // user_id (PK) p/ checar/assinar a licença
     var data = null;
     try { var dekKey = await _importDEK(dek); data = await _decKey(dekKey, JSON.parse(row.ct)); } catch (e) { return { ok: false, reason: "cofre-corrompido" }; }
     return { ok: true, data: data };
@@ -170,14 +172,12 @@
   async function cloudCheckLicenca() {
     try {
       var sb = sbClient(); if (!sb) return { ok: true, err: true };
-      // E-MAIL da sessão SEM chamada de rede (getUser bate na API a cada poll e pode falhar/limitar).
-      // 1º usa o que já está na sessão (window.CLOUD.email); senão lê do getSession (local, sem rede).
-      var email = (window.CLOUD && window.CLOUD.email) ? window.CLOUD.email : "";
-      if (!email) { try { var s = await sb.auth.getSession(); if (s && s.data && s.data.session && s.data.session.user) email = s.data.session.user.email || ""; } catch (e) {} }
-      email = (email || "").toLowerCase().trim();
-      if (!email) return { ok: true, err: true };
-      // Consulta por E-MAIL (mesma chave que o painel admin gerencia) — robusto, evita problema de user_id.
-      var q = await sb.from("licencas").select("status,plano,validade").eq("email", email).limit(1);
+      // CHAVE = user_id (PK, NON-NULL, sempre = o usuário logado). E-mail é NULLABLE → não serve de chave.
+      // Pega o user_id SEM chamada de rede: 1º da sessão em memória, senão do getSession (local).
+      var uid = (window.CLOUD && window.CLOUD.uid) ? window.CLOUD.uid : "";
+      if (!uid) { try { var s = await sb.auth.getSession(); if (s && s.data && s.data.session && s.data.session.user) { uid = s.data.session.user.id; window.CLOUD.uid = uid; } } catch (e) {} }
+      if (!uid) return { ok: true, err: true };
+      var q = await sb.from("licencas").select("status,plano,validade").eq("user_id", uid).limit(1);
       if (q.error) return { ok: true, err: true };
       var l = q.data && q.data[0];
       if (!l) return { ok: true, err: true };   // sem linha → incerto: não bloqueia nem libera à toa
@@ -200,11 +200,11 @@
   function cloudWatchLicenca(onChange) {
     try {
       var sb = sbClient(); if (!sb) return;
-      var email = (window.CLOUD && window.CLOUD.email) ? window.CLOUD.email.toLowerCase().trim() : "";
-      if (!email) return;
+      var uid = (window.CLOUD && window.CLOUD.uid) ? window.CLOUD.uid : "";
+      if (!uid) return;
       cloudUnwatchLicenca();
-      _licChannel = sb.channel("lic-" + email)
-        .on("postgres_changes", { event: "*", schema: "public", table: "licencas", filter: "email=eq." + email },
+      _licChannel = sb.channel("lic-" + uid)
+        .on("postgres_changes", { event: "*", schema: "public", table: "licencas", filter: "user_id=eq." + uid },
           function () { try { if (typeof onChange === "function") onChange(); } catch (e) {} })
         .subscribe();
     } catch (e) {}

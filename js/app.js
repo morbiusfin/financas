@@ -1,12 +1,18 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.21.2";
-const VERSION_NOTES = "Mudança de acesso/plano chega na hora (tempo real) + leitura mais confiável.";
+const APP_VERSION = "3.21.3";
+const VERSION_NOTES = "Sincronia de acesso/plano pela chave certa (user_id) — confiável.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.21.3",
+    bullets: [
+      "Sincronização de acesso/plano mais confiável — agora pela identificação certa da conta. Mudou no painel, reflete no app.",
+    ],
+  },
   {
     version: "3.21.2",
     bullets: [
