@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.23.1";
+const APP_VERSION = "3.23.2";
 const VERSION_NOTES = "Sincronia de acesso/plano pela chave certa (user_id) — confiável.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
@@ -5512,7 +5512,7 @@ function showSignupConfirm(email, pass) {
       <h2 style="margin:8px 0 4px">Confirme sua conta 📧</h2>
       <p class="hint" style="margin:0 0 12px;line-height:1.55">Enviamos um link de confirmação para<br><b>${esc(email)}</b>.<br>Abra o email do <b>MorbiusFin</b> (veja o spam) e toque em <b>Confirmar conta</b>.</p>
       <div class="sc-timer" id="scTimer" aria-live="polite">Expira em <b>03:00</b></div>
-      <p class="sc-note">🔒 Sua conta <b>só é criada</b> depois que você confirmar. Seus números ficam no <b>seu aparelho</b>; a cópia na nuvem vai cifrada — nem nós lemos.</p>
+      <p class="sc-note">🔒 Sua conta <b>só é criada</b> depois que você confirmar.<br>Seus dados ficam <b>no seu aparelho</b>, trancados por uma chave que <b>só a sua senha abre</b>. A cópia na nuvem vai <b>embaralhada</b> — nem nós lemos. 💚</p>
       <div class="modal-actions" style="margin-top:14px;flex-direction:column;gap:8px">
         <button type="button" class="btn primary" id="scEntrar">Já confirmei — Entrar</button>
         <button type="button" class="btn ghost" id="scResend">Reenviar email</button>
