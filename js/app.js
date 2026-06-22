@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.25.1";
+const APP_VERSION = "3.25.2";
 const VERSION_NOTES = "Sincronia de acesso/plano pela chave certa (user_id) — confiável.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
@@ -6219,13 +6219,13 @@ function setPerfil(p) { try { localStorage.setItem(PERFIL_KEY, JSON.stringify(p)
 // Telefone LOCAL: só DDD + número (o +55 é FIXO na UI, fora do input → NUNCA mexer/strippar).
 // 10 (fixo) ou 11 (celular) dígitos. Sem lógica de país → não conflita quando o DDD começa com 55.
 function telLocalDigits(v) { return (v || "").replace(/\D/g, "").slice(0, 11); }
-// Máscara visual do input: (DD) NNNNN-NNNN (monta progressivo conforme digita).
+// Máscara visual do input: (DD) NNNNN-NNNN. NÃO fecha o ")" nem põe separador no FIM até ter dígito
+// depois → assim o backspace apaga dígito a dígito (não trava no ")"/"-"/espaço, sem precisar selecionar tudo).
 function maskTelLocal(v) {
   var d = telLocalDigits(v); if (!d) return "";
-  var ddd = d.slice(0, 2), n = d.slice(2);
-  var out = "(" + ddd;
-  if (d.length >= 2) out += ")";
-  if (n.length) { out += " " + n.slice(0, 5); if (n.length > 5) out += "-" + n.slice(5, 9); }
+  if (d.length <= 2) return "(" + d;                       // "(", "(1", "(11" — ainda sem ")"
+  var out = "(" + d.slice(0, 2) + ") " + d.slice(2, 7);    // "(11) 98765"
+  if (d.length > 7) out += "-" + d.slice(7, 11);           // "-4321" só quando há dígito depois
   return out;
 }
 // tira o "+55 " do começo do valor salvo p/ mostrar só a parte local no input.
