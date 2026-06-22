@@ -68,7 +68,7 @@
   async function cloudSignUp(email, senha, data) {
     var sb = sbClient(); if (!sb) return { ok: false, reason: "sdk" };
     email = (email || "").trim().toLowerCase();
-    var r = await sb.auth.signUp({ email: email, password: senha });
+    var r = await sb.auth.signUp({ email: email, password: senha, options: { emailRedirectTo: "https://morbiusfin.github.io" } });
     if (r.error) return { ok: false, reason: r.error.message };
     var built = await _buildVault(senha, data);
     window.CLOUD.dek = built.dek; window.CLOUD.email = email; window.CLOUD.salt = built.salt; window.CLOUD.wrapped = built.wrapped_dek;
@@ -125,6 +125,14 @@
   async function cloudSignOut() { var sb = sbClient(); if (sb) { try { await sb.auth.signOut(); } catch (e) {} } window.CLOUD = { dek: null, email: null }; }
   async function cloudSession() { var sb = sbClient(); if (!sb) return null; var r = await sb.auth.getSession(); return (r.data && r.data.session) ? r.data.session : null; }
   async function cloudResetSenha(email) { var sb = sbClient(); if (!sb) return { ok: false, reason: "sdk" }; var r = await sb.auth.resetPasswordForEmail((email || "").trim().toLowerCase(), { redirectTo: "https://morbiusfin.github.io" }); return { ok: !r.error, reason: r.error && r.error.message }; }
+  // Reenvia o email de CONFIRMAÇÃO de conta (confirm-email ON). Usado pelo popup de confirmação.
+  async function cloudResendConfirm(email) {
+    try {
+      var sb = sbClient(); if (!sb) return { ok: false, reason: "sdk" };
+      var r = await sb.auth.resend({ type: "signup", email: (email || "").trim().toLowerCase(), options: { emailRedirectTo: "https://morbiusfin.github.io" } });
+      return { ok: !r.error, reason: r.error && r.error.message };
+    } catch (e) { return { ok: false, reason: "erro" }; }
+  }
 
   // ---- cache local p/ abrir OFFLINE (tudo só abre com a senha) ----
   async function cloudMakeCt(data) {
@@ -235,7 +243,7 @@
   window.MFCloud = {
     configured: cloudConfigured,
     signUp: cloudSignUp, signIn: cloudSignIn, push: cloudPush, pull: cloudPull,
-    signOut: cloudSignOut, session: cloudSession, reset: cloudResetSenha,
+    signOut: cloudSignOut, session: cloudSession, reset: cloudResetSenha, resendConfirm: cloudResendConfirm,
     updatePassword: cloudUpdatePassword,
     watchLicenca: cloudWatchLicenca, unwatchLicenca: cloudUnwatchLicenca,
     makeCt: cloudMakeCt, snapshot: cloudSnapshot, offlineUnlock: cloudOfflineUnlock,

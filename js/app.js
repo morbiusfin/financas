@@ -1,12 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.22.0";
+const APP_VERSION = "3.23.0";
 const VERSION_NOTES = "Sincronia de acesso/plano pela chave certa (user_id) — confiável.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.23.0",
+    bullets: [
+      "Conta nova agora pede <b>confirmação por e-mail</b> antes de liberar — mais segura. Chega um e-mail bonito do MorbiusFin com o link.",
+      "Na hora do cadastro aparece uma janela com <b>contagem regressiva</b> esperando você confirmar. Sua conta só nasce depois disso.",
+    ],
+  },
   {
     version: "3.22.0",
     bullets: [
@@ -5435,7 +5442,8 @@ async function welDoLogin() {
 // Mensagens de erro de login amigáveis (sem vazar detalhe técnico do Supabase)
 function cloudErrLogin(reason) {
   reason = reason || "";
-  if (/invalid login|invalid_credentials|email not confirmed/i.test(reason)) return "Conta não encontrada. Crie uma conta nova.";
+  if (/email not confirmed|not confirmed|email_not_confirmed/i.test(reason)) return "Confirme seu email antes de entrar (veja a caixa/spam).";
+  if (/invalid login|invalid_credentials/i.test(reason)) return "Conta não encontrada. Crie uma conta nova.";
   if (reason === "senha-errada") return "Senha incorreta";
   if (reason === "sem-cofre") return "Conta sem cofre ainda — confirme o email e entre";
   if (/network|net|fetch|failed/i.test(reason)) return "Sem conexão com o servidor";
@@ -5490,10 +5498,53 @@ async function welDoSignup() {
   const r = await MFCloud.signUp(email, s1, data);
   if (!r.ok) { welMsg(cloudErr(r.reason), true); return; }
   localStorage.setItem(CLOUD_EMAIL_KEY, email);
-  if (r.confirm) {
-    const w = document.getElementById("welcomeScreen"), inner = w && w.querySelector(".wel-inner");
-    if (inner) { inner.innerHTML = `<div class="wel-avatar" id="welAvatar" aria-hidden="true"></div><div class="wel-name">Confirme seu email 📧</div><div class="wel-sub">Mandamos um link para<br><b>${esc(email)}</b>.<br>Confirme (veja o spam) e volte pra entrar.</div><button type="button" class="btn primary wel-enter" id="welToLogin">Já confirmei — Entrar</button>`; setAvatarInto(inner.querySelector("#welAvatar"), getPerfil().foto, getPerfil().nome); $("#welToLogin").onclick = () => { _welMode = "login"; renderWelcome(); }; }
-  } else { welApply(data, email, true); }   // conta nova → dispara tutorial + guia de instalação
+  if (r.confirm) { welMsg(""); showSignupConfirm(email, s1); }   // conta só nasce após confirmar o email → popup com contagem
+  else { welApply(data, email, true); }   // (confirm-email OFF) conta nova → dispara tutorial + guia de instalação
+}
+// Popup de CONFIRMAÇÃO DE CONTA (confirm-email ON): a conta só é criada quando o usuário clica no link do
+// email. Mostra contagem regressiva mm:ss (3:00). "Já confirmei" tenta entrar; "Reenviar" manda outro link.
+let _scTimer = null;
+function showSignupConfirm(email, pass) {
+  let m = document.getElementById("signupConfirmModal");
+  if (!m) { m = document.createElement("div"); m.id = "signupConfirmModal"; m.className = "modal center"; document.body.appendChild(m); }
+  m.innerHTML = `<div class="modal-card sc-card" style="text-align:center;max-width:400px">
+      <div class="sc-ic">${animEmoji("pinguim", "🐧", "sc-ic-img")}</div>
+      <h2 style="margin:8px 0 4px">Confirme sua conta 📧</h2>
+      <p class="hint" style="margin:0 0 12px;line-height:1.55">Enviamos um link de confirmação para<br><b>${esc(email)}</b>.<br>Abra o email do <b>MorbiusFin</b> (veja o spam) e toque em <b>Confirmar conta</b>.</p>
+      <div class="sc-timer" id="scTimer" aria-live="polite">Expira em <b>03:00</b></div>
+      <p class="sc-note">🔒 Sua conta <b>só é criada</b> depois que você confirmar. Seus números ficam no <b>seu aparelho</b>; a cópia na nuvem vai cifrada — nem nós lemos.</p>
+      <div class="modal-actions" style="margin-top:14px;flex-direction:column;gap:8px">
+        <button type="button" class="btn primary" id="scEntrar">Já confirmei — Entrar</button>
+        <button type="button" class="btn ghost" id="scResend">Reenviar email</button>
+      </div>
+      <button type="button" class="wel-link" id="scCancel" style="margin-top:10px">Cancelar</button>
+    </div>`;
+  m.classList.remove("hidden"); document.body.classList.add("welcome-on");
+  // contagem regressiva 3:00 → mm:ss
+  const tEl = () => m.querySelector("#scTimer");
+  let left = 180;
+  const fmt = (s) => { const mm = String(Math.floor(s / 60)).padStart(2, "0"), ss = String(s % 60).padStart(2, "0"); return mm + ":" + ss; };
+  const paint = () => { const e = tEl(); if (!e) return; if (left > 0) e.innerHTML = "Expira em <b>" + fmt(left) + "</b>"; else { e.classList.add("sc-expired"); e.innerHTML = "⏳ O link expirou — toque em <b>Reenviar email</b>"; } };
+  if (_scTimer) clearInterval(_scTimer);
+  paint();
+  _scTimer = setInterval(() => { left--; if (left < 0) left = 0; paint(); if (left <= 0) { clearInterval(_scTimer); _scTimer = null; } }, 1000);
+  const close = () => { if (_scTimer) { clearInterval(_scTimer); _scTimer = null; } m.classList.add("hidden"); };
+  m.querySelector("#scCancel").onclick = () => { close(); _welMode = "login"; renderWelcome(); };
+  m.querySelector("#scResend").onclick = async () => {
+    const b = m.querySelector("#scResend"); b.disabled = true; b.textContent = "Enviando…";
+    let rr = { ok: false }; try { rr = await MFCloud.resendConfirm(email); } catch (e) {}
+    b.disabled = false; b.textContent = "Reenviar email";
+    if (rr.ok) { left = 180; const ex = tEl(); if (ex) ex.classList.remove("sc-expired"); paint(); if (!_scTimer) _scTimer = setInterval(() => { left--; if (left < 0) left = 0; paint(); if (left <= 0) { clearInterval(_scTimer); _scTimer = null; } }, 1000); try { toast("Email reenviado ✓ (veja o spam)"); } catch (e) {} }
+    else { try { toast("Não consegui reenviar agora — tente em 1 min"); } catch (e) {} }
+  };
+  m.querySelector("#scEntrar").onclick = async () => {
+    const b = m.querySelector("#scEntrar"); b.disabled = true; b.textContent = "Entrando…";
+    let r2 = { ok: false }; try { r2 = await MFCloud.signIn(email, pass); } catch (e) { r2 = { ok: false, reason: "net" }; }
+    b.disabled = false; b.textContent = "Já confirmei — Entrar";
+    if (r2.ok) { close(); welApply(r2.data, email, true); return; }                 // confirmado → entra + onboarding
+    if (/not confirmed|não confirm|email_not_confirmed/i.test(r2.reason || "")) { try { toast("Ainda não confirmado — abra o email e toque em Confirmar 📧"); } catch (e) {} return; }
+    try { toast(cloudErrLogin(r2.reason)); } catch (e) {}
+  };
 }
 async function welApply(data, email, isNewSignup) {
   try { if (window.MFCloud && MFCloud.registerLicenca) MFCloud.registerLicenca((getPerfil() || {}).nome); } catch (e) {}   // registra a conta no painel admin (idempotente) + sobe o nome se já tiver
