@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.25.0";
+const APP_VERSION = "3.25.1";
 const VERSION_NOTES = "Sincronia de acesso/plano pela chave certa (user_id) — confiável.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
@@ -6216,17 +6216,20 @@ function updateNow() { closeMenu(); toast("Atualizando o app…"); applyUpdate(n
 const PERFIL_KEY = "financas2026.perfil";
 function getPerfil() { try { return JSON.parse(localStorage.getItem(PERFIL_KEY) || "{}") || {}; } catch (e) { return {}; } }
 function setPerfil(p) { try { localStorage.setItem(PERFIL_KEY, JSON.stringify(p)); } catch (e) {} }
-// Telefone BR: só os dígitos do DDD+número (sem o 55 do país). 10 (fixo) ou 11 (celular) dígitos.
-function telDigitsBR(v) { var d = (v || "").replace(/\D/g, ""); if (d.length > 11 && d.indexOf("55") === 0) d = d.slice(2); return d.slice(0, 11); }
-// Máscara visual: +55 (DD) NNNNN-NNNN (monta progressivo conforme digita).
-function maskTelBR(v) {
-  var d = telDigitsBR(v); if (!d) return "";
+// Telefone LOCAL: só DDD + número (o +55 é FIXO na UI, fora do input → NUNCA mexer/strippar).
+// 10 (fixo) ou 11 (celular) dígitos. Sem lógica de país → não conflita quando o DDD começa com 55.
+function telLocalDigits(v) { return (v || "").replace(/\D/g, "").slice(0, 11); }
+// Máscara visual do input: (DD) NNNNN-NNNN (monta progressivo conforme digita).
+function maskTelLocal(v) {
+  var d = telLocalDigits(v); if (!d) return "";
   var ddd = d.slice(0, 2), n = d.slice(2);
-  var out = "+55 (" + ddd;
+  var out = "(" + ddd;
   if (d.length >= 2) out += ")";
   if (n.length) { out += " " + n.slice(0, 5); if (n.length > 5) out += "-" + n.slice(5, 9); }
   return out;
 }
+// tira o "+55 " do começo do valor salvo p/ mostrar só a parte local no input.
+function telStripDDI(v) { return (v || "").replace(/^\s*\+?55\s*/, ""); }
 /* ---------- Avatares predefinidos (estilo Netflix) — SVG inline, offline, sem download ---------- */
 /* Avatares de BICHINHOS ANIMADOS — SVG inline (anima de verdade; imagem de fundo não animaria).
    Cada animal tem movimento próprio (CSS em .animal-svg). Flat, sem gradiente (sem rebarba). */
@@ -6308,7 +6311,7 @@ function openProfile(opts) {
   const p = getPerfil();
   $("#profNome").value = p.nome || "";
   const tel = $("#profTel");
-  if (tel) { tel.value = p.tel || ""; tel.oninput = () => { tel.value = maskTelBR(tel.value); }; }   // máscara +55 (DD) NNNNN-NNNN ao digitar
+  if (tel) { tel.value = maskTelLocal(telStripDDI(p.tel)); tel.oninput = () => { tel.value = maskTelLocal(tel.value); }; }   // só (DD) NNNNN-NNNN; o +55 é fixo do lado
   const nasc = $("#profNasc");
   if (nasc) {
     nasc.value = p.nasc || "";
@@ -6352,12 +6355,12 @@ function renderAvatarPicker() {
 function saveProfile() {
   const nome = ($("#profNome").value || "").trim();
   const telRaw = ($("#profTel") && $("#profTel").value) || "";
-  const telD = telDigitsBR(telRaw);
-  const tel = telD ? maskTelBR(telRaw) : "";
+  const telD = telLocalDigits(telRaw);
+  const tel = telD ? ("+55 " + maskTelLocal(telD)) : "";   // +55 fixo + (DD) NNNNN-NNNN
   const nasc = $("#profNasc").value || "";
   // Nome e TELEFONE são SEMPRE obrigatórios (vão pro painel admin). Nascimento é obrigatório no 1º acesso.
   if (!nome) { try { toast("Digite seu nome 🙂"); } catch (e) {} const n = $("#profNome"); if (n) n.focus(); return; }
-  if (telD.length < 10) { try { toast("Digite seu telefone: +55 (DD) e o número 📱"); } catch (e) {} const t = $("#profTel"); if (t) t.focus(); return; }
+  if (telD.length < 10) { try { toast("Digite o DDD + número (ex.: 11 98765-4321) 📱"); } catch (e) {} const t = $("#profTel"); if (t) t.focus(); return; }
   if (_profMandatory && !nasc) { try { toast("Escolha sua data de nascimento 🎂"); } catch (e) {} const d = $("#profNasc"); if (d) { d.classList.remove("is-empty"); try { d.showPicker ? d.showPicker() : d.focus(); } catch (e2) { d.focus(); } } return; }
   const p = getPerfil();
   p.nome = nome;
