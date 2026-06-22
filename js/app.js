@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.23.4";
+const APP_VERSION = "3.23.5";
 const VERSION_NOTES = "Sincronia de acesso/plano pela chave certa (user_id) — confiável.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
@@ -5502,9 +5502,16 @@ async function welDoSignup() {
   else { welApply(data, email, true); }   // (confirm-email OFF) conta nova → dispara tutorial + guia de instalação
 }
 // Popup de CONFIRMAÇÃO DE CONTA (confirm-email ON): a conta só é criada quando o usuário clica no link do
-// email. Mostra contagem regressiva mm:ss (3:00). "Já confirmei" tenta entrar; "Reenviar" manda outro link.
-let _scTimer = null;
-function showSignupConfirm(email, pass) {
+// email. Contagem 3:00 ancorada num TIMESTAMP absoluto (_scEnd) → continua certa mesmo se o app for pro 2º
+// plano (iOS pausa setInterval) e PERSISTE (financas2026.scConfirm) → se o app for fechado/recarregado, o
+// popup reabre com o tempo restante real. "Já confirmei" entra; "Reenviar" manda outro link e reinicia o 3:00.
+const SC_KEY = "financas2026.scConfirm";
+let _scTimer = null, _scEnd = 0, _scVis = null, _scPass = "";
+function scClearPersist() { try { localStorage.removeItem(SC_KEY); } catch (e) {} }
+function showSignupConfirm(email, pass, endTs) {
+  _scPass = pass || "";
+  _scEnd = (endTs && endTs > Date.now()) ? endTs : (Date.now() + 180000);   // 3:00 a partir de agora (ou restaura)
+  try { localStorage.setItem(SC_KEY, JSON.stringify({ email: email, endTs: _scEnd })); } catch (e) {}
   let m = document.getElementById("signupConfirmModal");
   if (!m) { m = document.createElement("div"); m.id = "signupConfirmModal"; m.className = "modal center"; document.body.appendChild(m); }
   m.innerHTML = `<div class="modal-card sc-card" style="text-align:center;max-width:400px">
@@ -5520,33 +5527,46 @@ function showSignupConfirm(email, pass) {
       <button type="button" class="wel-link" id="scCancel" style="margin-top:10px">Cancelar</button>
     </div>`;
   m.classList.remove("hidden"); document.body.classList.add("welcome-on");
-  // contagem regressiva 3:00 → mm:ss
   const tEl = () => m.querySelector("#scTimer");
-  let left = 180;
   const fmt = (s) => { const mm = String(Math.floor(s / 60)).padStart(2, "0"), ss = String(s % 60).padStart(2, "0"); return mm + ":" + ss; };
-  const paint = () => { const e = tEl(); if (!e) return; if (left > 0) e.innerHTML = "Expira em <b>" + fmt(left) + "</b>"; else { e.classList.add("sc-expired"); e.innerHTML = "⏳ O link expirou — toque em <b>Reenviar email</b>"; } };
-  if (_scTimer) clearInterval(_scTimer);
-  paint();
-  _scTimer = setInterval(() => { left--; if (left < 0) left = 0; paint(); if (left <= 0) { clearInterval(_scTimer); _scTimer = null; } }, 1000);
-  const close = () => { if (_scTimer) { clearInterval(_scTimer); _scTimer = null; } m.classList.add("hidden"); };
+  const scLeft = () => Math.max(0, Math.ceil((_scEnd - Date.now()) / 1000));   // SEMPRE pelo relógio (imune ao 2º plano)
+  const paint = () => { const e = tEl(); if (!e) return; const left = scLeft(); if (left > 0) { e.classList.remove("sc-expired"); e.innerHTML = "Expira em <b>" + fmt(left) + "</b>"; } else { e.classList.add("sc-expired"); e.innerHTML = "⏳ O link expirou — toque em <b>Reenviar email</b>"; } };
+  const startTick = () => { if (_scTimer) clearInterval(_scTimer); paint(); _scTimer = setInterval(() => { paint(); if (scLeft() <= 0) { clearInterval(_scTimer); _scTimer = null; } }, 1000); };
+  startTick();
+  // ao voltar pro app (volta do email): recalcula NA HORA pelo relógio (o 2º plano não "pausa" o tempo)
+  if (_scVis) { document.removeEventListener("visibilitychange", _scVis); window.removeEventListener("focus", _scVis); }
+  _scVis = () => { if (document.visibilityState !== "hidden") { paint(); if (scLeft() > 0 && !_scTimer) startTick(); } };
+  document.addEventListener("visibilitychange", _scVis); window.addEventListener("focus", _scVis); window.addEventListener("pageshow", _scVis);
+  const close = () => {
+    if (_scTimer) { clearInterval(_scTimer); _scTimer = null; }
+    if (_scVis) { document.removeEventListener("visibilitychange", _scVis); window.removeEventListener("focus", _scVis); window.removeEventListener("pageshow", _scVis); _scVis = null; }
+    scClearPersist(); m.classList.add("hidden"); document.body.classList.remove("welcome-on");
+  };
   m.querySelector("#scCancel").onclick = () => { close(); _welMode = "login"; renderWelcome(); };
   m.querySelector("#scResend").onclick = async () => {
     const b = m.querySelector("#scResend"); b.disabled = true; b.textContent = "Enviando…";
     let rr = { ok: false }; try { rr = await MFCloud.resendConfirm(email); } catch (e) {}
     b.disabled = false; b.textContent = "Reenviar email";
-    if (rr.ok) { left = 180; const ex = tEl(); if (ex) ex.classList.remove("sc-expired"); paint(); if (!_scTimer) _scTimer = setInterval(() => { left--; if (left < 0) left = 0; paint(); if (left <= 0) { clearInterval(_scTimer); _scTimer = null; } }, 1000); try { toast("Email reenviado ✓ (veja o spam)"); } catch (e) {} }
+    if (rr.ok) { _scEnd = Date.now() + 180000; try { localStorage.setItem(SC_KEY, JSON.stringify({ email: email, endTs: _scEnd })); } catch (e) {} startTick(); try { toast("Email reenviado ✓ (veja o spam)"); } catch (e) {} }
     else { try { toast("Não consegui reenviar agora — tente em 1 min"); } catch (e) {} }
   };
   m.querySelector("#scEntrar").onclick = async () => {
+    // sem senha em memória (reabriu após o app ser fechado) → manda pro login com o email já preenchido
+    if (!_scPass) { close(); _welMode = "login"; renderWelcome(); setTimeout(() => { const ei = document.getElementById("welEmail"); if (ei) ei.value = email; const pi = document.getElementById("welSen"); if (pi) pi.focus(); }, 80); return; }
     const b = m.querySelector("#scEntrar"); b.disabled = true; b.textContent = "Entrando…";
-    let r2 = { ok: false }; try { r2 = await MFCloud.signIn(email, pass); } catch (e) { r2 = { ok: false, reason: "net" }; }
+    let r2 = { ok: false }; try { r2 = await MFCloud.signIn(email, _scPass); } catch (e) { r2 = { ok: false, reason: "net" }; }
     b.disabled = false; b.textContent = "Já confirmei — Entrar";
     if (r2.ok) { close(); welApply(r2.data, email, true); return; }                 // confirmado → entra + onboarding
     if (/not confirmed|não confirm|email_not_confirmed/i.test(r2.reason || "")) { try { toast("Ainda não confirmado — abra o email e toque em Confirmar 📧"); } catch (e) {} return; }
     try { toast(cloudErrLogin(r2.reason)); } catch (e) {}
   };
 }
+// No boot: se há uma confirmação pendente e o 3:00 ainda não venceu, reabre o popup com o tempo restante real.
+function restoreSignupConfirm() {
+  try { var j = JSON.parse(localStorage.getItem(SC_KEY) || "null"); if (j && j.email && j.endTs && j.endTs > Date.now()) { showSignupConfirm(j.email, "", j.endTs); } else if (j) { scClearPersist(); } } catch (e) {}
+}
 async function welApply(data, email, isNewSignup) {
+  try { scClearPersist(); } catch (e) {}   // entrou → não há mais confirmação pendente
   try { if (window.MFCloud && MFCloud.registerLicenca) MFCloud.registerLicenca((getPerfil() || {}).nome); } catch (e) {}   // registra a conta no painel admin (idempotente) + sobe o nome se já tiver
   if (data) { try { DATA = migrate(data); } catch (e) {} }
   lastSnap = JSON.stringify(DATA);
@@ -8336,6 +8356,7 @@ async function boot() {
     if (bl) { sessionStorage.removeItem("financas2026.licBlock"); _welBlocked = (bl === "1" ? "" : bl); }
   } catch (e) {}
   showWelcome();   // gate único: login email+senha (Entrar) ou criar conta. 1ª vez também passa por aqui.
+  try { restoreSignupConfirm(); } catch (e) {}   // confirmação de conta pendente (3:00 ainda rodando) → reabre o popup com o tempo restante
 }
 // Entrada real no app (sem demo/teste/landing): decide PIN vs abrir direto. Reutilizado pelo "Entrar" da landing.
 function resumeBoot() {
