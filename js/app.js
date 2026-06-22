@@ -1,12 +1,19 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.23.5";
+const APP_VERSION = "3.24.0";
 const VERSION_NOTES = "Sincronia de acesso/plano pela chave certa (user_id) — confiável.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
    IMPORTANTE: textos do "o que melhorou" = amigáveis, sem jargão técnico, só o lado positivo. */
 const CHANGELOG = [
+  {
+    version: "3.24.0",
+    bullets: [
+      "Botão <b>Atualizar agora</b> aparece na tela de login quando sai uma versão nova — dá pra atualizar mesmo sem estar logado.",
+      "Perfil agora pede o <b>telefone</b> (com +55) junto do nome — obrigatório pra começar.",
+    ],
+  },
   {
     version: "3.23.0",
     bullets: [
@@ -5420,6 +5427,7 @@ function renderWelcome(w) {
   const rt = $("#welRetry"); if (rt) rt.onclick = () => renderWelcome();
   const se = $("#welSen"); if (se) se.onkeydown = (e) => { if (e.key === "Enter" && go) go.click(); };
   const vp = $("#welVerPlanos"); if (vp) vp.onclick = () => openPlanosModal();
+  if (window.__updAvail) { try { showWelcomeUpdateBtn(window.__updAvail); } catch (e) {} }   // re-render mantém o botão de atualizar
 }
 async function welDoLogin() {
   const email = ($("#welEmail").value || "").trim(), senha = $("#welSen").value || "";
@@ -5434,7 +5442,7 @@ async function welDoLogin() {
   }
   if (!r.ok) { welMsg(cloudErrLogin(r.reason), true); return; }
   localStorage.setItem(CLOUD_EMAIL_KEY, email);
-  try { if (window.MFCloud && MFCloud.registerLicenca) await MFCloud.registerLicenca((getPerfil() || {}).nome); } catch (e) {}   // garante a linha (+ nome se já tiver)
+  try { if (window.MFCloud && MFCloud.registerLicenca) { const _pf = getPerfil() || {}; await MFCloud.registerLicenca(_pf.nome, _pf.tel); } } catch (e) {}   // garante a linha (+ nome/telefone se já tiver)
   var lic = (window.MFCloud && MFCloud.checkLicenca) ? await MFCloud.checkLicenca() : { ok: true };       // enforcement (fail-open)
   if (!lic.ok) { welMsg(""); _blockedNow = true; welApply(r.data, email); setTimeout(() => showBlockOverlay(lic.reason), 350); return; }   // entra com overlay de bloqueio → some sozinho quando liberarem
   welApply(r.data, email);
@@ -5567,7 +5575,7 @@ function restoreSignupConfirm() {
 }
 async function welApply(data, email, isNewSignup) {
   try { scClearPersist(); } catch (e) {}   // entrou → não há mais confirmação pendente
-  try { if (window.MFCloud && MFCloud.registerLicenca) MFCloud.registerLicenca((getPerfil() || {}).nome); } catch (e) {}   // registra a conta no painel admin (idempotente) + sobe o nome se já tiver
+  try { if (window.MFCloud && MFCloud.registerLicenca) { const _pf = getPerfil() || {}; MFCloud.registerLicenca(_pf.nome, _pf.tel); } } catch (e) {}   // registra a conta no painel admin (idempotente) + sobe nome/telefone se já tiver
   if (data) { try { DATA = migrate(data); } catch (e) {} }
   lastSnap = JSON.stringify(DATA);
   try { const ct = await MFCloud.makeCt(DATA); if (ct) localStorage.setItem(CLOUD_LOCAL_KEY, MFCloud.snapshot(ct)); } catch (e) {}
@@ -6092,14 +6100,14 @@ async function checkForUpdate() {
     const j = await r.json();
     if (j && j.version && j.version !== APP_VERSION) {
       showUpdateBanner(j.version);     // ✨ no cabeçalho + opção no menu (idempotente)
-      if (!window.__started) {         // tela de login / PWA na entrada → atualiza SOZINHO (nada a perder no login)
-        // ANTI-LOOP (permanente): só auto-recarrega 1x por versão-alvo POR SESSÃO. Se já tentei e o app
-        // continua numa versão diferente — caso clássico do CDN do GitHub Pages servindo version.json e
-        // app.js DESSINCRONIZADOS por alguns minutos pós-deploy — NÃO recarrego de novo, senão fica
-        // "reiniciando sem parar na tela de login". O banner ✨ já apareceu; pega no próximo open/foco
-        // quando o CDN propagar (sessionStorage zera ao fechar o app de vez → tenta 1x na próxima sessão).
+      if (!window.__started) {         // tela de login / PWA na entrada
+        window.__updAvail = j.version;
+        showWelcomeUpdateBtn(j.version);   // BOTÃO VISÍVEL no login (atualiza mesmo deslogado — senão fica preso na versão velha)
+        // ANTI-LOOP: auto-recarrega 1x por versão-alvo POR SESSÃO. Se já tentei e segue diferente (CDN
+        // dessincronizado pós-deploy) NÃO recarrego de novo (senão "reinicia sem parar") — o botão acima
+        // garante a atualização manual. Reseta ao fechar o app de vez.
         let _tried = ""; try { _tried = sessionStorage.getItem("financas2026.autoUpdTried") || ""; } catch (e) {}
-        if (_tried === j.version) return;                  // já tentei essa versão nesta sessão → não recarrega
+        if (_tried === j.version) return;                  // já tentei essa versão nesta sessão → só o botão
         try { sessionStorage.setItem("financas2026.autoUpdTried", j.version); } catch (e) {}
         if (!window.__autoUpd) { window.__autoUpd = true; applyUpdate(null); }
         return;
@@ -6114,6 +6122,20 @@ function showUpdateBanner(ver) {          // "tem atualização" → ✨ no cabe
   const icon = $("#btnWhatsNew"); if (icon) icon.classList.remove("hidden");   // CSS já faz o bob + .wn-dot pulsa
   const mi = $("#miUpdate"); if (mi) mi.classList.remove("hidden");            // opção no menu (some quando não há update)
   const sub = $("#miUpdateSub"); if (sub) sub.textContent = updateVer ? ("toque para instalar a v" + updateVer) : "nova versão disponível";
+}
+// Botão de ATUALIZAR na tela de login (deslogado não tem cabeçalho/menu → sem isso não dá pra atualizar).
+// Injeta SEM re-renderizar o welcome (não apaga email/senha digitados). Idempotente.
+function showWelcomeUpdateBtn(ver) {
+  const w = document.getElementById("welcomeScreen"); if (!w) return;
+  let bar = w.querySelector("#welUpdBar");
+  if (!bar) {
+    bar = document.createElement("button");
+    bar.type = "button"; bar.id = "welUpdBar"; bar.className = "wel-upd-bar";
+    const inner = w.querySelector(".wel-inner");
+    if (inner && inner.parentNode) inner.parentNode.insertBefore(bar, inner); else w.insertBefore(bar, w.firstChild);
+    bar.onclick = () => { bar.disabled = true; bar.textContent = "Atualizando…"; try { applyUpdate(null); } catch (e) {} };
+  }
+  bar.innerHTML = "🔄 Atualizar agora" + (ver ? " · v" + esc(ver) : "");
 }
 // FORÇA o pop-up central de atualização — inclusive ao voltar do segundo plano (onAppFocus chama
 // checkForUpdate). Abre só 1x por sessão e SÓ quando não atrapalha (sem outro modal/onboarding/lock/
@@ -6188,6 +6210,17 @@ function updateNow() { closeMenu(); toast("Atualizando o app…"); applyUpdate(n
 const PERFIL_KEY = "financas2026.perfil";
 function getPerfil() { try { return JSON.parse(localStorage.getItem(PERFIL_KEY) || "{}") || {}; } catch (e) { return {}; } }
 function setPerfil(p) { try { localStorage.setItem(PERFIL_KEY, JSON.stringify(p)); } catch (e) {} }
+// Telefone BR: só os dígitos do DDD+número (sem o 55 do país). 10 (fixo) ou 11 (celular) dígitos.
+function telDigitsBR(v) { var d = (v || "").replace(/\D/g, ""); if (d.length > 11 && d.indexOf("55") === 0) d = d.slice(2); return d.slice(0, 11); }
+// Máscara visual: +55 (DD) NNNNN-NNNN (monta progressivo conforme digita).
+function maskTelBR(v) {
+  var d = telDigitsBR(v); if (!d) return "";
+  var ddd = d.slice(0, 2), n = d.slice(2);
+  var out = "+55 (" + ddd;
+  if (d.length >= 2) out += ")";
+  if (n.length) { out += " " + n.slice(0, 5); if (n.length > 5) out += "-" + n.slice(5, 9); }
+  return out;
+}
 /* ---------- Avatares predefinidos (estilo Netflix) — SVG inline, offline, sem download ---------- */
 /* Avatares de BICHINHOS ANIMADOS — SVG inline (anima de verdade; imagem de fundo não animaria).
    Cada animal tem movimento próprio (CSS em .animal-svg). Flat, sem gradiente (sem rebarba). */
@@ -6268,6 +6301,8 @@ function openProfile(opts) {
   } else if (hint) { hint.remove(); }
   const p = getPerfil();
   $("#profNome").value = p.nome || "";
+  const tel = $("#profTel");
+  if (tel) { tel.value = p.tel || ""; tel.oninput = () => { tel.value = maskTelBR(tel.value); }; }   // máscara +55 (DD) NNNNN-NNNN ao digitar
   const nasc = $("#profNasc");
   if (nasc) {
     nasc.value = p.nasc || "";
@@ -6310,19 +6345,24 @@ function renderAvatarPicker() {
 }
 function saveProfile() {
   const nome = ($("#profNome").value || "").trim();
+  const telRaw = ($("#profTel") && $("#profTel").value) || "";
+  const telD = telDigitsBR(telRaw);
+  const tel = telD ? maskTelBR(telRaw) : "";
   const nasc = $("#profNasc").value || "";
-  // Nome é SEMPRE obrigatório (vai pro painel admin). Data de nascimento é obrigatória no 1º acesso.
+  // Nome e TELEFONE são SEMPRE obrigatórios (vão pro painel admin). Nascimento é obrigatório no 1º acesso.
   if (!nome) { try { toast("Digite seu nome 🙂"); } catch (e) {} const n = $("#profNome"); if (n) n.focus(); return; }
+  if (telD.length < 10) { try { toast("Digite seu telefone: +55 (DD) e o número 📱"); } catch (e) {} const t = $("#profTel"); if (t) t.focus(); return; }
   if (_profMandatory && !nasc) { try { toast("Escolha sua data de nascimento 🎂"); } catch (e) {} const d = $("#profNasc"); if (d) { d.classList.remove("is-empty"); try { d.showPicker ? d.showPicker() : d.focus(); } catch (e2) { d.focus(); } } return; }
   const p = getPerfil();
   p.nome = nome;
+  p.tel = tel;
   p.nasc = nasc;
   p.foto = _profFotoTmp || "";
   p.tipo = _profTipo;
   setPerfil(p); renderAvatar();
-  // Sobe o NOME pro painel admin (coluna licencas.nome via RPC). E2E segue intacto: só o nome vai em claro
-  // na licença (igual o e-mail), nunca os números/dados financeiros.
-  try { if (window.MFCloud && MFCloud.setNome) MFCloud.setNome(nome); } catch (e) {}
+  // Sobe NOME + TELEFONE pro painel admin (colunas licencas.nome/telefone via RPC). E2E intacto: só nome/tel
+  // vão em claro na licença (igual o e-mail), nunca os números/dados financeiros.
+  try { if (window.MFCloud && MFCloud.setContato) MFCloud.setContato(nome, tel); } catch (e) {}
   _profMandatory = false;
   $("#profileModal").classList.add("hidden");
   toast("Perfil salvo ✅");
@@ -8357,6 +8397,7 @@ async function boot() {
   } catch (e) {}
   showWelcome();   // gate único: login email+senha (Entrar) ou criar conta. 1ª vez também passa por aqui.
   try { restoreSignupConfirm(); } catch (e) {}   // confirmação de conta pendente (3:00 ainda rodando) → reabre o popup com o tempo restante
+  try { checkForUpdate(); } catch (e) {}   // já checa na abertura → mostra o botão de atualizar no login se tiver versão nova
 }
 // Entrada real no app (sem demo/teste/landing): decide PIN vs abrir direto. Reutilizado pelo "Entrar" da landing.
 function resumeBoot() {

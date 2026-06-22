@@ -623,6 +623,15 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
   opacity: 0; transition: opacity .45s ease; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .welcome-screen.show { opacity: 1; }
 .wel-brand { font-size: 27px; font-weight: 800; letter-spacing: -.4px; color: var(--accent); margin: 0 0 16px; flex: 0 0 auto; text-align: center; }
+/* botão de ATUALIZAR no login (deslogado) — sempre visível quando há versão nova */
+.wel-upd-bar { flex: 0 0 auto; width: 100%; max-width: 420px; margin: 0 auto 14px; display: block; cursor: pointer;
+  background: linear-gradient(180deg, var(--green-2, #19d17a) 0%, var(--accent, #15c266) 100%); color: #062a18;
+  border: 0; border-radius: 14px; padding: 13px 16px; font-family: var(--font); font-weight: 800; font-size: 15px;
+  box-shadow: 0 12px 26px rgba(11,61,46,.45); animation: welUpdPulse 2s ease-in-out infinite; }
+.wel-upd-bar:active { transform: scale(.97); }
+.wel-upd-bar:disabled { opacity: .7; animation: none; }
+@keyframes welUpdPulse { 0%,100% { box-shadow: 0 12px 26px rgba(11,61,46,.45); } 50% { box-shadow: 0 12px 30px rgba(21,194,102,.6); } }
+@media (prefers-reduced-motion: reduce) { .wel-upd-bar { animation: none; } }
 .wel-inner { width: 100%; max-width: 340px; text-align: center; display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; }
 .wel-avatar { width: 112px; height: 112px; aspect-ratio: 1; border-radius: 50%; overflow: hidden; margin-bottom: 14px; flex: 0 0 auto;
   background-size: cover; background-position: center;   /* foto importada */
