@@ -1,5 +1,5 @@
 /* Service Worker — network-first (sempre busca a versão nova; cache só offline) */
-const CACHE = "financas-v293";
+const CACHE = "financas-v294";
 const ASSETS = [
   "./", "./index.html", "./privacidade.html", "./termos.html",
   "./css/styles.css",
@@ -53,7 +53,7 @@ self.addEventListener("fetch", (e) => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
         return res;
-      }).catch(() => caches.match(e.request).then(hit => hit || caches.match("./index.html")))
+      }).catch(() => caches.match(e.request).then(hit => hit || (e.request.mode === "navigate" ? caches.match("./index.html") : new Response("", { status: 404 }))))
     );
   } else if (url.hostname === "cdn.jsdelivr.net") {
     // SÓ o CDN versionado (Chart.js/qrcode) é cache-first — esses arquivos nunca mudam de conteúdo.

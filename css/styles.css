@@ -302,6 +302,9 @@ body.kbd-open .scroll-top, body.lock-on .scroll-top, body.splash-on .scroll-top 
 /* emoji animado genérico (inline em textos/medalhas) */
 .emoji-anim { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.22em; object-fit: contain; }
 img.emoji-anim { -webkit-user-select: none; user-select: none; }
+/* fallback unicode do animEmoji: escondido até o webp falhar (.on). font-size:1em herda o tamanho do container. */
+.emoji-fb { display: none; }
+.emoji-fb.on { display: inline-block; font-size: 1em; line-height: 1; font-style: normal; vertical-align: middle; }
 /* 🔒 Oferta de senha no 1º acesso (onboarding) */
 .onb-pin { display: flex; gap: 10px; margin: 10px 0; }
 .onb-pin input { flex: 1; min-width: 0; text-align: center; letter-spacing: 6px; font-size: 20px; padding: 12px; border-radius: 12px;

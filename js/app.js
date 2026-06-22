@@ -1,7 +1,7 @@
 /* ===== Finanças 2026 — App (v2) ===== */
 let DATA = { year: 2026, saldoInicial: 0, receitas: [], fixas: [], cartao: [], diaria: [], metas: {} };
 window.CRYPTO_KEY = null;
-const APP_VERSION = "3.23.2";
+const APP_VERSION = "3.23.3";
 const VERSION_NOTES = "Sincronia de acesso/plano pela chave certa (user_id) — confiável.";
 
 /* ===== Changelog — últimas versões (mais recente primeiro) =====
@@ -6198,8 +6198,13 @@ function animalSVG(id) {
 }
 // emoji animado genérico (reuso: medalhas, acentos). Devolve <img> do WebP local; cai no texto se faltar.
 function animEmoji(name, fallback, cls) {
-  return '<img class="emoji-anim ' + (cls || "") + '" src="emoji/' + name + '.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" draggable="false" '
-    + 'onerror="this.replaceWith(document.createTextNode(' + JSON.stringify(fallback || "") + '))" />';
+  // À PROVA DE FALHA: o emoji unicode (fallback) fica SEMPRE no DOM, escondido. O .webp animado entra por
+  // cima quando carrega; se faltar/quebrar (404, rede, etc.), o img se esconde e o unicode aparece —
+  // NUNCA mostra "imagem quebrada". Sem loading=lazy (ícone visível na hora; lazy travava o onerror no iOS).
+  var fb = esc(fallback || "");
+  return '<i class="emoji-fb" aria-hidden="true">' + fb + '</i>'
+    + '<img class="emoji-anim ' + (cls || "") + '" src="emoji/' + name + '.webp" alt="" aria-hidden="true" decoding="async" draggable="false" '
+    + 'onerror="this.style.display=\'none\'; var p=this.previousElementSibling; if(p&&p.classList){p.classList.add(\'on\');}" />';
 }
 const isAnimalAvatar = (f) => typeof f === "string" && f.indexOf("av:") === 0;
 function defaultAnimal(name) {
