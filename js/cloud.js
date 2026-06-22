@@ -68,7 +68,7 @@
   async function cloudSignUp(email, senha, data) {
     var sb = sbClient(); if (!sb) return { ok: false, reason: "sdk" };
     email = (email || "").trim().toLowerCase();
-    var r = await sb.auth.signUp({ email: email, password: senha, options: { emailRedirectTo: "https://morbiusfin.github.io" } });
+    var r = await sb.auth.signUp({ email: email, password: senha, options: { emailRedirectTo: "https://morbiusfin.github.io/confirmado.html" } });
     if (r.error) return { ok: false, reason: r.error.message };
     var built = await _buildVault(senha, data);
     window.CLOUD.dek = built.dek; window.CLOUD.email = email; window.CLOUD.salt = built.salt; window.CLOUD.wrapped = built.wrapped_dek;
@@ -129,7 +129,7 @@
   async function cloudResendConfirm(email) {
     try {
       var sb = sbClient(); if (!sb) return { ok: false, reason: "sdk" };
-      var r = await sb.auth.resend({ type: "signup", email: (email || "").trim().toLowerCase(), options: { emailRedirectTo: "https://morbiusfin.github.io" } });
+      var r = await sb.auth.resend({ type: "signup", email: (email || "").trim().toLowerCase(), options: { emailRedirectTo: "https://morbiusfin.github.io/confirmado.html" } });
       return { ok: !r.error, reason: r.error && r.error.message };
     } catch (e) { return { ok: false, reason: "erro" }; }
   }
