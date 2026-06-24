@@ -5927,7 +5927,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(
 
 // ===== Web Push (servidor: Cloudflare Worker) =====
 const VAPID_PUBLIC = "BC1EnbsN2qolEkoNvMqsAuqjqrPUfNlslzCnoRIOgWvCthh0ytYXzbUrP9iSzNgNswcS9H121de7cCANXGhuSz4";
-let PUSH_API = "https://financas-push.kaickjhon.workers.dev"; // Worker de push (Cloudflare) — avisa com app fechado
+let PUSH_API = "https://financas-push.morbiusfin.workers.dev"; // Worker de push (Cloudflare) — avisa com app fechado
 function urlB64ToU8(b64) { const pad = "=".repeat((4 - b64.length % 4) % 4); const s = (b64 + pad).replace(/-/g, "+").replace(/_/g, "/"); const raw = atob(s); return Uint8Array.from([...raw].map(c => c.charCodeAt(0))); }
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const isAndroid = () => /android/i.test(navigator.userAgent || "");
