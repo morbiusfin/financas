@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Acesso liberado · MorbiusFin</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root { --bg:#0b110e; --card:#141d18; --line:#23302a; --ink:#eaf2ee; --muted:#8b9a92; --green:#15c266; --green2:#0fa856; --amber:#f5a623; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body { background: radial-gradient(120% 70% at 50% -8%, #11241b 0%, var(--bg) 58%); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px 40px; min-height: 100dvh; }
+  .card { width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--line); border-radius: 24px;
+    padding: 30px 24px 26px; box-shadow: 0 24px 60px rgba(0,0,0,.45); animation: pop .45s cubic-bezier(.2,.8,.2,1); }
+  @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+  .top { text-align: center; }
+  .peng { font-size: 48px; line-height: 1; }
+  .brand { margin-top: 4px; font-size: 21px; font-weight: 800; color: var(--green); letter-spacing: -.3px; }
+  .check { margin: 16px auto 0; width: 70px; height: 70px; border-radius: 50%; background: rgba(21,194,102,.14);
+    border: 1px solid rgba(21,194,102,.34); display: flex; align-items: center; justify-content: center; font-size: 36px;
+    animation: chk .5s .15s cubic-bezier(.34,1.6,.5,1) both; }
+  @keyframes chk { from { transform: scale(0); } to { transform: scale(1); } }
+  h1 { font-size: 21px; font-weight: 800; margin: 15px 0 6px; letter-spacing: -.3px; text-align: center; line-height: 1.3; }
+  .lead { font-size: 15px; line-height: 1.6; color: var(--muted); margin: 0; text-align: center; }
+  .lead b { color: var(--ink); }
+  .warn { display: flex; gap: 10px; margin: 20px 0 4px; padding: 13px 14px; border-radius: 14px;
+    background: rgba(245,166,35,.10); border: 1px solid rgba(245,166,35,.34); }
+  .warn .ic { font-size: 18px; line-height: 1.4; }
+  .warn div { font-size: 13.5px; line-height: 1.5; color: var(--ink); }
+  .warn b { color: var(--amber); }
+  .btn { display: block; width: 100%; margin-top: 18px; background: linear-gradient(180deg, var(--green) 0%, var(--green2) 100%);
+    color: #062a18; font-size: 16px; font-weight: 800; text-decoration: none; text-align: center; padding: 16px; border-radius: 16px;
+    box-shadow: 0 14px 30px rgba(11,61,46,.45); }
+  .btn:active { transform: scale(.98); }
+  .sec-t { font-size: 15px; font-weight: 800; color: var(--ink); margin: 26px 0 10px; }
+  ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; }
+  ol.steps li { position: relative; padding: 0 0 14px 40px; counter-increment: s; font-size: 14px; line-height: 1.5; color: var(--ink); }
+  ol.steps li::before { content: counter(s); position: absolute; left: 0; top: -1px; width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(21,194,102,.16); border: 1px solid rgba(21,194,102,.4); color: var(--green); font-weight: 800; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; }
+  ol.steps li:last-child { padding-bottom: 0; }
+  ol.steps li b { color: var(--ink); }
+  ol.steps li .sub { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .tips { margin-top: 22px; padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,.03); border: 1px solid var(--line); }
+  .tips .sec-t { margin: 0 0 8px; }
+  .tips ul { margin: 0; padding-left: 18px; }
+  .tips li { font-size: 13px; line-height: 1.6; color: var(--muted); }
+  .tips li b { color: var(--ink); }
+  .support { margin-top: 20px; text-align: center; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .support a { color: var(--green); font-weight: 700; text-decoration: none; }
+  .foot { margin-top: 18px; text-align: center; font-size: 11.5px; color: #6f7d75; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="peng">🐧</div>
+      <div class="brand">MorbiusFin</div>
+      <div class="check">🎉</div>
+      <h1>Pagamento aprovado!<br>Seu acesso está liberado</h1>
+      <p class="lead">Bem-vindo(a) ao <b>MorbiusFin</b> 💚 Sua assinatura já está <b>ativa</b>. Falta só entrar no app.</p>
+    </div>
+
+    <div class="warn">
+      <span class="ic">⚠️</span>
+      <div>Entre no app usando <b>exatamente o mesmo e-mail da compra</b>. É assim que o app reconhece seu plano <b>automaticamente</b>.</div>
+    </div>
+
+    <a class="btn" href="https://morbiusfin.github.io">🐧 Abrir o MorbiusFin</a>
+
+    <div class="sec-t">Como começar</div>
+    <ol class="steps">
+      <li>Toque em <b>Abrir o MorbiusFin</b> acima (ou acesse <b>morbiusfin.github.io</b>).</li>
+      <li><b>Crie sua conta</b> — ou entre, se já tiver — com o <b>mesmo e-mail da compra</b>. Seu plano aparece sozinho.</li>
+      <li><b>Instale na tela de início</b> pra abrir como app e receber avisos:
+        <span class="sub">🍎 iPhone: Safari → Compartilhar → “Adicionar à Tela de Início”. 🤖 Android: Chrome → menu (⋮) → “Instalar app”.</span>
+      </li>
+      <li><b>Ative as notificações</b> pra não perder conta a vencer.</li>
+    </ol>
+
+    <div class="tips">
+      <div class="sec-t">Dicas rápidas</div>
+      <ul>
+        <li>Cadastre suas <b>contas fixas e cartões</b> — o app mostra o que vence e quanto sobra.</li>
+        <li>Crie <b>metas</b> e acompanhe o progresso em tempo real.</li>
+        <li>No <b>Pro</b>: gráficos, insights e o <b>relatório em PDF</b> do mês.</li>
+      </ul>
+    </div>
+
+    <div class="support">
+      Qualquer dúvida, fale com a gente: <a href="mailto:morbiusfin@gmail.com">morbiusfin@gmail.com</a>
+    </div>
+    <div class="foot">© 2026 MorbiusFin · seus dados ficam no seu aparelho 🔒</div>
+  </div>
+</body>
+</html>

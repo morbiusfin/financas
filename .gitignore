@@ -1,0 +1,12 @@
+*.log
+.DS_Store
+Thumbs.db
+_tmp_real.json
+.claude/
+
+# Anti-cópia: fonte limpa + receita de ofuscação NUNCA vão pro repo público
+src/
+node_modules/
+build.mjs
+package.json
+package-lock.json

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b3d2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MorbiusFin" />
+  <title>MorbiusFin</title>
+  <!-- tema aplicado ANTES do 1º paint → sem flash claro↔escuro na abertura -->
+  <script>try{var t=localStorage.getItem("financas2026.theme"),h=document.documentElement;if(t==="dark")h.classList.add("theme-dark");else if(t==="light")h.classList.add("theme-light");
+  /* mockup de teste (iphone.html): simula as áreas seguras do aparelho escolhido (iPhone/Android) */
+  if(location.search.indexOf("frame=")>=0){h.classList.add("framed");var q=new URLSearchParams(location.search);var st=q.get("st"),sb=q.get("sb");if(st!==null)h.style.setProperty("--safe-top",st+"px");if(sb!==null)h.style.setProperty("--safe-bottom",sb+"px");var th=q.get("theme");if(th){localStorage.setItem("financas2026.theme",th);h.classList.remove("theme-dark","theme-light");h.classList.add(th==="dark"?"theme-dark":"theme-light");}}}catch(e){}</script>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" defer></script>
+</head>
+<body class="splash-on">
+  <!-- SPLASH DE ABERTURA — só o nome (moeda removida) -->
+  <div id="splash">
+    <div class="splash-bg"></div>
+    <div class="splash-name">MorbiusFin</div>
+    <div class="splash-tag">suas finanças na palma da mão</div>
+    <div class="splash-loader" aria-hidden="true"><span></span></div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-row">
+      <div class="header-left">
+        <button id="btnMenu" class="icon-btn menu-btn" aria-label="Abrir menu" title="Menu">☰</button>
+        <h1 id="screenTitle">Resumo</h1>
+      </div>
+      <div class="header-actions">
+        <button id="btnBell" class="icon-btn bell-btn hidden" aria-label="Alertas de contas" title="Contas a vencer"><img class="emoji-anim hdr-emoji" src="emoji/sino.webp" alt="" aria-hidden="true" draggable="false" /><span class="bell-badge" aria-hidden="true">0</span></button>
+        <span id="syncSpin" class="sync-spin hidden" role="status" aria-label="Sincronizando" title="Sincronizando…"></span>
+        <button id="btnUndo" class="icon-btn" aria-label="Desfazer" title="Desfazer (Ctrl+Z)">↩︎</button>
+        <button id="btnRedo" class="icon-btn" aria-label="Refazer" title="Refazer (Ctrl+Y)">↪︎</button>
+        <button id="btnWhatsNew" class="icon-btn wn-btn hidden" title="Novidades disponíveis" aria-label="Novidades"><img class="emoji-anim hdr-emoji" src="emoji/brilho.webp" alt="" aria-hidden="true" draggable="false" /><span class="wn-dot" aria-hidden="true"></span></button>
+        <span class="avatar-wrap"><span id="hdrPlan" class="hdr-plan hidden" aria-hidden="true"></span><button id="btnProfile" class="avatar-btn" title="Meu perfil" aria-label="Meu perfil"><span class="avatar-img" aria-hidden="true"></span><span class="avatar-ini" aria-hidden="true">👤</span></button></span>
+      </div>
+    </div>
+    <div class="month-wrap">
+      <select id="yearSelect" class="year-select" aria-label="Escolher ano"></select>
+      <div class="month-bar" id="monthBar"></div>
+    </div>
+  </header>
+
+  <!-- SELO "MODO TESTE" (perfil fictício) -->
+  <div id="testBadge" class="test-badge"><span>🧪 MODO TESTE — dados fictícios</span><button id="testExit" type="button">Sair</button></div>
+
+  <!-- TELA DE BLOQUEIO (PIN) -->
+  <div id="lockScreen" class="lock hidden">
+    <div class="lock-box">
+      <div class="lock-emoji">🔒</div>
+      <h2 id="lockTitle">Digite seu PIN</h2>
+      <input id="lockPin" type="password" inputmode="numeric" maxlength="16" class="lock-input" autocomplete="off" placeholder="••••" />
+      <div id="lockMsg" class="lock-msg"></div>
+      <button id="lockBtn" class="btn primary" style="width:100%">Entrar</button>
+      <p id="lockHint" class="lock-hint"></p>
+    </div>
+  </div>
+
+  <!-- PULL TO REFRESH -->
+  <div id="ptr" class="ptr"><span id="ptrText">↓ puxe para atualizar</span></div>
+
+  <!-- BARRA DE PROGRESSO DA SINCRONIZAÇÃO -->
+  <div id="syncProg" class="sync-prog hidden">
+    <div class="sync-card">
+      <div id="syncProgMsg" class="sync-msg">Atualizando…</div>
+      <div class="sync-track"><div id="syncProgBar" class="sync-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- BANNER DE VERSÃO -->
+  <div id="verBanner" class="ver-banner hidden"></div>
+
+  <!-- MODAL: novidades / changelog (substitui o banner grande) -->
+  <div id="whatsNewModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="wnTitle">
+    <div class="modal-card wn-card">
+      <button type="button" id="wnClose" class="wn-close" aria-label="Fechar">✕</button>
+      <div class="wn-header">
+        <img class="emoji-anim wn-spark" src="emoji/brilho.webp" alt="" aria-hidden="true" draggable="false" />
+        <h2 id="wnTitle">Novidades</h2>
+        <p id="wnVersion" class="wn-version"></p>
+      </div>
+      <div id="wnBody" class="wn-body"></div>
+      <div class="modal-actions">
+        <button type="button" id="wnAccept" class="btn primary">Aceitar e atualizar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: notificações (sino) — área própria pra não encavalar no app -->
+  <div id="notifModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="notifTitle">
+    <div class="modal-card notif-card">
+      <button type="button" id="notifClose" class="wn-close" aria-label="Fechar">✕</button>
+      <div class="notif-head"><span class="notif-bell" aria-hidden="true"><img class="emoji-anim notif-bell-img" src="emoji/sino.webp" alt="" draggable="false" /></span><h2 id="notifTitle">Notificações</h2></div>
+      <div id="notifBody" class="notif-body"></div>
+      <div class="modal-actions"><button type="button" id="notifVer" class="btn primary">Ver na lista</button></div>
+    </div>
+  </div>
+
+  <!-- MODAL: perfil (nome, aniversário, foto) -->
+  <div id="profileModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="profTitle">
+    <div class="modal-card prof-card">
+      <button type="button" id="profClose" class="wn-close" aria-label="Fechar">✕</button>
+      <h2 id="profTitle" style="text-align:center">Meu perfil</h2>
+      <div class="prof-photo-wrap">
+        <button type="button" id="profPhotoBtn" class="prof-photo empty" aria-label="Trocar foto">
+          <span class="prof-photo-inner" aria-hidden="true"><span class="prof-photo-img"></span></span>
+          <span class="prof-photo-cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M20 5h-3.2l-1.1-1.6A1 1 0 0 0 14.9 3H9.1a1 1 0 0 0-.8.4L7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm-8 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg></span>
+        </button>
+        <div class="prof-photo-acts">
+          <button type="button" id="profPhotoEdit" class="prof-rm prof-edit hidden">✏️ Editar foto</button>
+          <button type="button" id="profPhotoRemove" class="prof-rm hidden">Remover foto</button>
+        </div>
+      </div>
+      <div class="avatar-pick-wrap">
+        <div class="avatar-pick-label">Escolha um avatar ou importe sua foto</div>
+        <div id="avatarRow" class="avatar-row"></div>
+      </div>
+      <label class="prof-field"><span>Nome</span><input type="text" id="profNome" placeholder="Seu nome" maxlength="40" autocomplete="off"></label>
+      <label class="prof-field"><span>Telefone</span><div class="tel-wrap"><span class="tel-ddi">+55</span><input type="tel" id="profTel" inputmode="numeric" autocomplete="tel" placeholder="(00) 00000-0000" maxlength="16"></div></label>
+      <label class="prof-field"><span>Data de nascimento</span><input type="date" id="profNasc"></label>
+      <div class="prof-field"><span>Tipo de conta</span>
+        <div class="seg" id="profTipoSeg">
+          <button type="button" class="seg-btn active" data-tipo="pessoal">🙋 Pessoal</button>
+          <button type="button" class="seg-btn" data-tipo="conjunta">💑 Conjunta</button>
+        </div>
+      </div>
+      <div id="profConjunta" class="prof-conj hidden">
+        <p class="prof-conj-txt">Conta de casal pela <b>nuvem</b>: cada um no seu celular, usando o <b>mesmo cofre</b>. Compartilhe <b>1 link/QR</b> com seu par — o que um lança aparece pro outro em <b>qualquer rede</b> (Wi-Fi ou dados).</p>
+        <button type="button" id="profPair" class="btn primary">💑 Conta conjunta (convite)</button>
+        <button type="button" id="profSyncHelp" class="btn ghost prof-synchelp">📖 Como sincronizar (passo a passo)</button>
+        <div id="profPairStatus" class="prof-pair-status"></div>
+        <div id="profCoupleOn" class="prof-couple-on hidden">
+          <button type="button" id="profDisable" class="btn couple-off">✂️ Desativar conta conjunta</button>
+          <button type="button" id="profCoupleHist" class="btn ghost couple-hist">📜 Histórico da conta conjunta</button>
+        </div>
+      </div>
+      <div class="modal-actions"><button type="button" id="profSave" class="btn primary">Salvar</button></div>
+      <input type="file" id="profFile" accept="image/*" class="hidden" aria-hidden="true">
+    </div>
+  </div>
+
+  <!-- MODAL: pareamento do casal (WebRTC P2P — sem nuvem) -->
+  <div id="pairModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="pairTitle">
+    <div class="modal-card pair-card">
+      <button type="button" id="pairClose" class="wn-close" aria-label="Fechar">✕</button>
+      <h2 id="pairTitle" style="text-align:center">Parear celulares</h2>
+      <div id="pairBody" class="pair-body"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: recorte CIRCULAR da foto (arrasta pra posicionar + zoom) -->
+  <div id="cropModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
+    <div class="modal-card crop-card">
+      <h2 id="cropTitle" style="text-align:center">Ajeite a foto</h2>
+      <p class="crop-hint">Arraste para posicionar e use o controle para dar zoom</p>
+      <div class="crop-stage" id="cropStage"><img id="cropImg" alt="" draggable="false"></div>
+      <div class="crop-ctrl"><span class="crop-ctrl-ic" aria-hidden="true">🔍</span><input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1" class="crop-slider" aria-label="Zoom da foto"></div>
+      <div class="crop-ctrl"><span class="crop-ctrl-ic" aria-hidden="true">↻</span><input type="range" id="cropRotate" min="-180" max="180" step="1" value="0" class="crop-slider" aria-label="Girar a foto"></div>
+      <div class="modal-actions">
+        <button type="button" id="cropCancel" class="btn ghost">Cancelar</button>
+        <button type="button" id="cropOk" class="btn primary">Usar foto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONBOARDING (1ª abertura) -->
+  <div id="onboarding" class="onb hidden" role="dialog" aria-modal="true" aria-labelledby="onbTitle">
+    <div class="onb-card"><div id="onbBody"></div></div>
+  </div>
+
+  <!-- MENU LATERAL (☰) -->
+  <div id="menuDrawer" class="menu-drawer hidden" role="dialog" aria-modal="true" aria-label="Menu">
+    <nav class="menu-panel">
+      <div class="menu-head"><span>Menu</span><div class="menu-head-actions"><button id="menuRefresh" class="menu-exit menu-refresh" type="button" aria-label="Atualizar acesso agora">🔄 Atualizar</button><button id="menuLogout" class="menu-exit" type="button" aria-label="Sair do app">🚪 Sair</button><button id="menuClose" class="menu-x" aria-label="Fechar">✕</button></div></div>
+      <div class="menu-scroll">
+      <div id="exploreWidget"></div>
+      <button id="menuPlanCard" class="menu-plan-card hidden" type="button" aria-label="Seu plano"></button>
+      <button class="menu-item mi-update hidden" id="miUpdate"><span class="mi-ic">✨</span><span><b>Atualizar o app</b><i id="miUpdateSub">nova versão disponível</i></span></button>
+      <button class="menu-item mi-conv" id="miConvidar"><span class="mi-ic"><img class="emoji-anim" src="emoji/presente.webp" alt="" aria-hidden="true" draggable="false"></span><span><b>Convidar um amigo</b><i>ele começa com 30 dias grátis 🎁</i></span></button>
+      <button class="menu-item" id="miPerfil"><span class="mi-ic">👤</span><span><b>Editar perfil</b></span></button>
+      <button class="menu-item" id="miTutorial"><span class="mi-ic">🎓</span><span><b>Tutorial rápido</b></span></button>
+      <button class="menu-item" id="miManual"><span class="mi-ic">📖</span><span><b>Tutorial detalhado</b></span></button>
+      <button class="menu-item" id="miFaq"><span class="mi-ic">❓</span><span><b>Perguntas frequentes</b></span></button>
+      <button class="menu-item" id="miInstalar"><span class="mi-ic">📱</span><span><b>Instalar na tela de início</b></span></button>
+      <button class="menu-item" id="miAcesso"><span class="mi-ic">🔒</span><span><b>Conta e acesso</b></span></button>
+      <button class="menu-item" id="miBackup"><span class="mi-ic">☁️</span><span><b>Backup e sincronização</b></span></button>
+      <button class="menu-item" id="miPdf"><span class="mi-ic">📄</span><span><b>Baixar relatório (PDF)</b><i>resumo do mês pra salvar ou imprimir</i></span></button>
+      <button class="menu-item" id="miCategorias"><span class="mi-ic">🏷️</span><span><b>Categorias e orçamento</b></span></button>
+      <button class="menu-item" id="miMetas"><span class="mi-ic">🎯</span><span><b>Metas</b></span></button>
+      <button class="menu-item" id="miConfig"><span class="mi-ic">⚙️</span><span><b>Configurações</b></span></button>
+      <button class="menu-item" id="miAviso"><span class="mi-ic">🔔</span><span><b>Aviso de vencimento</b></span></button>
+      <button class="menu-item" id="miTema"><span class="mi-ic">🌗</span><span><b>Tema</b></span></button>
+      <button class="menu-item danger" id="miZero"><span class="mi-ic">🏁</span><span><b>Começar do zero</b></span></button>
+      <button class="menu-item hidden" id="miLogout"><span class="mi-ic">🚪</span><span><b>Sair do app</b></span></button>
+      <button class="menu-item mi-admin hidden" id="miAdmin"><span class="mi-ic">🛡️</span><span><b>Admin</b></span></button>
+      <div class="menu-foot" id="menuFoot">MorbiusFin · v<span id="menuVer"></span></div>
+      </div>
+    </nav>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <main id="view"></main>
+
+  <!-- FLOATING ADD BUTTON -->
+  <button id="fab" class="fab" aria-label="Adicionar">+</button>
+
+  <!-- VOLTAR AO TOPO (aparece ao descer, some no topo) -->
+  <button id="scrollTop" class="scroll-top" aria-label="Voltar ao topo" title="Voltar ao topo">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 12l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+
+  <!-- BOTTOM NAV -->
+  <nav class="tabbar">
+    <button class="tab active" data-tab="resumo"><span>📊</span>Resumo</button>
+    <button class="tab" data-tab="receitas"><span>💰</span>Receitas</button>
+    <button class="tab" data-tab="fixas"><span>📌</span>Fixas</button>
+    <button class="tab" data-tab="cartao"><span>💳</span>Cartões</button>
+    <button class="tab" data-tab="diaria"><span>🛒</span>Débito</button>
+  </nav>
+
+  <!-- MODAL: editar/adicionar -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <h2 id="modalTitle">Novo lançamento</h2>
+      <form id="entryForm"></form>
+      <div class="modal-actions">
+        <button type="button" id="btnDelete" class="btn danger hidden">Excluir</button>
+        <button type="button" id="btnCancel" class="btn ghost">Cancelar</button>
+        <button type="submit" form="entryForm" class="btn primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: configurações -->
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Configurações</h2>
+      <label class="field">
+        <span>Saldo inicial do ano (R$)</span>
+        <input id="saldoInicial" class="money" placeholder="0,00" />
+      </label>
+      <label class="set-toggle">
+        <span class="set-toggle-txt">👋 Saudação ao abrir o app <button type="button" class="help-q" data-help="cfgGreet" aria-label="O que é isso?">?</button></span>
+        <input id="setGreet" type="checkbox" class="switch" />
+        <span class="switch-track" aria-hidden="true"></span>
+      </label>
+      <label class="set-toggle">
+        <span class="set-toggle-txt">🔔 Avisos de contas a vencer <span class="set-plus-tag">Plus</span> <button type="button" class="help-q" data-help="cfgNotif" aria-label="O que é isso?">?</button></span>
+        <input id="setNotif" type="checkbox" class="switch" />
+        <span class="switch-track" aria-hidden="true"></span>
+      </label>
+      <label class="field" id="setNotifHoraWrap">
+        <span>⏰ Horário do aviso <button type="button" class="help-q" data-help="cfgNotifHora" aria-label="O que é isso?">?</button></span>
+        <select id="setNotifHora" class="sel"></select>
+      </label>
+      <label class="set-toggle" id="setWeeklyWrap">
+        <span class="set-toggle-txt">📅 Resumo semanal <span class="set-pro-tag">Pro</span> <button type="button" class="help-q" data-help="cfgWeekly" aria-label="O que é isso?">?</button></span>
+        <input id="setWeekly" type="checkbox" class="switch" />
+        <span class="switch-track" aria-hidden="true"></span>
+      </label>
+      <p class="hint" style="margin:-4px 0 10px">Esses avisos são do app. <b>Os recados do MorbiusFin chegam sempre.</b> O <b>resumo semanal</b> (Pro) manda, toda segunda, um aviso das contas da semana.</p>
+      <!-- backup/import/sincronização, tema, PIN ficam no MENU. Aqui só fica o input escondido (usado pelo menu Backup). -->
+      <input type="file" id="importFile" accept="application/json" hidden />
+      <div id="notifWrap" style="margin:12px 0"></div>
+      <p class="hint">Backup, sincronização, tema e PIN estão no menu ☰. Seus dados ficam salvos neste aparelho.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn primary" id="btnCloseSettings">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: configurar sincronização (caixa de verdade, funciona no iPhone instalado) -->
+  <div id="syncModal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Sincronizar com a web</h2>
+      <p class="hint" style="margin-bottom:10px">Cole aqui o <b>link mágico</b> que o assistente te mandou. Eu extraio o resto sozinho.</p>
+      <label class="field">
+        <span>Link mágico (ou link que termina em /exec)</span>
+        <input type="text" id="syncLinkInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url" placeholder="cole aqui o link de sincronização (#cfg=…)" />
+      </label>
+      <label class="field" id="syncTokenField" style="display:none">
+        <span>Token de sincronização</span>
+        <input type="text" id="syncTokenInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      </label>
+      <div id="syncModalMsg" class="lock-msg"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="syncCancel">Cancelar</button>
+        <button type="button" class="btn primary" id="syncSave">Salvar e sincronizar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAINEL MEIA-TELA (bottom sheet): contas a vencer -->
+  <div id="alertModal" class="modal hidden">
+    <div class="modal-card alert-card">
+      <button type="button" id="alertClose" class="sheet-x" aria-label="Fechar">✕</button>
+      <div class="alert-emoji"><img class="emoji-anim alert-emoji-img" src="emoji/sino.webp" alt="" aria-hidden="true" draggable="false" /></div>
+      <h2 id="alertTitle">Contas a vencer</h2>
+      <div id="alertBody" class="alert-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="alertVer">Ver na lista</button>
+        <button type="button" class="btn primary" id="alertOk">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POP-UP DE SAUDAÇÃO (abertura do app): bom dia/tarde/noite + nome -->
+  <div id="greetModal" class="modal hidden">
+    <div class="modal-card greet-card">
+      <div class="greet-emoji"><img class="emoji-anim greet-emoji-img" src="" alt="" aria-hidden="true" draggable="false" /></div>
+      <h2 id="greetTitle">Olá</h2>
+      <div class="modal-actions greet-actions">
+        <button type="button" class="btn primary" id="greetBtn">Olá</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: categorias e orçamento -->
+  <div id="catModal" class="modal hidden">
+    <div class="modal-card sheet-tall">
+      <div class="sheet-head"><h2>Categorias e orçamento</h2><button type="button" id="catClose" class="sheet-x" aria-label="Fechar">✕</button></div>
+      <div class="modal-scroll">
+        <p class="hint" style="text-align:left;margin:0 0 12px">Defina uma <b>meta de gasto por mês</b> em cada categoria. O total vira seu orçamento e aparece no gráfico <b>Orçamento × Realizado</b>.</p>
+        <div id="catMgrTotal" class="cat-total"></div>
+        <button type="button" id="catAdd" class="btn ghost" style="width:100%;margin:0 0 12px">＋ Nova categoria</button>
+        <div id="catMgrList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: escolher emoji -->
+  <div id="emojiModal" class="modal hidden">
+    <div class="modal-card sheet-tall">
+      <div class="sheet-head"><h2>Escolher emoji</h2><button type="button" id="emojiClose" class="sheet-x" aria-label="Fechar">✕</button></div>
+      <input id="emojiSearch" class="emoji-search" type="text" inputmode="search" enterkeyhint="search" placeholder="Buscar (ex.: beijinho, dinheiro, gato)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+      <div id="emojiTabs" class="emoji-tabs"></div>
+      <div id="emojiCatName" class="emoji-cat-name"></div>
+      <div id="emojiGrid" class="emoji-grid"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: Conta na nuvem (login email + senha, E2E) -->
+  <div id="cloudModal" class="modal center hidden" role="dialog" aria-modal="true" aria-labelledby="cloudTitle">
+    <div class="modal-card cloud-card">
+      <button type="button" id="cloudClose" class="sheet-x" aria-label="Fechar">✕</button>
+      <div class="cloud-ic" aria-hidden="true">☁️</div>
+      <h2 id="cloudTitle" style="text-align:center;margin:6px 0 4px">Conta na nuvem</h2>
+      <div id="cloudBody" class="cloud-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <div id="printArea" aria-hidden="true"></div>
+  <script src="js/data.js" defer></script>
+  <script src="js/app.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
+  <script src="js/cloud.js" defer></script>
+</body>
+</html>

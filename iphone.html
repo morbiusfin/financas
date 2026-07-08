@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MorbiusFin · Mockups mobile (todos os formatos)</title>
+  <style>
+    /* Mockup de testes mobile — NÃO é o app. Mostra VÁRIOS aparelhos (iPhone/Android) lado a lado,
+       com tamanho + áreas seguras reais, pra VER no localhost como o app fica em cada formato.
+       O app recebe as áreas seguras via ?frame=1&st=<top>&sb=<bottom>. No device real usa env(). */
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(120% 120% at 50% 0%, #2a2f3a, #14161b 70%); color: #e7ecf2; padding: 18px 12px 60px; }
+    h1 { text-align: center; font-size: 18px; margin: 4px 0 2px; }
+    .sub { text-align: center; color: #9aa3af; font-size: 12.5px; margin: 0 0 16px; }
+    .bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center;
+      padding: 10px; margin: 0 auto 22px; max-width: 640px; background: rgba(20,22,27,.85); backdrop-filter: blur(8px); border: 1px solid #2c3038; border-radius: 14px; }
+    .bar label { font-size: 12.5px; color: #9aa3af; }
+    .bar select, .bar button { background: #2b3340; color: #e7ecf2; border: 1px solid #3a4350; border-radius: 10px; padding: 8px 12px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .bar button:hover, .bar select:hover { background: #36404f; }
+    /* galeria: todos os aparelhos lado a lado (quebra em várias linhas conforme a tela) */
+    .gallery { display: flex; flex-wrap: wrap; gap: 36px 28px; justify-content: center; align-items: flex-start; }
+    .cell { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .label { color: #9aa3af; font-size: 12.5px; text-align: center; }
+    .label b { color: #e7ecf2; display: block; font-size: 13.5px; }
+    /* o "device" é dimensionado por variáveis JS → flexível pra qualquer tamanho */
+    .device { position: relative; flex: 0 0 auto; background: #0a0a0c; box-shadow: 0 0 0 12px #1b1d22, 0 0 0 14px #2c3038, 0 30px 70px rgba(0,0,0,.55); }
+    .device.ios { border-radius: 52px; }
+    .device.android { border-radius: 32px; }
+    .screen { position: absolute; inset: 0; overflow: hidden; background: #000; border-radius: inherit; }
+    .screen iframe { width: 100%; height: 100%; border: 0; display: block; }
+    /* topo: ilha dinâmica (iOS) ou punch-hole (Android) */
+    .top-ind { position: absolute; left: 50%; transform: translateX(-50%); background: #000; z-index: 5; pointer-events: none; }
+    .device.ios .top-ind { top: 11px; width: 120px; height: 32px; border-radius: 18px; }
+    .device.android .top-ind { top: 10px; width: 15px; height: 15px; border-radius: 50%; }
+    .device.sehome .top-ind { display: none; }
+    /* base: indicador de home (gesto) — só quando o aparelho tem safe-bottom > 0 */
+    .home { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 38%; height: 5px; border-radius: 3px; background: rgba(255,255,255,.5); z-index: 5; pointer-events: none; }
+    .device.nohome .home { display: none; }
+  </style>
+</head>
+<body>
+  <h1>MorbiusFin — formatos de celular</h1>
+  <p class="sub">Todos os aparelhos lado a lado, com tamanho e áreas seguras reais. É aqui que dá pra ver se o app acompanha cada tela.</p>
+  <div class="bar">
+    <label>App:</label>
+    <select id="appenv" onchange="buildAll()">
+      <option value="dev" selected>Dev (financas)</option>
+      <option value="prod">Produção (morbiusfin.github.io)</option>
+    </select>
+    <label>Tema:</label>
+    <select id="theme" onchange="buildAll()">
+      <option value="">do sistema</option>
+      <option value="light">Claro</option>
+      <option value="dark" selected>Escuro</option>
+    </select>
+    <button id="btnDemo" onclick="toggleDemo()">🧪 Dados: FICTÍCIOS</button>
+    <button onclick="buildAll()">↻ Recarregar todos</button>
+    <button onclick="setViewAll('resumo')">Resumo</button>
+    <button onclick="setViewAll('fixas')">Fixas</button>
+    <button onclick="setViewAll('cartao')">Cartões</button>
+  </div>
+  <p class="sub" id="demoNote" style="margin:-12px auto 18px;max-width:640px"></p>
+
+  <div class="gallery" id="gallery"></div>
+
+  <script>
+    // catálogo de aparelhos: largura/altura em pt e áreas seguras (topo/base)
+    const DEVICES = [
+      { id: "ip14pm",  name: "iPhone 14 Pro Max", w: 430, h: 932, st: 59, sb: 34, kind: "ios" },
+      { id: "ip15",    name: "iPhone 15",          w: 393, h: 852, st: 59, sb: 34, kind: "ios" },
+      { id: "ipse",    name: "iPhone SE (home)",   w: 375, h: 667, st: 20, sb: 0,  kind: "ios sehome nohome" },
+      { id: "pixel8",  name: "Android · Pixel 8",  w: 412, h: 915, st: 28, sb: 24, kind: "android" },
+      { id: "galaxy",  name: "Android · Galaxy S", w: 360, h: 800, st: 28, sb: 24, kind: "android" },
+      { id: "small",   name: "Android pequeno",    w: 360, h: 740, st: 24, sb: 16, kind: "android" },
+    ];
+    // padrão = dados FICTÍCIOS (esta é uma galeria de testes; nunca mostra os dados reais sem você escolher)
+    let demoMode = true;
+    function appSrc(d) {
+      const t = document.getElementById("theme").value;
+      const env = document.getElementById("appenv").value;
+      const base = env === "prod" ? "/index.html" : "index.html";   // prod = raiz morbiusfin.github.io (mesma origem); dev = relativo (financas)
+      return `${base}?frame=1&st=${d.st}&sb=${d.sb}${t ? "&theme=" + t : ""}${demoMode ? "&demo=1" : ""}&_=${Date.now()}`;
+    }
+    function updateDemoBtn() {
+      const b = document.getElementById("btnDemo"), n = document.getElementById("demoNote");
+      b.textContent = demoMode ? "🧪 Dados: FICTÍCIOS" : "👤 Dados: REAIS";
+      b.style.background = demoMode ? "#1f6b3a" : "#7a4420";
+      b.style.borderColor = demoMode ? "#2c8a4d" : "#9a5a2a";
+      n.textContent = demoMode
+        ? "Mostrando dados fictícios (modo teste) — seus dados reais não são tocados. Toque no botão para alternar."
+        : "⚠️ Mostrando seus DADOS REAIS. Toque no botão para voltar aos fictícios.";
+    }
+    function toggleDemo() { demoMode = !demoMode; updateDemoBtn(); buildAll(); }
+    // carrega o app no iframe só quando o aparelho aparece na tela (lazy) → leve, não trava
+    const io = ("IntersectionObserver" in window) ? new IntersectionObserver((ents) => {
+      ents.forEach(e => { if (e.isIntersecting) { const ifr = e.target; if (!ifr.src) ifr.src = ifr.dataset.src; io.unobserve(ifr); } });
+    }, { rootMargin: "300px" }) : null;
+    function buildAll() {
+      const g = document.getElementById("gallery");
+      g.innerHTML = "";
+      DEVICES.forEach((d, i) => {
+        const cell = document.createElement("div"); cell.className = "cell";
+        const dev = document.createElement("div"); dev.className = "device " + d.kind;
+        dev.style.width = d.w + "px"; dev.style.height = d.h + "px";
+        const scr = document.createElement("div"); scr.className = "screen";
+        const ifr = document.createElement("iframe"); ifr.dataset.dev = d.id; ifr.dataset.src = appSrc(d);
+        if (io && i > 1) { io.observe(ifr); } else { ifr.src = ifr.dataset.src; }   // os 2 primeiros já carregam; o resto, ao rolar
+        scr.appendChild(ifr);
+        const ti = document.createElement("div"); ti.className = "top-ind";
+        const hm = document.createElement("div"); hm.className = "home";
+        dev.appendChild(scr); dev.appendChild(ti); dev.appendChild(hm);
+        const lbl = document.createElement("div"); lbl.className = "label";
+        lbl.innerHTML = `<b>${d.name}</b>${d.w} × ${d.h} pt · áreas seguras: topo ${d.st} / base ${d.sb}`;
+        cell.appendChild(dev); cell.appendChild(lbl);
+        g.appendChild(cell);
+      });
+    }
+    function setViewAll(tab) {
+      document.querySelectorAll("#gallery iframe").forEach(ifr => {
+        try { const dd = ifr.contentWindow.document; const el = [...dd.querySelectorAll(".tab")].find(x => new RegExp(tab, "i").test(x.textContent)); if (el) el.click(); } catch (e) {}
+      });
+    }
+    updateDemoBtn();
+    buildAll();
+  </script>
+</body>
+</html>
