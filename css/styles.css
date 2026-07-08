@@ -1047,7 +1047,27 @@ body:has(#fab:not(.hidden)) main { padding-bottom: 178px; }   /* o + flutua até
   color: var(--muted); border-radius: 50%; width: 32px; height: 32px; font-size: 14px;
   display: flex; align-items: center; justify-content: center; padding: 0;
   font-family: var(--font); cursor: pointer; transition: background .15s ease, transform .12s ease; }
-.wn-close:active { transform: scale(.9); }
+.wn-close:active { transform: scale(.94); }
+.wn-close::after, .wn-x::after { content: ""; position: absolute; inset: -12px; }   /* área de toque generosa no X pequeno — acerta de 1ª (position:absolute => fora do flex, não desloca o ✕) */
+
+/* ============================================================================
+   TOQUE DE 1 VEZ (iOS/PWA): remove o "precisa de 2-3 toques" em botões e no X.
+   (a) touch-action:manipulation -> tap vira click NA HORA, sem espera de gesto/zoom.
+   (b) em tela SEM mouse (hover:none), nenhum :hover pode MOVER o alvo — senão o 1º
+       toque vira "hover", o botao PULA (transform) e o toque erra -> transform:none.
+   ============================================================================ */
+button, a, label, [role="button"], .btn, input, select, textarea,
+.wn-close, .wn-x, .plan-btn, .cmp-btn, .mp-opt, .av-opt, .menu-item, .icon-btn,
+.fab, .help-q, .gc-back, .sim-clear, .emoji-cell {
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+@media (hover: none) {
+  .cmp-btn:hover, .cmp-btn.rec:hover, .cmp-btn:hover .cmp-btn-cta,
+  .btn:hover, .btn.primary:hover, .btn.ghost:hover, .btn.danger:hover,
+  .menu-item:hover, .fab:hover, .fab.trash:hover, .mp-opt:hover, .icon-btn:hover,
+  .help-q:hover, .gc-back:hover, .sim-clear:hover, .emoji-cell:hover,
+  .alert-card .modal-actions .btn:hover, .greet-card .greet-actions .btn:hover { transform: none; }
+}
 .wn-header { text-align: center; margin-bottom: 16px; padding-top: 4px; }
 /* emoji animado (Noto brilho.webp) no lugar do ✨ estático — ele já anima sozinho */
 .wn-spark { width: 64px; height: 64px; display: block; margin: 0 auto 4px;
