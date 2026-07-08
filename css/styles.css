@@ -1936,8 +1936,11 @@ body.scroll-locked { position: fixed; top: 0; left: 0; right: 0; width: 100%; ov
 .set-toggle-txt small { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-top: 2px; }
 .set-pro-tag { font-size: 10px; font-weight: 800; color: #06251a; background: var(--accent); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
 .set-plus-tag { font-size: 10px; font-weight: 800; color: #06251a; background: var(--accent-2); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
-.set-toggle input.switch { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
-.set-toggle .switch-track { flex: 0 0 auto; width: 48px; height: 28px; border-radius: 999px;
+/* input invisível POSICIONADO SOBRE o track → o toque cai direto no <input> (toggle nativo).
+   Antes era 0×0 + pointer-events:none e só a ativação do <label> togglava — e no iOS isso FALHA
+   (label não ativa control 0×0/pointer-events:none) → o switch "não entrava" ao tocar. #bugfix-switch-ios */
+.set-toggle input.switch { position: absolute; top: 0; bottom: 0; right: 10px; width: 54px; margin: 0; opacity: 0; cursor: pointer; z-index: 2; }
+.set-toggle .switch-track { flex: 0 0 auto; width: 48px; height: 28px; border-radius: 999px; pointer-events: none;
   background: rgba(255,255,255,.16); position: relative; transition: background .2s ease; }
 .set-toggle .switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
   border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.35); transition: transform .2s cubic-bezier(.34,1.4,.4,1); }
