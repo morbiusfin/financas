@@ -894,10 +894,13 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
   margin: calc(var(--safe-top) + 16px) 0 calc(var(--safe-bottom) + 16px);
   background: var(--card); border: 1px solid var(--line); border-left: 0;
   border-radius: 0 20px 20px 0; box-shadow: 8px 0 40px rgba(0,0,0,.4);
-  padding: 0; overflow: hidden;
+  padding: 0; overflow: hidden; contain: paint;   /* recorta o conteúdo aos cantos arredondados no iOS (o momentum-scroll não vaza) */
   display: flex; flex-direction: column; animation: drawerIn .26s cubic-bezier(.2,.9,.2,1.05) both; }
 /* corpo rolável: header fica ESTÁTICO fora daqui (sempre no topo); só isto rola. (sticky-em-flex quebra no iOS) */
 .menu-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;   /* rolagem com inércia (fluida) no iOS */
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;   /* nada de seleção/menu "copiar" ao arrastar pra rolar */
+  transform: translateZ(0); will-change: scroll-position;   /* camada própria → desacopla do backdrop-filter do drawer (tira o travamento) */
   display: flex; flex-direction: column; gap: 9px; padding: 0 15px 16px; scrollbar-width: none; }
 /* TRAVA lateral: overflow-y:auto sozinho promove overflow-x pra auto → o menu deslizava na horizontal (cards largos + animação translateX
    de entrada geravam overflow lateral). overflow-x:hidden + touch-action:pan-y prendem o eixo X → só rola na vertical. */
