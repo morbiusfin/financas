@@ -1496,7 +1496,6 @@ body.party-on .tabbar, body.party-on #fab {
 .view-toggle.vt-enter .vt-btn:nth-child(2) { animation-delay: .1s; }
 .view-toggle.vt-enter .vt-btn:nth-child(3) { animation-delay: .18s; }
 .view-toggle.vt-enter .vt-btn:nth-child(4) { animation-delay: .26s; }
-.view-toggle.vt-enter .vt-btn:nth-child(5) { animation-delay: .34s; }
 @media (prefers-reduced-motion: reduce) { .view-toggle.vt-enter, .view-toggle.vt-enter .vt-btn { animation: none; } }
 .tab { flex: 1; background: 0; border: 0; padding: 8px 0 7px; border-radius: 15px; margin: 0 1px; font-size: 10.5px; color: var(--muted);
   display: flex; flex-direction: column; align-items: center; gap: 3px; font-weight: 700; position: relative; z-index: 1;
@@ -1793,6 +1792,12 @@ body.scroll-locked { position: fixed; top: 0; left: 0; right: 0; width: 100%; ov
 .det-flux { margin: 8px 2px 0; font-size: 12px; line-height: 1.45; }
 /* ===== Seletor de tema (cards visuais, cores reais do app) ===== */
 .theme-card { max-width: 380px; }
+/* modal de Aparência: card NÃO rola (✕ fixo); quem rola é .theme-scroll, com máscara de fade nas bordas
+   pro conteúdo não colar/cortar seco na margem. #pedido-kaick-sombra-rolagem */
+.modal.center .modal-card.theme-card { display: flex; flex-direction: column; overflow: hidden; max-height: 88dvh; }
+.theme-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 2px 8px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%); }
 .theme-cards { display: flex; gap: 10px; }
 /* cor do tema (acento) — Pro+ */
 .ac-sep { margin: 18px 0 9px; font-size: 13px; font-weight: 800; color: var(--ink); display: flex; align-items: center; gap: 6px; }
@@ -1804,10 +1809,13 @@ body.scroll-locked { position: fixed; top: 0; left: 0; right: 0; width: 100%; ov
 .ac-opt.on { border-color: var(--sw); box-shadow: inset 0 0 0 2px var(--sw); }
 .ac-dot { width: 26px; height: 26px; border-radius: 50%; background: var(--sw); box-shadow: 0 2px 6px rgba(0,0,0,.25); }
 .ac-name { font-size: 11.5px; font-weight: 700; color: var(--ink); }
-/* linha dos Times (22 clubes): nomes maiores → fonte menor e sem quebra pra caber na célula de 3 colunas */
-.ac-sep-times { margin-top: 16px; }
-.ac-row-times .ac-name { font-size: 10.5px; letter-spacing: -.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.ac-row-times .ac-dot { width: 22px; height: 22px; }
+/* "Cor do tema" unificado (base + times num bloco só): grade de bolinhas IGUAIS, sem rótulo.
+   Selecionada = anel na própria cor. #pedido-kaick-cores */
+.ac-row.ac-dots { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 13px; justify-items: center; }
+.ac-opt.ac-dotonly { padding: 3px; border: 0; background: transparent; }
+.ac-opt.ac-dotonly .ac-dot { width: 30px; height: 30px; }
+.ac-opt.ac-dotonly.on { box-shadow: none; }
+.ac-opt.ac-dotonly.on .ac-dot { box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--sw); }
 .ac-hint { margin-top: 8px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.4; }
 .ac-hint b { color: var(--ink); }
 /* ===== Relatório PDF (usa a impressão do sistema → salvar como PDF) ===== */
@@ -2089,20 +2097,6 @@ body.scroll-locked { position: fixed; top: 0; left: 0; right: 0; width: 100%; ov
 .ci-day { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 38px; }
 .ci-desc { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ci-val { flex: 0 0 auto; font-size: 13px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
-/* 🧭 Radar (consultor): cabeçalho + cards com barra de farol (verde/âmbar/vermelho) e veredito grande */
-.cons-head { text-align: center; margin: 2px 2px 14px; }
-.cons-head h2 { font-size: 20px; font-weight: 800; margin: 0; letter-spacing: -.3px; }
-.cons-headsub { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); font-weight: 600; }
-.cons-card { border-left: 4px solid var(--cc, var(--accent)); }
-.cons-top { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
-.cons-ic { font-size: 20px; line-height: 1; }
-.cons-ic.big { font-size: 42px; display: block; text-align: center; margin: 6px 0 8px; }
-.cons-title { font-size: 12px; font-weight: 800; color: var(--muted); margin: 0; text-transform: uppercase; letter-spacing: .4px; }
-.cons-verdict { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.42; }
-.cons-verdict b { font-weight: 800; }
-.cons-sub { margin-top: 7px; font-size: 12.5px; color: var(--muted); font-weight: 600; line-height: 1.45; }
-.cons-empty { text-align: center; }
-.cons-empty .hint { margin: 0; }
 /* 🩹 Sombreamento de rolagem (#audit-P2): fade nas bordas de TUDO que rola — sem corte seco. Mesmo padrão
    do .medal-scroll/.month-bar. Verticais fadam topo+base; horizontais, esquerda+direita. */
 .csv-list, .faq-body, .notif-body, .sh-body, .pair-body, .wn-body, .admin-cl, .ac-list {
@@ -2559,9 +2553,6 @@ body.splash-on .tabbar, body.splash-on #fab { visibility: hidden; }
 /* 4 opções (Resumo · Gráficos · Insights · Metas): aperta fonte/espaços pra caber no celular */
 .view-toggle.vt-4 { gap: 3px; }
 .view-toggle.vt-4 .vt-btn { font-size: 11.5px; padding: 9px 2px; letter-spacing: -.2px; }
-/* 5 itens na raia (+ Radar): fonte escala com a largura pra caber em telas estreitas sem quebrar linha */
-.view-toggle.vt-5 { gap: 2px; }
-.view-toggle.vt-5 .vt-btn { font-size: clamp(9px, 2.7vw, 11.5px); padding: 9px 1px; letter-spacing: -.3px; white-space: nowrap; }
 /* Botão discreto "Como usar esta página" — um por sub-página do Resumo, sempre no mesmo lugar (logo abaixo do toggle) */
 /* fino e reservado: pílula pequena centrada (não é mais uma barra full-width chamativa) */
 .rv-tut-btn { display: flex; align-items: center; justify-content: center; gap: 5px; width: fit-content; max-width: 100%; margin: 0 auto 12px;
@@ -2574,8 +2565,6 @@ body.splash-on .tabbar, body.splash-on #fab { visibility: hidden; }
 /* 💡 Insights — opção em AZUL (destaca dos verdes) */
 .vt-ins { color: #4a90ff; }   /* azul um pouco mais forte → melhor contraste no escuro e no claro */
 .vt-ins.active { color: #fff; }
-.vt-cons { color: #f5a623; }  /* Radar (consultor) — âmbar/bússola; ativo fica branco sobre o vidro */
-.vt-cons.active { color: #fff; }
 /* pulsa (chama atenção) até ser aberta a 1ª vez */
 .vt-ins.pulse { animation: vtInsPulse 1.7s ease-in-out infinite; }
 @keyframes vtInsPulse {
