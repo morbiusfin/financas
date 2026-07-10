@@ -33,6 +33,29 @@ html.accent-roxo    { --green:#3a1d63; --green-2:#6d34c4; --accent:#8b5cf6; --ac
 html.accent-rosa    { --green:#5e1440; --green-2:#b02a6f; --accent:#ec4899; --accent-2:#f472b6; --ring:rgba(236,72,153,.35); }
 html.accent-laranja { --green:#5a2e00; --green-2:#b25e12; --accent:#f5820a; --accent-2:#ffa63d; --ring:rgba(245,130,10,.35); }
 html.accent-ciano   { --green:#0a3d43; --green-2:#128a99; --accent:#14c2d6; --accent-2:#22d3ee; --ring:rgba(20,194,214,.35); }
+/* ⚽ Temas de times (Pro) — cores oficiais aproximadas (pesquisadas). Header = gradiente escuro→médio do clube. */
+html.accent-flamengo     { --green:#1a1a1a; --green-2:#a10f14; --accent:#E30613; --accent-2:#ff3b3b; --ring:rgba(227,6,19,.35); }
+html.accent-fluminense   { --green:#4a0a22; --green-2:#00784b; --accent:#B10E3A; --accent-2:#e23a6b; --ring:rgba(159,12,52,.35); }
+html.accent-vasco        { --green:#141414; --green-2:#8f1512; --accent:#E2231A; --accent-2:#ff4d45; --ring:rgba(226,35,26,.35); }
+html.accent-botafogo     { --green:#161616; --green-2:#3a3f45; --accent:#6E747B; --accent-2:#d0d4d9; --ring:rgba(110,116,123,.35); }   /* accent escurecido p/ ser legível como texto no tema claro (#audit-P2); -2 fica claro p/ gráficos */
+html.accent-palmeiras    { --green:#08361f; --green-2:#137a41; --accent:#1E8E3E; --accent-2:#37c46b; --ring:rgba(30,142,62,.35); }
+html.accent-corinthians  { --green:#161616; --green-2:#9a1220; --accent:#ED1C2E; --accent-2:#ff4b59; --ring:rgba(237,28,46,.35); }
+html.accent-saopaulo     { --green:#3a0a0a; --green-2:#b31414; --accent:#FE2222; --accent-2:#ff5a5a; --ring:rgba(254,34,34,.35); }
+html.accent-santos       { --green:#2e2400; --green-2:#8a6f0c; --accent:#8F6E0A; --accent-2:#ecc233; --ring:rgba(143,110,10,.35); }   /* accent dourado escuro = legível no claro (#audit-P2) */
+html.accent-atleticomg   { --green:#242400; --green-2:#8a7a00; --accent:#967700; --accent-2:#ffe14d; --ring:rgba(150,119,0,.35); }   /* idem (#audit-P2) */
+html.accent-cruzeiro     { --green:#0d2a5e; --green-2:#254e9e; --accent:#2F6BD6; --accent-2:#5b95f0; --ring:rgba(47,107,214,.35); }
+html.accent-gremio       { --green:#0a2f45; --green-2:#0f6ea0; --accent:#0D9BE0; --accent-2:#3ec0ff; --ring:rgba(13,155,224,.35); }
+html.accent-internacional{ --green:#3a0808; --green-2:#a80b13; --accent:#E5050F; --accent-2:#ff3b44; --ring:rgba(229,5,15,.35); }
+html.accent-athleticopr  { --green:#161616; --green-2:#8f1116; --accent:#CE181E; --accent-2:#f0454b; --ring:rgba(206,24,30,.35); }
+html.accent-coritiba     { --green:#073b36; --green-2:#0e7568; --accent:#0E8C7F; --accent-2:#25c2b0; --ring:rgba(14,140,127,.35); }
+html.accent-bahia        { --green:#0a2f52; --green-2:#0f6bab; --accent:#0C8AE0; --accent-2:#3eb0ff; --ring:rgba(12,138,224,.35); }
+html.accent-vitoria      { --green:#161616; --green-2:#a81414; --accent:#FF2B2B; --accent-2:#ff5f5f; --ring:rgba(255,43,43,.35); }
+html.accent-fortaleza    { --green:#0a2c52; --green-2:#0c62a8; --accent:#0A73C4; --accent-2:#3ea0ef; --ring:rgba(10,115,196,.35); }
+html.accent-ceara        { --green:#1a1a1a; --green-2:#454b52; --accent:#767B82; --accent-2:#e6e9ed; --ring:rgba(118,123,130,.35); }   /* accent escurecido p/ legibilidade no claro (#audit-P2) */
+html.accent-sport        { --green:#3a0810; --green-2:#a80b1a; --accent:#E2001A; --accent-2:#ff3b4f; --ring:rgba(226,0,26,.35); }
+html.accent-goias        { --green:#083a20; --green-2:#128a4a; --accent:#1AA35A; --accent-2:#38d47e; --ring:rgba(26,163,90,.35); }
+html.accent-atleticogo   { --green:#161616; --green-2:#a1181c; --accent:#ED3237; --accent-2:#ff5a5f; --ring:rgba(237,50,55,.35); }
+html.accent-cuiaba       { --green:#0a3a1f; --green-2:#12823f; --accent:#2EA84F; --accent-2:#4fd070; --ring:rgba(46,168,79,.35); }
 
 /* mockup de teste (iphone.html ?frame=1): força as áreas seguras reais do iPhone 14 Pro Max
    pra eu VER no localhost exatamente como fica no celular (no device real continua o env()). */
@@ -959,7 +982,9 @@ img.emoji-anim { -webkit-user-select: none; user-select: none; }
   border: 1px solid var(--line); border-radius: 14px; padding: 11px 12px; cursor: pointer; font-family: var(--font);
   color: var(--ink); transition: transform .12s ease, border-color .15s ease, background .15s ease; }
 .menu-item:active { transform: scale(.97); background: var(--card); }
-.menu-item:hover { border-color: var(--accent); }
+/* borda verde SÓ em dispositivo com mouse real: no celular o :hover disparava ao ROLAR (touch vira
+   hover) e os itens "pré-selecionavam" em verde. @media(hover:hover) trava isso no touch. #pedido-kaick-menu */
+@media (hover: hover) and (pointer: fine) { .menu-item:hover { border-color: var(--accent); } }
 .menu-item:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .menu-item .mi-ic { font-size: 19px; flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center; line-height: 1;
@@ -1348,9 +1373,12 @@ body.lock-on > #recModal { visibility: visible !important; z-index: 1300; }
   cursor: pointer; font-family: var(--font); }
 /* Cabeçalho da lista = card "hero" com gradiente, shimmer e animação de entrada */
 .list-header { display: flex; justify-content: space-between; align-items: center; gap: 10px;
-  margin: 0 0 14px; padding: 15px 18px; border-radius: 18px; color: #fff; position: relative; overflow: hidden;
+  margin: 0 0 14px; padding: 15px 18px; border-radius: 18px; color: #fff; overflow: hidden;
   background: linear-gradient(135deg, var(--green-2), var(--green));
-  box-shadow: 0 10px 26px rgba(11,61,46,.34); animation: headerIn .5s cubic-bezier(.2,.9,.2,1.12) both; }
+  box-shadow: 0 10px 26px rgba(11,61,46,.34); animation: headerIn .5s cubic-bezier(.2,.9,.2,1.12) both;
+  /* CONGELA no topo ao rolar (Cartões/Débitos/Fixas/Receitas): fica sob o header fixo (var --header-h) e a
+     lista passa POR TRÁS. Window-level sticky não treme no iOS (o bug era só container aninhado). #pedido-kaick-faixa */
+  position: sticky; top: calc(var(--header-h, 64px) + 6px); z-index: 30; }
 .list-header::after { content: ""; position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.18) 50%, transparent 62%);
   transform: translateX(-160%); animation: headerShimmer 4s ease-in-out 1s infinite; }
@@ -1404,6 +1432,7 @@ body.lock-on > #recModal { visibility: visible !important; z-index: 1300; }
 .mp-opt:active { transform: scale(.97); }
 .mp-opt.pix:active, .mp-opt.pix:hover { border-color: #19c6b3; box-shadow: 0 0 0 3px rgba(25,198,179,.18); }
 .mp-opt.debito:active, .mp-opt.debito:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+.mp-opt.receita:active, .mp-opt.receita:hover { border-color: #f5a623; box-shadow: 0 0 0 3px rgba(245,166,35,.18); }
 .mp-ic { font-size: 21px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 11px; background: var(--card); flex: 0 0 auto; }
 .mp-txt { display: flex; flex-direction: column; line-height: 1.2; }
 .mp-txt b { font-size: 15px; font-weight: 800; }
@@ -1467,6 +1496,7 @@ body.party-on .tabbar, body.party-on #fab {
 .view-toggle.vt-enter .vt-btn:nth-child(2) { animation-delay: .1s; }
 .view-toggle.vt-enter .vt-btn:nth-child(3) { animation-delay: .18s; }
 .view-toggle.vt-enter .vt-btn:nth-child(4) { animation-delay: .26s; }
+.view-toggle.vt-enter .vt-btn:nth-child(5) { animation-delay: .34s; }
 @media (prefers-reduced-motion: reduce) { .view-toggle.vt-enter, .view-toggle.vt-enter .vt-btn { animation: none; } }
 .tab { flex: 1; background: 0; border: 0; padding: 8px 0 7px; border-radius: 15px; margin: 0 1px; font-size: 10.5px; color: var(--muted);
   display: flex; flex-direction: column; align-items: center; gap: 3px; font-weight: 700; position: relative; z-index: 1;
@@ -1774,6 +1804,10 @@ body.scroll-locked { position: fixed; top: 0; left: 0; right: 0; width: 100%; ov
 .ac-opt.on { border-color: var(--sw); box-shadow: inset 0 0 0 2px var(--sw); }
 .ac-dot { width: 26px; height: 26px; border-radius: 50%; background: var(--sw); box-shadow: 0 2px 6px rgba(0,0,0,.25); }
 .ac-name { font-size: 11.5px; font-weight: 700; color: var(--ink); }
+/* linha dos Times (22 clubes): nomes maiores → fonte menor e sem quebra pra caber na célula de 3 colunas */
+.ac-sep-times { margin-top: 16px; }
+.ac-row-times .ac-name { font-size: 10.5px; letter-spacing: -.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ac-row-times .ac-dot { width: 22px; height: 22px; }
 .ac-hint { margin-top: 8px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.4; }
 .ac-hint b { color: var(--ink); }
 /* ===== Relatório PDF (usa a impressão do sistema → salvar como PDF) ===== */
@@ -2043,6 +2077,42 @@ body.scroll-locked { position: fixed; top: 0; left: 0; right: 0; width: 100%; ov
 .csv-note { margin-top: 10px; font-size: 12px; color: var(--muted); font-weight: 600; }
 .csv-cat { text-align: left; margin: 2px 0 0; }
 .csv-cat > span { display: block; margin-bottom: 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+/* Importar fatura: pílulas cartão+mês e lista item-por-item (o usuário confere antes de confirmar) */
+.csv-fatura-info { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: -6px 0 14px; }
+.csv-fatura-info span { background: var(--card-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; color: var(--ink); }
+.csv-fatura-info .cfi-mes b { color: var(--accent); }
+.csv-list-wrap { position: relative; margin: 12px 0 2px; }
+.csv-list { max-height: 34dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: var(--card-2); }
+.csv-list:empty { display: none; }
+.csv-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.csv-item:last-child { border-bottom: 0; }
+.ci-day { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 38px; }
+.ci-desc { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ci-val { flex: 0 0 auto; font-size: 13px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* 🧭 Radar (consultor): cabeçalho + cards com barra de farol (verde/âmbar/vermelho) e veredito grande */
+.cons-head { text-align: center; margin: 2px 2px 14px; }
+.cons-head h2 { font-size: 20px; font-weight: 800; margin: 0; letter-spacing: -.3px; }
+.cons-headsub { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.cons-card { border-left: 4px solid var(--cc, var(--accent)); }
+.cons-top { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.cons-ic { font-size: 20px; line-height: 1; }
+.cons-ic.big { font-size: 42px; display: block; text-align: center; margin: 6px 0 8px; }
+.cons-title { font-size: 12px; font-weight: 800; color: var(--muted); margin: 0; text-transform: uppercase; letter-spacing: .4px; }
+.cons-verdict { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.42; }
+.cons-verdict b { font-weight: 800; }
+.cons-sub { margin-top: 7px; font-size: 12.5px; color: var(--muted); font-weight: 600; line-height: 1.45; }
+.cons-empty { text-align: center; }
+.cons-empty .hint { margin: 0; }
+/* 🩹 Sombreamento de rolagem (#audit-P2): fade nas bordas de TUDO que rola — sem corte seco. Mesmo padrão
+   do .medal-scroll/.month-bar. Verticais fadam topo+base; horizontais, esquerda+direita. */
+.csv-list, .faq-body, .notif-body, .sh-body, .pair-body, .wn-body, .admin-cl, .ac-list {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+}
+.month-chips, .emoji-tabs, .avatar-row {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+}
 
 /* ===== Card "Contas a vencer" (prioridade no topo do Resumo) ===== */
 .venc-card { padding: 4px 0 6px; border-color: var(--line);
@@ -2489,6 +2559,9 @@ body.splash-on .tabbar, body.splash-on #fab { visibility: hidden; }
 /* 4 opções (Resumo · Gráficos · Insights · Metas): aperta fonte/espaços pra caber no celular */
 .view-toggle.vt-4 { gap: 3px; }
 .view-toggle.vt-4 .vt-btn { font-size: 11.5px; padding: 9px 2px; letter-spacing: -.2px; }
+/* 5 itens na raia (+ Radar): fonte escala com a largura pra caber em telas estreitas sem quebrar linha */
+.view-toggle.vt-5 { gap: 2px; }
+.view-toggle.vt-5 .vt-btn { font-size: clamp(9px, 2.7vw, 11.5px); padding: 9px 1px; letter-spacing: -.3px; white-space: nowrap; }
 /* Botão discreto "Como usar esta página" — um por sub-página do Resumo, sempre no mesmo lugar (logo abaixo do toggle) */
 /* fino e reservado: pílula pequena centrada (não é mais uma barra full-width chamativa) */
 .rv-tut-btn { display: flex; align-items: center; justify-content: center; gap: 5px; width: fit-content; max-width: 100%; margin: 0 auto 12px;
@@ -2501,6 +2574,8 @@ body.splash-on .tabbar, body.splash-on #fab { visibility: hidden; }
 /* 💡 Insights — opção em AZUL (destaca dos verdes) */
 .vt-ins { color: #4a90ff; }   /* azul um pouco mais forte → melhor contraste no escuro e no claro */
 .vt-ins.active { color: #fff; }
+.vt-cons { color: #f5a623; }  /* Radar (consultor) — âmbar/bússola; ativo fica branco sobre o vidro */
+.vt-cons.active { color: #fff; }
 /* pulsa (chama atenção) até ser aberta a 1ª vez */
 .vt-ins.pulse { animation: vtInsPulse 1.7s ease-in-out infinite; }
 @keyframes vtInsPulse {
