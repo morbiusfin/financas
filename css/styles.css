@@ -2107,6 +2107,49 @@ body.scroll-locked { position: fixed; top: 0; left: 0; right: 0; width: 100%; ov
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
           mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
 }
+/* ✨ Cards de valor (Safe-to-Spend, alerta vermelho, recorrentes, cofrinho, compartilhar) — texto alinhado,
+   animações de entrada obrigatórias. #pedido-kaick-value */
+/* .section-card NÃO tem padding próprio (só o h3 tem) → como estes 4 cards não têm h3, o respiro vem AQUI
+   (15/16, igual às demais seções) pra NADA colar na borda. #audit-P2 */
+.sts-card, .alert-red, .rec-card, .cofre-card { padding: 15px 16px; }
+.sts-card { text-align: left; }
+.sts-top { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.sts-ic { font-size: 17px; }
+.sts-big { display: flex; align-items: baseline; gap: 6px; margin: 7px 0 2px; }
+.sts-big b { font-size: 30px; font-weight: 800; letter-spacing: -.5px; color: var(--accent); animation: stsPop .5s cubic-bezier(.2,.9,.2,1.2) both; }
+.sts-big b.neg { color: #e5675f; }
+.sts-big i { font-size: 14px; color: var(--muted); font-style: normal; }
+.sts-sub { font-size: 12.5px; color: var(--ink); opacity: .82; line-height: 1.45; }
+.sts-bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; margin-top: 13px; }
+.sts-bar > span { display: block; height: 100%; border-radius: 99px; background: var(--accent); transform-origin: left; animation: stsFill .7s ease .1s both; }
+.sts-legend { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+@keyframes stsPop { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: none; } }
+@keyframes stsFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.alert-red { display: flex; gap: 12px; align-items: flex-start; border: 1px solid rgba(229,72,77,.42); background: linear-gradient(135deg, rgba(229,72,77,.15), rgba(229,72,77,.06)); }
+.ar-ic { font-size: 26px; flex: 0 0 auto; line-height: 1; animation: arPulse 1.7s ease-in-out infinite; }
+.ar-title { font-size: 14px; font-weight: 800; color: #ff8b86; margin-bottom: 3px; }
+.ar-sub { font-size: 12.5px; color: var(--ink); opacity: .9; line-height: 1.5; }
+@keyframes arPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+.rec-top { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
+.rec-ic { font-size: 22px; line-height: 1; animation: recSpin 6s linear infinite; }
+.rec-title { font-size: 14px; font-weight: 800; }
+.rec-meta { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.rec-meta i { font-style: normal; }
+.rec-list { display: flex; flex-direction: column; gap: 7px; }
+.rec-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 9px 12px; background: var(--card-2); border-radius: 11px; }
+.rec-desc { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.rec-val { font-size: 13px; font-weight: 800; flex: 0 0 auto; }
+.rec-more { margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.rec-hint { margin-top: 11px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+@keyframes recSpin { to { transform: rotate(360deg); } }
+.cofre-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.cofre-ic { font-size: 24px; line-height: 1; animation: cofreWig 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
+.cofre-title { font-size: 14px; font-weight: 800; }
+.cofre-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+.cofre-btn { width: 100%; }
+@keyframes cofreWig { 0%, 88%, 100% { transform: rotate(0); } 44% { transform: rotate(-9deg); } 68% { transform: rotate(9deg); } }
+.share-mes-btn { width: 100%; margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) { .sts-big b, .sts-bar > span, .ar-ic, .rec-ic, .cofre-ic { animation: none !important; } }
 
 /* ===== Card "Contas a vencer" (prioridade no topo do Resumo) ===== */
 .venc-card { padding: 4px 0 6px; border-color: var(--line);
